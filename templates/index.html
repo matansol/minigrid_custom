@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minigrid Game</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #game-container {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+            display: none; /* Initially hidden */
+            align-items: center;
+            justify-content: center;
+        }
+        #info-container {
+            text-align: center;
+            display: none; /* Initially hidden */
+            margin-top: 20px;
+        }
+        #game-image {
+            width: 640px; /* Set the desired width */
+            height: 480px; /* Set the desired height */
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <input type="text" id="player-name" placeholder="Enter your ID" />
+
+    <button id="start-button">Start</button>
+    <button id="ppo-button">Agent Action</button> <!-- PPO agent button -->
+    <div id="game-container">
+        <img id="game-image" src="" alt="Game Image">
+    </div>
+    <div id="info-container">
+        <p>Action: <span id="action"></span></p>
+        <p>Reward: <span id="reward"></span></p>
+        <p>Score: <span id="score"></span></p>
+        <p>Last episode score: <span id="last_score"></span></p>
+    </div>
+    <script src="static/js/game.js"></script>
+</body>
+</html>

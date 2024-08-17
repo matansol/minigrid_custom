@@ -37,6 +37,8 @@ class CustomEnv(MiniGridEnv):
     ):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
+        self.agent_dir = agent_start_dir
+        self.agent_pos = agent_start_pos
 
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
@@ -115,7 +117,7 @@ class CustomEnv(MiniGridEnv):
             reward += self.color_rewards.get(ball_color, 0) 
             self.carrying = None
             self.on_baord_objects -= 1
-            # if self.on_baord_objects == 0:
+            # if self.on_baord_objects == 0: # if all balls are collected end the episode
             #     terminated = True
 
         reward -= 1 / self.max_steps 

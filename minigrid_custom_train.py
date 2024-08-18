@@ -1,6 +1,5 @@
 import argparse
 from datetime import datetime
-from pdb import set_trace
 from time import time
 
 import gymnasium as gym

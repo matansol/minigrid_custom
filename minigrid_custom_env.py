@@ -12,16 +12,16 @@ import gymnasium as gym
 from gymnasium.spaces import Box, Dict
 from gymnasium.core import ObservationWrapper
 
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-import torch
-import torch.nn as nn
+# from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+# import torch
+# import torch.nn as nn
 
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import random
-import pygame
-import os
-import numpy as np
+# import pygame
+# import os
+# import numpy as np
 
 
 

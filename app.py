@@ -266,4 +266,4 @@ if __name__ == '__main__':
                     9: "minigrid_custom_20240804/iter_10^6_steps"
     }
     manual_control = ManualControl(env, model_paths)
-    socketio.run(app, debug=True, host='0.0.0.0', port=8000, allow_unsafe_werkzeug=True)
+    # socketio.run(app, debug=True, host='0.0.0.0', port=8000)

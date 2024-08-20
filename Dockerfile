@@ -18,4 +18,4 @@ COPY . /app
 WORKDIR /app
 
 # Specify the command to run your application
-CMD ["python", "your_script_name.py"]
+CMD ["python", "app.py"]

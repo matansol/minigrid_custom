@@ -163,18 +163,6 @@ class ManualControl:
 def index():
     return render_template('index.html')
         
-# @socketio.on('send_action')
-# def handle_message(action):
-#     session = players_sessions.get(request.sid)
-#     response = manual_control.handle_action(action)
-#     session.record_action(response['episode'], action, response['score'], response['reward'], response['done'], response['agent_action'], response['agent_index'])
-#     if response['done']:  # start a new episode
-#         response = manual_control.get_initial_observation(update_agent=True)
-#         session.save_to_file()  # Save at the end of each episode
-#         manual_control.update_agent()
-#         emit('game_update', response)
-#     else:
-#         emit('game_update', response, broadcast=True)
         
 
 @socketio.on('send_action')

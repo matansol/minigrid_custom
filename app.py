@@ -246,7 +246,7 @@ def load_agent(env, model_path):
     ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
 
     # Load the model
-    ppo = ppo.load(f"models/ppo/{model_path}", env=env)
+    ppo = ppo.load(f"models/{model_path}", env=env)
     return ppo
 
 if __name__ == '__main__':
@@ -266,5 +266,5 @@ if __name__ == '__main__':
                     9: "minigrid_custom_20240804/iter_10^6_steps"
     }
     manual_control = ManualControl(env, model_paths)
-    socketio.run(app, debug=True)
-    # socketio.run(app, debug=True, host='0.0.0.0', port=8000)
+    # socketio.run(app, debug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=8000)

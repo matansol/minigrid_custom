@@ -17,5 +17,11 @@ RUN pip install -r requirements.txt
 COPY . /app
 WORKDIR /app
 
+# Copy the model files to the container
+COPY models ./models
+
+# Expose the port your app runs on
+EXPOSE 8000
+
 # Specify the command to run your application
 CMD ["python", "app.py"]

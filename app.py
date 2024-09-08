@@ -12,10 +12,12 @@ from minigrid.core.actions import Actions
 from minigrid_custom_train import ObjEnvExtractor, ObjObsWrapper
 from stable_baselines3 import PPO
 import numpy as np
+import torch
 from PIL import Image
 import io
 import base64
 import time
+import os
 
 
 app = Flask(__name__)
@@ -30,12 +32,12 @@ engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
 # Scoped session that ensures different sessions for different threads
 db = SQLAlchemy(app)
 
-
 def create_database():
     with app.app_context():
         db.create_all()
 
 
+# classes definition
 class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
@@ -158,36 +160,66 @@ class ManualControl:
             return None
         model_path = self.agent_paths[self.agent_index]
         self.ppo_agent = load_agent(self.env, model_path)
+        
+        
+# initialize the environment and the manual control object
+players_sessions = {}
+env = CustomEnv(render_mode="rgb_array")
+env = ObjObsWrapper(env)
 
+env.reset()
+model_dir = "minigrid_custom_20240907"
+model_paths = {0 : model_dir + "/iter_10^5_steps",
+            1:  model_dir + "/iter_20^5_steps",
+            2:  model_dir + "/iter_30^5_steps",
+            3:  model_dir + "/iter_40^5_steps",
+            4:  model_dir + "/iter_50^5_steps",
+            5:  model_dir + "/iter_60^5_steps",
+            6:  model_dir + "/iter_70^5_steps",
+            7:  model_dir + "/iter_80^5_steps",
+            8:  model_dir + "/iter_90^5_steps",
+            9:  model_dir + "/iter_10^6_steps"
+}
+
+manual_control = ManualControl(env, model_paths)
+
+
+
+# functions that control the flow of the game
 @app.route('/')
 def index():
-    return render_template('index.html')
-        
-        
+    return render_template('index.html')        
 
 @socketio.on('send_action')
 def handle_message(action):
-    session = players_sessions.get(request.sid)
-    response = manual_control.handle_action(action)
-    #insert the action to the database
     try:
-        db.session.begin(nested=True)
-        session.record_action(
-            action=action,
-            score=response['score'],
-            reward=response['reward'],
-            done=response['done'],
-            agent_action=response['agent_action'],
-            episode=response['episode'],
-            agent_index=response['agent_index']
-        )
-        db.session.commit()
+        session = players_sessions.get(request.sid)
+        response = manual_control.handle_action(action)
     except Exception as e:
-        db.session.rollback()
-        app.logger.error('Database operation failed: %s', e)
-        emit('error', {'error': 'Database operation failed'})
-    finally:
-        db.session.remove()
+        app.logger.error('Failed to handle action: %s', e)
+        return
+    
+    # TODO: Uncomment the following block to enable database recording
+    
+    # #insert the action to the database
+    # try:
+    #     db.session.begin(nested=True)
+    #     session.record_action(
+    #         action=action,
+    #         score=response['score'],
+    #         reward=response['reward'],
+    #         done=response['done'],
+    #         agent_action=response['agent_action'],
+    #         episode=response['episode'],
+    #         agent_index=response['agent_index']
+    #     )
+    #     db.session.commit()
+    # except Exception as e:
+    #     db.session.rollback()
+    #     app.logger.error('Database operation failed: %s', e)
+    #     emit('error', {'error': 'Database operation failed'})
+    # finally:
+    #     db.session.remove()
 
     if response['done']:
         response = manual_control.get_initial_observation(update_agent=True)
@@ -242,29 +274,25 @@ def finish_game():
     
 
 def load_agent(env, model_path):
-    policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
-    ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
+    # policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
+    custom_objects = {
+        "policy_kwargs": {"features_extractor_class": ObjEnvExtractor},  # Example kernel size
+        "clip_range": 0.2,  # Example custom parameters
+        "lr_schedule": 0.001  # Example learning rate schedule
+    }
+    # ppo = PPO("MultiInputPolicy", env, verbose=1)
 
     # Load the model
-    ppo = ppo.load(f"models/{model_path}", env=env)
+    ppo = PPO.load(f"models/{model_path}", custom_objects=custom_objects, env=env)
     return ppo
 
 if __name__ == '__main__':
+    print("Starting the server")
+    print(torch.__version__)
+    print(torch.backends.cudnn.enabled) 
     # create_database()
-    players_sessions = {}
-    env = CustomEnv(render_mode="rgb_array")
-    env = ObjObsWrapper(env)
-    model_paths = {0 : "minigrid_custom_20240804/iter_10^5_steps",
-                   1: "minigrid_custom_20240804/iter_20^5_steps",
-                   2: "minigrid_custom_20240804/iter_30^5_steps",
-                   3: "minigrid_custom_20240804/iter_40^5_steps",
-                    4: "minigrid_custom_20240804/iter_50^5_steps",
-                    5: "minigrid_custom_20240804/iter_60^5_steps",
-                    6: "minigrid_custom_20240804/iter_70^5_steps",
-                    7: "minigrid_custom_20240804/iter_80^5_steps",
-                    8: "minigrid_custom_20240804/iter_90^5_steps",
-                    9: "minigrid_custom_20240804/iter_10^6_steps"
-    }
-    manual_control = ManualControl(env, model_paths)
+    
     # socketio.run(app, debug=True)
-    socketio.run(app, debug=True, host='0.0.0.0', port=8000)
+    # Read the port from the environment variable (use 8000 as a default for local testing)
+    port = int(os.environ.get("PORT", 8000))
+    socketio.run(app, debug=True, host='0.0.0.0', port=port)

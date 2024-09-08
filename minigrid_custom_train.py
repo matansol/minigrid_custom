@@ -124,7 +124,7 @@ def main():
     parser.add_argument("--train", action="store_true", help="train the model")
     parser.add_argument(
         "--load_model",
-        default="minigrid_custom_20240804/iter_20000_steps",
+        default="minigrid_custom_20240907/iter_10000_steps",
     )
     parser.add_argument("--render", action="store_true", help="render trained models")
     args = parser.parse_args()
@@ -141,7 +141,7 @@ def main():
 
         checkpoint_callback = CheckpointCallback(
             save_freq=1e5,
-            save_path=f"./models/ppo/minigrid_custom_{stamp}/",
+            save_path=f"./models/minigrid_custom_{stamp}/",
             name_prefix="iter",
         )
 
@@ -150,7 +150,7 @@ def main():
             env,
             policy_kwargs=policy_kwargs,
             verbose=1,
-            tensorboard_log="./logs/ppo/minigrid_custom_tensorboard/",
+            tensorboard_log="./logs/minigrid_custom_tensorboard/",
         )
         model.learn(
             1e6,
@@ -168,7 +168,7 @@ def main():
         ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
 
         # add the experiment time stamp
-        ppo = ppo.load(f"models/ppo/{args.load_model}", env=env)
+        ppo = ppo.load(f"models/{args.load_model}", env=env)
 
         
 

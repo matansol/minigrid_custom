@@ -295,4 +295,4 @@ if __name__ == '__main__':
     # socketio.run(app, debug=True)
     # Read the port from the environment variable (use 8000 as a default for local testing)
     port = int(os.environ.get("PORT", 8000))
-    socketio.run(app, debug=True, host='0.0.0.0', port=port)
+    socketio.run(app, debug=False, host='0.0.0.0', port=port)

@@ -14,26 +14,37 @@
             flex-direction: column;
         }
         #game-container {
+            display: none; /* Initially hidden */
+            flex-direction: row; /* Arrange elements side by side */
+            align-items: flex-start; /* Align items to the top */
+        }
+        #game-image-container {
             width: 640px;
             height: 480px;
             border: 1px solid black;
+        }
+        #game-image {
+            width: 100%; /* Adjusted for container width */
+            height: 100%; /* Adjusted for container height */
+        }
+        #key-instructions {
             display: none; /* Initially hidden */
+            margin-left: 20px; /* Add some space between image and instructions */
+            text-align: left;
+            padding: 10px;
+            border: 1px solid black;
         }
         #info-container {
             text-align: center;
             display: none; /* Initially hidden */
             margin-top: 20px;
         }
-        #game-image {
-            width: 100%; /* Adjusted for container width */
-            height: 100%; /* Adjusted for container height */
-        }
         button {
-            padding: 10px 20px;  // Example padding, adjust as needed
-            font-size: 16px;     // Example font size, adjust as needed
-            cursor: pointer;     // Changes cursor on hover to indicate it's clickable
-            border: 1px solid #ccc; // Example border, adjust as needed
-            background-color: #f8f8f8; // Example background color, adjust as needed
+            padding: 10px 20px;  /* Example padding, adjust as needed */
+            font-size: 16px;     /* Example font size, adjust as needed */
+            cursor: pointer;     /* Changes cursor on hover to indicate it's clickable */
+            border: 1px solid #ccc; /* Example border, adjust as needed */
+            background-color: #f8f8f8; /* Example background color, adjust as needed */
         }
         #finish-game-button {
             position: absolute; /* Positioning to the bottom right */
@@ -48,15 +59,30 @@
     <input type="text" id="player-name" placeholder="Enter your ID" />
     <button id="start-button">Start</button>
     <button id="ppo-button">Agent Action</button> <!-- PPO agent button -->
+    
     <div id="game-container">
-        <img id="game-image" src="" alt="Game Image">
+        <!-- Game image on the left -->
+        <div id="game-image-container">
+            <img id="game-image" src="" alt="Game Image">
+        </div>
+
+        <!-- Key Instructions on the right -->
+        <div id="key-instructions">
+            <h3>Key Instructions:</h3>
+            <p>&uarr; Move Forwards</p> <!-- Arrow Up -->
+            <p>&larr; Turn Left</p> <!-- Arrow Left -->
+            <p>&rarr; Turn Right</p> <!-- Arrow Right -->
+            <p>'1' - Pickup</p>
+        </div>
     </div>
+
     <div id="info-container">
         <p>Action: <span id="action"></span></p>
         <p>Reward: <span id="reward"></span></p>
         <p>Score: <span id="score"></span></p>
         <p>Last episode score: <span id="last_score"></span></p>
     </div>
+
     <!-- Container to display game stats -->
     <div id="game-stats" style="display: none;">
         <h3>Game Scores</h3>

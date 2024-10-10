@@ -169,7 +169,8 @@ env = ObjObsWrapper(env)
 
 env.reset()
 model_dir = "minigrid_custom_20240907"
-model_paths = {0 : model_dir + "/iter_10^5_steps",
+model_paths = {
+            0 : model_dir + "/iter_10^5_steps",
             1:  model_dir + "/iter_20^5_steps",
             2:  model_dir + "/iter_30^5_steps",
             3:  model_dir + "/iter_40^5_steps",
@@ -256,7 +257,38 @@ def ppo_action():
     else:
         emit('game_update', response, broadcast=True)
 
-
+@socketio.on('play_entire_episode')
+def play_entire_episode():
+    try:
+        while True:
+            action, response = manual_control.agent_action()
+            session = players_sessions.get(request.sid)
+            db.session.begin(nested=True)
+            session.record_action(
+                action=action,
+                score=response['score'],
+                reward=response['reward'],
+                done=response['done'],
+                agent_action=response['agent_action'],
+                episode=response['episode'],
+                agent_index=response['agent_index']
+            )
+            db.session.commit()
+            time.sleep(0.3)
+            if response['done']:  # Start a new episode
+                response = manual_control.get_initial_observation()
+                emit('game_update', response)
+                break
+            else:
+                emit('game_update', response, broadcast=True)
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error('Database operation failed: %s', e)
+        emit('error', {'error': 'Database operation failed'})
+    finally:
+        pass
+        # db.session.remove()
+        
 @socketio.on('start_game')
 def start_game(data):
     player_name = data['playerName']

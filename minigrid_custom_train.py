@@ -124,7 +124,7 @@ def main():
     parser.add_argument("--train", action="store_true", help="train the model")
     parser.add_argument(
         "--load_model",
-        default="minigrid_custom_20240907/iter_10000_steps",
+        default="minigrid_hard_20241010/iter_1000000_steps",
     )
     parser.add_argument("--render", action="store_true", help="render trained models")
     args = parser.parse_args()
@@ -134,14 +134,16 @@ def main():
     # Create time stamp of experiment
     stamp = datetime.fromtimestamp(time()).strftime("%Y%m%d")
     # stamp = "20240717" # the date of the last model training
+    env_type = 'hard'
+    hard_env = True if env_type == 'hard' else False
 
     if args.train:
-        env = CustomEnv()
+        env = CustomEnv(size=8, difficult_grid=hard_env, max_steps=300, num_objects=3, lava_cells=2, train_env=True)
         env = ObjObsWrapper(env)
 
         checkpoint_callback = CheckpointCallback(
-            save_freq=1e5,
-            save_path=f"./models/minigrid_custom_{stamp}/",
+            save_freq=2e5,
+            save_path=f"./models/minigrid_{env_type}_{stamp}/",
             name_prefix="iter",
         )
 
@@ -150,19 +152,19 @@ def main():
             env,
             policy_kwargs=policy_kwargs,
             verbose=1,
-            tensorboard_log="./logs/minigrid_custom_tensorboard/",
+            tensorboard_log=f"./logs/minigrid_{env_type}_tensorboard/",
+            learning_rate=0.005,
         )
         model.learn(
             1e6,
             tb_log_name=f"{stamp}",
-            
-            callback=checkpoint_callback,
+            callback=checkpoint_callback
         )
     else:
         if args.render:
-            env = CustomEnv(render_mode="human")
+            env = CustomEnv(size=8, difficult_grid=hard_env, render_mode='human')
         else:
-            env = CustomEnv()
+            env = CustomEnv(size=8, difficult_grid=hard_env)
         env = ObjObsWrapper(env)
 
         ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)

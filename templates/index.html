@@ -39,6 +39,10 @@
             display: none; /* Initially hidden */
             margin-top: 20px;
         }
+        #button-container {
+            display: flex; /* Use flexbox to arrange buttons horizontally */
+            gap: 10px; /* Add some space between buttons */
+        }
         button {
             padding: 10px 20px;  /* Example padding, adjust as needed */
             font-size: 16px;     /* Example font size, adjust as needed */
@@ -52,14 +56,24 @@
             bottom: 10px;
             display: none; /* Initially hidden */
         }
+        #loading-indicator {
+            display: none; /* Initially hidden */
+            font-size: 18px;
+            color: #555;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 <body>
     <input type="text" id="player-name" placeholder="Enter your ID" />
-    <button id="start-button">Start</button>
-    <button id="ppo-button">Agent Action</button> <!-- PPO agent button -->
+    <div id="button-container">
+        <button id="start-button">Start</button>
+        <button id="ppo-button">Agent Action</button>
+        <button id="play-episode-button" style="display: none;">Play Entire Episode</button>
+    </div>
     
+    <div id="loading-indicator">Loading...</div> <!-- Loading indicator -->
+
     <div id="game-container">
         <!-- Game image on the left -->
         <div id="game-image-container">

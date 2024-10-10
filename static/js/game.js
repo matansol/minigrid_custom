@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const socket = io.connect(protocol + '://' + document.domain + ':' + location.port);
     const startButton = document.getElementById('start-button');
     const ppoButton = document.getElementById('ppo-button');
+    const playEpisodeButton = document.getElementById('play-episode-button'); 
     const finishGameButton = document.getElementById('finish-game-button');
     const gameContainer = document.getElementById('game-container');
     const infoContainer = document.getElementById('info-container');
@@ -12,8 +13,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const gameStats = document.getElementById('game-stats'); // Reference to the game stats container
     const keyInstructions = document.getElementById('key-instructions'); // Reference to key instructions
 
-    // Initially hide the PPO button and key instructions
+    // Initially hide the PPO button, play episode button, and key instructions
     ppoButton.style.display = 'none';
+    playEpisodeButton.style.display = 'none'; // Hide the new button initially
     keyInstructions.style.display = 'none';
 
     startButton.addEventListener('click', () => {
@@ -31,10 +33,18 @@ document.addEventListener('DOMContentLoaded', (event) => {
         playerNameInput.style.display = 'none';
         startButton.style.display = 'none';
         ppoButton.style.display = 'block';
+        playEpisodeButton.style.display = 'block'; 
         gameContainer.style.display = 'flex';
         infoContainer.style.display = 'block';
         finishGameButton.style.display = 'block';
         keyInstructions.style.display = 'block'; // Show the key instructions
+    });
+
+    playEpisodeButton.addEventListener('click', () => {
+        // Emit 'play_entire_episode' event with acknowledgment
+        socket.emit('play_entire_episode', (response) => {
+            console.log('Server acknowledged play_entire_episode:', response);
+        });
     });
 
     function displayScores(scores) {
@@ -55,6 +65,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         playerNameInput.style.display = 'none';
         startButton.style.display = 'none';
         ppoButton.style.display = 'none';
+        playEpisodeButton.style.display = 'none'; // Hide the new button
         gameContainer.style.display = 'none';
         infoContainer.style.display = 'none';
         finishGameButton.style.display = 'none'; // Optionally hide this as well
@@ -67,6 +78,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             console.log('Server acknowledged finish_game:', response);
         });
         keyInstructions.style.display = 'none'; // Hide key instructions after finishing the game
+        playEpisodeButton.style.display = 'none'; // Hide the play episode button after finishing the game
     });
 
     socket.on('game_finished', function(data) {

@@ -81,6 +81,39 @@ document.addEventListener('DOMContentLoaded', (event) => {
         playEpisodeButton.style.display = 'none'; // Hide the play episode button after finishing the game
     });
 
+    socket.on('episode_finished', function(data) {
+        // Display the path image
+        const pathImage = document.getElementById('path-image');
+        pathImage.src = 'data:image/png;base64,' + data.path_image;
+    
+        // Display the list of actions
+        const actionsList = document.getElementById('actions');
+        actionsList.innerHTML = '';  // Clear previous actions
+        data.actions.forEach(action => {
+            const actionItem = document.createElement('li');
+            actionItem.textContent = action;
+            actionsList.appendChild(actionItem);
+        });
+    
+        // Show the episode info (path and actions)
+        document.getElementById('episode-info').style.display = 'block';
+    
+        // Show the "Next Episode" button
+        const nextEpisodeButton = document.getElementById('next-episode-button');
+        nextEpisodeButton.style.display = 'block';
+    
+        nextEpisodeButton.addEventListener('click', () => {
+            // Emit to start the next episode
+            socket.emit('start_game', { playerName: document.getElementById('player-name').value }, (response) => {
+                console.log('Next episode started:', response);
+            });
+    
+            // Hide the episode info and button for the next round
+            document.getElementById('episode-info').style.display = 'none';
+            nextEpisodeButton.style.display = 'none';
+        });
+    });
+    
     socket.on('game_finished', function(data) {
         console.log("Received scores:", data.scores);  // Client-side console log for debugging
         displayScores(data.scores);

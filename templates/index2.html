@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minigrid Game</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .page {
+            display: none; /* Hide all pages initially */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .active {
+            display: flex; /* Show active page */
+        }
+        #game-container {
+            display: flex; /* Initially set to flex */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #button-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px; /* Add space between buttons and the game */
+        }
+        #button-container button {
+            margin: 0 10px; /* Add space between the buttons */
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background-color: #f8f8f8;
+        }
+        #game-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #game-image-container {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+        }
+        #game-image {
+            width: 100%;
+            height: 100%;
+        }
+        #key-instructions {
+            margin-left: 20px;
+            text-align: left;
+            padding: 10px;
+            border: 1px solid black;
+        }
+        #info-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #overview-image-container {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+        }
+        #overview-game-image {
+            width: 100%;
+            height: 100%;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+
+    <!-- Welcome Page -->
+    <div id="welcome-page" class="page active">
+        <h1>Welcome to the Minigrid Game</h1>
+        <input type="text" id="player-name" placeholder="Enter your ID" />
+        <button id="start-button">Start</button>
+    </div>
+
+    <!-- Game Page -->
+    <div id="game-page" class="page">
+        <div id="game-container">
+            <!-- Button container at the top -->
+            <div id="button-container">
+                <button id="ppo-button">Agent Action</button>
+                <button id="play-episode-button">Play Entire Episode</button>
+            </div>
+    
+            <!-- Game content with image and instructions -->
+            <div id="game-content">
+                <div id="game-image-container">
+                    <img id="game-image" src="" alt="Game Image">
+                </div>
+                <div id="key-instructions">
+                    <h3>Key Instructions:</h3>
+                    <p>&uarr; Move Forwards</p>
+                    <p>&larr; Turn Left</p>
+                    <p>&rarr; Turn Right</p>
+                    <p>'1' - Pickup</p>
+                </div>
+            </div>
+    
+            <!-- Game information -->
+            <div id="info-container">
+                <p>Action: <span id="action"></span></p>
+                <p>Reward: <span id="reward"></span></p>
+                <p>Score: <span id="score"></span></p>
+                <p>Last episode score: <span id="last_score"></span></p>
+            </div>
+        </div>
+    </div>
+
+        <!-- Overview Page -->
+    <div id="overview-page" class="page" style="display: none;">
+        <h2>Episode Overview</h2>
+
+        <!-- Container for the image and the action list -->
+        <div id="overview-container" style="display: flex; align-items: flex-start; gap: 20px;">
+            <!-- Game image on the left -->
+            <div id="game-image-container" style="flex: 1; width: 100%;">
+                <img id="overview-game-image" src="" alt="Game Image" style="width: 100%; height: auto;">
+            </div>
+
+            <!-- Actions list on the right -->
+            <div id="actions-list">
+                <h3>Actions Taken:</h3>
+                <ul id="actions"></ul>
+            </div>
+        </div>
+
+        <button id="next-episode-button">Next Episode</button>
+        <button id="finish-game-button">Finish Game</button>
+    </div>
+
+
+    <!-- Summary Page -->
+    <div id="summary-page" class="page">
+        <h2>Game Summary</h2>
+        <div id="score-list-container">
+            <ul id="score-list"></ul>
+        </div>
+    </div>
+
+    <script src="static/js/game3.js"></script>
+
+</body>
+</html>

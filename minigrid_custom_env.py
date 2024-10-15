@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-from minigrid.core.constants import COLOR_NAMES
+from minigrid.core.constants import *
 from minigrid.core.grid import Grid
-from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Ball, Box, Key, Goal, Door, Wall, Lava
 from minigrid.manual_control import ManualControl
 from minigrid.minigrid_env import MiniGridEnv
+
+from minigrid.core.actions import Actions
+from minigrid.core.constants import COLOR_NAMES, DIR_TO_VEC, TILE_PIXELS
+from minigrid.core.world_object import Point, WorldObj
 
 
 import gymnasium as gym
 from gymnasium.spaces import Box, Dict
 from gymnasium.core import ObservationWrapper
+from gymnasium import spaces
+
 
 # from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 # import torch
@@ -28,23 +33,35 @@ import random
 class CustomEnv(MiniGridEnv):
     def __init__(
         self,
-        size=14,
+        grid_size=8,
         agent_start_pos=(1, 1),
         agent_start_dir=0,
-        max_steps: int | None = None,
+        max_steps: int = 100, 
         change_reward: bool = False,
         num_objects: int = 6,
         difficult_grid: bool = False,
         train_env: bool = False,
-        lava_cells: int = 1,
+        lava_cells: int = 2,
+        image_full_view: bool = True,
+        width: int | None = None,
+        height: int | None = None,
+        see_through_walls: bool = False,
+        agent_view_size: int = 7,
+        render_mode: str | None = None,
+        screen_size: int | None = 640,
+        highlight: bool = None,
+        tile_size: int = TILE_PIXELS,
+        agent_pov: bool = False,
         **kwargs,
     ):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.agent_dir = agent_start_dir
         self.agent_pos = agent_start_pos
-
-        mission_space = MissionSpace(mission_func=self._gen_mission)
+        self.image_full_view = image_full_view
+        
+        if not highlight:
+            self.highlight = not image_full_view
 
         if max_steps is None:
             max_steps = size * size 
@@ -60,15 +77,92 @@ class CustomEnv(MiniGridEnv):
         self.took_key = None
         self.step_count = 0
 
-        super().__init__(
-            mission_space=mission_space,
-            grid_size=size,
-            see_through_walls=True,
-            max_steps=max_steps,
-            highlight=False,
-            agent_view_size=size - (1-size%2),
-            **kwargs,
+        # super().__init__(
+        #     mission_space=mission_space,
+        #     grid_size=size,
+        #     # see_through_walls=True,
+        #     max_steps=max_steps,
+        #     highlight= not image_full_view,
+        #     agent_view_size=7, # size - (1-size%2),
+        #     **kwargs,
+        # )
+        
+        # Can't set both grid_size and width/height
+        if grid_size:
+            assert width is None and height is None
+            width = grid_size
+            height = grid_size
+        assert width is not None and height is not None
+
+        # Action enumeration for this environment
+        self.actions = Actions
+
+        # Actions are discrete integer values
+        self.action_space = spaces.Discrete(len(self.actions))
+
+        # Number of cells (width and height) in the agent view
+        if self.image_full_view:
+            self.agent_view_size = max(width, height)
+            image_observation_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(width, height, 3),
+                dtype="uint8",
+            )
+        else:
+            assert agent_view_size % 2 == 1
+            assert agent_view_size >= 3
+            self.agent_view_size = agent_view_size
+            image_observation_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(agent_view_size, agent_view_size, 3),
+                dtype="uint8",
+            )
+
+        # Observations are dictionaries containing an
+        # encoding of the grid and a textual 'mission' string
+        
+        self.observation_space = spaces.Dict(
+            {
+                "image": image_observation_space,
+                "direction": spaces.Discrete(4),
+                # "mission": None,
+            }
         )
+
+        # Range of possible rewards
+        self.reward_range = (0, 1)
+
+        self.screen_size = screen_size
+        self.render_size = None
+        self.window = None
+        self.clock = None
+
+        # Environment configuration
+        self.width = width
+        self.height = height
+
+        assert isinstance(
+            max_steps, int
+        ), f"The argument max_steps must be an integer, got: {type(max_steps)}"
+        self.max_steps = max_steps
+
+        self.see_through_walls = see_through_walls
+
+        # Current position and direction of the agent
+        self.agent_pos: np.ndarray | tuple[int, int] = None
+        self.agent_dir: int = None
+
+        # Current grid and mission and carrying
+        self.grid = Grid(width, height)
+        self.carrying = None
+
+        # Rendering attributes
+        self.render_mode = render_mode
+        self.highlight = highlight
+        self.tile_size = tile_size
+        self.agent_pov = agent_pov
 
         # Define rewards for each color
         if change_reward: # 2 option for reward ranking
@@ -90,6 +184,9 @@ class CustomEnv(MiniGridEnv):
         self.took_key = False
         self.current_state = {}
         state , info = super().reset()
+        if self.image_full_view:
+            state['image'] = self.grid.encode()
+            self.put_agent_in_obs(state)
         self.current_state['image'] = state['image']
         return state, info
     
@@ -111,9 +208,15 @@ class CustomEnv(MiniGridEnv):
         # Generate the surrounding walls
         self.grid.wall_rect(0, 0, width, height)
         
-
+        # place lava cells
+        for _ in range(self.num_laval_cells):
+            x_loc = self._rand_int(1, width - 2)
+            y_loc = self._rand_int(1, height - 2)
+            if (x_loc == width - 2 and y_loc == height - 2) or x_loc == 1 and y_loc == 1:
+                continue
+            self.put_obj(Lava(), x_loc, y_loc)
+            
         # Place a ball in some cells
-
         for _ in range(self.num_objects):
             x_loc = self._rand_int(1, width - 2)
             y_loc = self._rand_int(1, height - 2)
@@ -146,6 +249,7 @@ class CustomEnv(MiniGridEnv):
             
         self.grid.wall_rect(0, 0, width, height)
         
+        # place lava cells
         for i in range(self.num_laval_cells):
             x_loc = self._rand_int(1, width - 2)
             y_loc = self._rand_int(1, height - 2)
@@ -203,6 +307,11 @@ class CustomEnv(MiniGridEnv):
                         objects["lava"].append((i, j))
         return objects
     
+    def put_agent_in_obs(self, obs):
+        i, j = self.agent_pos
+        obs['image'][i][j] = (OBJECT_TO_IDX['agent'], COLOR_TO_IDX['red'], 0)
+        
+    
     def _remove_objects(self, obj_to_remove):
         # obj_to_remove is a list of tuples (x, y)
         for (x,y) in obj_to_remove:
@@ -211,6 +320,9 @@ class CustomEnv(MiniGridEnv):
     
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
+        if self.image_full_view:
+            obs['image'] = self.grid.encode() # get the full grid image
+            self.put_agent_in_obs(obs)
         self.current_state = obs
         self.step_count += 1
         
@@ -240,7 +352,7 @@ class CustomEnv(MiniGridEnv):
             self.on_baord_objects -= 1
             # if self.on_baord_objects == 0: # if all balls are collected end the episode
             #     terminated = True
-        if self.step_count >= self.max_steps:
+        if truncated:
             terminated = True
             print(f"reached max steps={self.max_steps}")
             reward -= 10

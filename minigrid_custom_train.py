@@ -14,6 +14,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 from minigrid_custom_env import CustomEnv
+from minigrid.wrappers import FullyObsWrapper, ImgObsWrapper, NoDeath
 
 
 
@@ -25,9 +26,11 @@ class ObjObsWrapper(ObservationWrapper):
         """
         super().__init__(env)
 
+        size = env.observation_space['image'].shape[0]
+        print(size)
         self.observation_space = Dict(
             {
-                "image": env.observation_space.spaces["image"],
+                "image": Box(low=0, high=255, shape=(size, size, 3), dtype=np.uint8),
                 #"mission": Box(low=0.0, high=1.0, shape=(9,), dtype=np.float32),
             }
         )
@@ -124,7 +127,8 @@ def main():
     parser.add_argument("--train", action="store_true", help="train the model")
     parser.add_argument(
         "--load_model",
-        default="minigrid_hard_20241010/iter_1000000_steps",
+        # default="minigrid_hard_20241010/iter_1000000_steps",
+        default="minigrid_easy_20241014/iter_1000000_steps",
     )
     parser.add_argument("--render", action="store_true", help="render trained models")
     args = parser.parse_args()
@@ -134,12 +138,12 @@ def main():
     # Create time stamp of experiment
     stamp = datetime.fromtimestamp(time()).strftime("%Y%m%d")
     # stamp = "20240717" # the date of the last model training
-    env_type = 'hard'
+    env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-
+    grid_size = 7
     if args.train:
-        env = CustomEnv(size=8, difficult_grid=hard_env, max_steps=300, num_objects=3, lava_cells=2, train_env=True)
-        env = ObjObsWrapper(env)
+        env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, max_steps=300, num_objects=5, lava_cells=2, train_env=True)
+        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
 
         checkpoint_callback = CheckpointCallback(
             save_freq=2e5,
@@ -153,18 +157,18 @@ def main():
             policy_kwargs=policy_kwargs,
             verbose=1,
             tensorboard_log=f"./logs/minigrid_{env_type}_tensorboard/",
-            learning_rate=0.005,
+            learning_rate=0.01,
         )
         model.learn(
-            1e6,
+            2e6,
             tb_log_name=f"{stamp}",
             callback=checkpoint_callback
         )
     else:
         if args.render:
-            env = CustomEnv(size=8, difficult_grid=hard_env, render_mode='human')
+            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, render_mode='human')
         else:
-            env = CustomEnv(size=8, difficult_grid=hard_env)
+            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env)
         env = ObjObsWrapper(env)
 
         ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)

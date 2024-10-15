@@ -8,8 +8,10 @@ import pymysql
 pymysql.install_as_MySQLdb()
 
 from minigrid_custom_env import CustomEnv  
+import utils
 from minigrid.core.actions import Actions
 from minigrid_custom_train import ObjEnvExtractor, ObjObsWrapper
+from minigrid.wrappers import FullyObsWrapper, ImgObsWrapper, NoDeath
 from stable_baselines3 import PPO
 import numpy as np
 import torch
@@ -18,6 +20,7 @@ import io
 import base64
 import time
 import os
+import matplotlib.pyplot as plt
 
 
 app = Flask(__name__)
@@ -92,24 +95,49 @@ def image_to_base64(image_array):
                 
 
 class ManualControl:
-    def __init__(self, env, agents_paths):
+    def __init__(self, env, models_paths):
         self.env = env
         self.last_score = None
         self.agent_index = None
         self.ppo_agent = None
         self.current_obs = None
-        self.agent_paths = agents_paths
+        self.models_paths = models_paths
         self.episode_num = 0
         self.scores_lst = []
+        self.last_obs = None
+        self.episode_actions = []
+        self.agent_last_pos = None
+        self.episode_start = None
         
     def reset(self):
         obs,_ = self.env.reset()
         self.score = 0
         return obs
+    
+    def actions_to_moves_sequence(self, episode_actions):
+        small_arrow = 'turn ' # small arrow is used to indicate the agent turning left or right
+        agent_dir = "right"
+        move_sequence = []
+        for action in episode_actions:
+            if action == 0: # turn left
+                agent_dir = utils.turn_agent(agent_dir, "left")
+                move_sequence.append(small_arrow + agent_dir)
+            elif action == 1: # turn right
+                agent_dir = utils.turn_agent(agent_dir, "right")
+                move_sequence.append(small_arrow + agent_dir)
+            elif action == 2: # move forward
+                move_sequence.append(agent_dir)
+            elif action == 3: # pickup
+                move_sequence.append('pickup ' +  agent_dir)
+        return move_sequence
+    
 
     def step(self, action, agent_action=False):
         observation, reward, terminated, truncated, info = self.env.step(action)
         done = terminated or truncated
+        if not utils.is_illegal_move(action, self.current_obs, observation, self.agent_last_pos, self.env.unwrapped.agent_pos):
+            self.episode_actions.append(action)
+            
         self.score += reward
         self.score = round(self.score, 2)
         if done:
@@ -118,6 +146,7 @@ class ManualControl:
         img = self.env.render()
         image_base64 = image_to_base64(img)  # Convert to base64
         self.current_obs = observation
+        self.agent_last_pos = self.env.unwrapped.agent_pos
         return {'image': image_base64, 'episode': self.episode_num, 'reward': reward, 'done': done, 'score': self.score, 'last_score': self.last_score, 'agent_action': agent_action, 'agent_index': self.agent_index}
 
     def handle_action(self, action_str):
@@ -125,7 +154,7 @@ class ManualControl:
             "ArrowLeft": Actions.left,
             "ArrowRight": Actions.right,
             "ArrowUp": Actions.forward,
-            "Space": Actions.pickup,
+            "Space": Actions.toggle,
             "PageUp": Actions.pickup,
             "PageDown": Actions.drop,
             "1": Actions.pickup,
@@ -135,9 +164,13 @@ class ManualControl:
     
     # reset the environment and return the observation image. An option to update the agent
     def get_initial_observation(self, update_agent=False):
+        print("get_initial_observation")
         if update_agent:
             self.update_agent()
         self.current_obs = self.reset()
+        self.episode_start = self.env.render() # for the overview image
+        self.agent_last_pos = self.env.unwrapped.agent_pos
+        self.episode_actions = []
         img = self.env.render()
         if img is None:
             raise Exception("initial observation rendering failed")
@@ -156,16 +189,38 @@ class ManualControl:
             self.agent_index = 0
         else:
             self.agent_index += 1
-        if self.agent_index not in self.agent_paths.keys():
+        if self.agent_index not in self.models_paths.keys():
             return None
-        model_path = self.agent_paths[self.agent_index]
+        model_path = self.models_paths[self.agent_index]
         self.ppo_agent = load_agent(self.env, model_path)
+        print(f'laod new model: {self.ppo_agent}')
+        
+    
+    def end_of_episode_summary(self):
+        # Generate the path image
+        img = self.episode_start
+        path_img_buffer = utils.plot_move_sequence(img, self.actions_to_moves_sequence(self.episode_actions))  # Generate the path image
+
+        # Convert the image buffer to base64 so it can be displayed in the frontend
+        path_img_base64 = base64.b64encode(path_img_buffer.getvalue()).decode('ascii')
+        #plot the image
+
+        IDX_TO_ACTION = {Actions.right: 'turn right', Actions.left: 'turn left', Actions.forward: 'move forward', Actions.pickup: 'pickup'}
+        # print('episod actions:', self.episode_actions)
+        # print("action[0]:", self.episode_actions[0])
+        episode_actions = [IDX_TO_ACTION[action.item() if isinstance(action, np.ndarray) else action] for action in self.episode_actions]
+
+        # print(episode_actions)
+        return {'path_image': path_img_base64, 'actions': episode_actions}
         
         
 # initialize the environment and the manual control object
 players_sessions = {}
-env = CustomEnv(render_mode="rgb_array")
-env = ObjObsWrapper(env)
+env = CustomEnv(render_mode="rgb_array", image_full_view=False, highlight=True)
+env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
+
+# env = CustomEnv(grid_size=8, difficult_grid=True, max_steps=50, num_objects=3, lava_cells=2, render_mode="rgb_array")
+# env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-2.0)
 
 env.reset()
 model_dir = "minigrid_custom_20240907"
@@ -189,7 +244,7 @@ manual_control = ManualControl(env, model_paths)
 # functions that control the flow of the game
 @app.route('/')
 def index():
-    return render_template('index.html')        
+    return render_template('index2.html')        
 
 @socketio.on('send_action')
 def handle_message(action):
@@ -222,13 +277,21 @@ def handle_message(action):
     # finally:
     #     db.session.remove()
 
-    if response['done']:
-        response = manual_control.get_initial_observation(update_agent=True)
-        emit('game_update', response)
-    else:
-        emit('game_update', response, broadcast=True)
+    finish_turn(response)
+    # if response['done']:
+    #     response = manual_control.get_initial_observation(update_agent=True)
+    #     emit('game_update', response)
+    # else:
+    #     emit('game_update', response, broadcast=True)
         
 
+# Handle 'next_episode' event to start a new episode after user views the path
+@socketio.on('next_episode')
+def next_episode():
+    response = manual_control.get_initial_observation()
+    emit('game_update', response)
+    
+    
 @socketio.on('ppo_action')
 def ppo_action():
     action, response = manual_control.agent_action()
@@ -248,14 +311,45 @@ def ppo_action():
     except Exception as e:
         db.session.rollback()
         app.logger.error('Database operation failed: %s', e)
-        emit('error', {'error': 'Database operation failed'})
     finally:
         db.session.remove()
-    if response['done']:  # start a new episode
-        response = manual_control.get_initial_observation()
-        emit('game_update', response)
+    finish_turn(response)
+
+# respond= {'path_image': path_img_base64, 'actions': episode_actions}
+def finish_turn(response):
+    if response['done']:
+        summary = manual_control.end_of_episode_summary()  # Get the episode summary
+        emit('episode_finished', summary)  # Send the path and actions to the frontend
     else:
         emit('game_update', response, broadcast=True)
+
+    
+# def ppo_action():
+#     action, response = manual_control.agent_action()
+#     session = players_sessions.get(request.sid)
+#     try:
+#         db.session.begin(nested=True)
+#         session.record_action(
+#             action=action,
+#             score=response['score'],
+#             reward=response['reward'],
+#             done=response['done'],
+#             agent_action=response['agent_action'],
+#             episode=response['episode'],
+#             agent_index=response['agent_index']
+#         )
+#         db.session.commit()
+#     except Exception as e:
+#         db.session.rollback()
+#         app.logger.error('Database operation failed: %s', e)
+#         emit('error', {'error': 'Database operation failed'})
+#     finally:
+#         db.session.remove()
+#     if response['done']:  # start a new episode
+#         response = manual_control.get_initial_observation()
+#         emit('game_update', response)
+#     else:
+#         emit('game_update', response, broadcast=True)
 
 @socketio.on('play_entire_episode')
 def play_entire_episode():
@@ -275,12 +369,13 @@ def play_entire_episode():
             )
             db.session.commit()
             time.sleep(0.3)
-            if response['done']:  # Start a new episode
-                response = manual_control.get_initial_observation()
-                emit('game_update', response)
-                break
-            else:
-                emit('game_update', response, broadcast=True)
+            finish_turn(response)
+            # if response['done']:  # Start a new episode
+            #     response = manual_control.get_initial_observation()
+            #     emit('game_update', response)
+            #     break
+            # else:
+            #     emit('game_update', response, broadcast=True)
     except Exception as e:
         db.session.rollback()
         app.logger.error('Database operation failed: %s', e)
@@ -297,7 +392,7 @@ def start_game(data):
     emit('game_update', response)
 
 
-@socketio.on('finish_game')
+@socketio.on('game_finished')
 def finish_game():
     scores = manual_control.scores_lst
     print("Emitting scores:", scores)  # Server-side console log for debugging
@@ -320,8 +415,8 @@ def load_agent(env, model_path):
 
 if __name__ == '__main__':
     print("Starting the server")
-    print(torch.__version__)
-    print(torch.backends.cudnn.enabled) 
+    # print(torch.__version__)
+    # print(torch.backends.cudnn.enabled) 
     # create_database()
     
     # socketio.run(app, debug=True)

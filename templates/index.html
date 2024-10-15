@@ -1,109 +1,109 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minigrid Game</title>
-    <style>
-        body, html {
-            height: 100%;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
-        #game-container {
-            display: none; /* Initially hidden */
-            flex-direction: row; /* Arrange elements side by side */
-            align-items: flex-start; /* Align items to the top */
-        }
-        #game-image-container {
-            width: 640px;
-            height: 480px;
-            border: 1px solid black;
-        }
-        #game-image {
-            width: 100%; /* Adjusted for container width */
-            height: 100%; /* Adjusted for container height */
-        }
-        #key-instructions {
-            display: none; /* Initially hidden */
-            margin-left: 20px; /* Add some space between image and instructions */
-            text-align: left;
-            padding: 10px;
-            border: 1px solid black;
-        }
-        #info-container {
-            text-align: center;
-            display: none; /* Initially hidden */
-            margin-top: 20px;
-        }
-        #button-container {
-            display: flex; /* Use flexbox to arrange buttons horizontally */
-            gap: 10px; /* Add some space between buttons */
-        }
-        button {
-            padding: 10px 20px;  /* Example padding, adjust as needed */
-            font-size: 16px;     /* Example font size, adjust as needed */
-            cursor: pointer;     /* Changes cursor on hover to indicate it's clickable */
-            border: 1px solid #ccc; /* Example border, adjust as needed */
-            background-color: #f8f8f8; /* Example background color, adjust as needed */
-        }
-        #finish-game-button {
-            position: absolute; /* Positioning to the bottom right */
-            right: 10px;
-            bottom: 10px;
-            display: none; /* Initially hidden */
-        }
-        #loading-indicator {
-            display: none; /* Initially hidden */
-            font-size: 18px;
-            color: #555;
-        }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-</head>
-<body>
-    <input type="text" id="player-name" placeholder="Enter your ID" />
-    <div id="button-container">
-        <button id="start-button">Start</button>
-        <button id="ppo-button">Agent Action</button>
-        <button id="play-episode-button" style="display: none;">Play Entire Episode</button>
-    </div>
-    
-    <div id="loading-indicator">Loading...</div> <!-- Loading indicator -->
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Minigrid Game</title>
+        <style>
+            body, html {
+                height: 100%;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+            }
+            #game-container {
+                display: none; /* Initially hidden */
+                flex-direction: row; /* Arrange elements side by side */
+                align-items: flex-start; /* Align items to the top */
+            }
+            #game-image-container {
+                width: 640px;
+                height: 480px;
+                border: 1px solid black;
+            }
+            #game-image {
+                width: 100%; /* Adjusted for container width */
+                height: 100%; /* Adjusted for container height */
+            }
+            #key-instructions {
+                display: none; /* Initially hidden */
+                margin-left: 20px; /* Add some space between image and instructions */
+                text-align: left;
+                padding: 10px;
+                border: 1px solid black;
+            }
+            #info-container {
+                text-align: center;
+                display: none; /* Initially hidden */
+                margin-top: 20px;
+            }
+            #button-container {
+                display: flex; /* Use flexbox to arrange buttons horizontally */
+                gap: 10px; /* Add some space between buttons */
+            }
+            button {
+                padding: 10px 20px;  /* Example padding, adjust as needed */
+                font-size: 16px;     /* Example font size, adjust as needed */
+                cursor: pointer;     /* Changes cursor on hover to indicate it's clickable */
+                border: 1px solid #ccc; /* Example border, adjust as needed */
+                background-color: #f8f8f8; /* Example background color, adjust as needed */
+            }
+            #finish-game-button {
+                position: absolute; /* Positioning to the bottom right */
+                right: 10px;
+                bottom: 10px;
+                display: none; /* Initially hidden */
+            }
+            #loading-indicator {
+                display: none; /* Initially hidden */
+                font-size: 18px;
+                color: #555;
+            }
+        </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    </head>
+    <body>
+        <input type="text" id="player-name" placeholder="Enter your ID" />
+        <div id="button-container">
+            <button id="start-button">Start</button>
+            <button id="ppo-button">Agent Action</button>
+            <button id="play-episode-button" style="display: none;">Play Entire Episode</button>
+        </div>
+        
+        <div id="loading-indicator">Loading...</div> <!-- Loading indicator -->
 
-    <div id="game-container">
-        <!-- Game image on the left -->
-        <div id="game-image-container">
-            <img id="game-image" src="" alt="Game Image">
+        <div id="game-container">
+            <!-- Game image on the left -->
+            <div id="game-image-container">
+                <img id="game-image" src="" alt="Game Image">
+            </div>
+
+            <!-- Key Instructions on the right -->
+            <div id="key-instructions">
+                <h3>Key Instructions:</h3>
+                <p>&uarr; Move Forwards</p> <!-- Arrow Up -->
+                <p>&larr; Turn Left</p> <!-- Arrow Left -->
+                <p>&rarr; Turn Right</p> <!-- Arrow Right -->
+                <p>'1' - Pickup</p>
+            </div>
         </div>
 
-        <!-- Key Instructions on the right -->
-        <div id="key-instructions">
-            <h3>Key Instructions:</h3>
-            <p>&uarr; Move Forwards</p> <!-- Arrow Up -->
-            <p>&larr; Turn Left</p> <!-- Arrow Left -->
-            <p>&rarr; Turn Right</p> <!-- Arrow Right -->
-            <p>'1' - Pickup</p>
+        <div id="info-container">
+            <p>Action: <span id="action"></span></p>
+            <p>Reward: <span id="reward"></span></p>
+            <p>Score: <span id="score"></span></p>
+            <p>Last episode score: <span id="last_score"></span></p>
         </div>
-    </div>
 
-    <div id="info-container">
-        <p>Action: <span id="action"></span></p>
-        <p>Reward: <span id="reward"></span></p>
-        <p>Score: <span id="score"></span></p>
-        <p>Last episode score: <span id="last_score"></span></p>
-    </div>
+        <!-- Container to display game stats -->
+        <div id="game-stats" style="display: none;">
+            <h3>Game Scores</h3>
+            <ul id="score-list"></ul> <!-- List where scores will be appended -->
+        </div>
 
-    <!-- Container to display game stats -->
-    <div id="game-stats" style="display: none;">
-        <h3>Game Scores</h3>
-        <ul id="score-list"></ul> <!-- List where scores will be appended -->
-    </div>
-
-    <button id="finish-game-button">Finish Game</button>
-    <script src="static/js/game.js"></script>
-</body>
-</html>
+        <button id="finish-game-button">Finish Game</button>
+        <script src="static/js/game.js"></script>
+    </body>
+    </html>

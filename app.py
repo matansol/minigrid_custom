@@ -21,6 +21,7 @@ import base64
 import time
 import os
 import matplotlib.pyplot as plt
+import copy
 
 
 app = Flask(__name__)
@@ -100,6 +101,7 @@ class ManualControl:
         self.last_score = None
         self.agent_index = None
         self.ppo_agent = None
+        self.prev_agent = None
         self.current_obs = None
         self.models_paths = models_paths
         self.episode_num = 0
@@ -108,10 +110,12 @@ class ManualControl:
         self.episode_actions = []
         self.agent_last_pos = None
         self.episode_start = None
+        self.invalid_moves = 0
         
     def reset(self):
         obs,_ = self.env.reset()
         self.score = 0
+        self.invalid_moves = 0
         return obs
     
     def actions_to_moves_sequence(self, episode_actions):
@@ -137,6 +141,8 @@ class ManualControl:
         done = terminated or truncated
         if not utils.is_illegal_move(action, self.current_obs, observation, self.agent_last_pos, self.env.unwrapped.agent_pos):
             self.episode_actions.append(action)
+        else:
+            self.invalid_moves += 1
             
         self.score += reward
         self.score = round(self.score, 2)
@@ -191,32 +197,49 @@ class ManualControl:
             self.agent_index += 1
         if self.agent_index not in self.models_paths.keys():
             return None
+        self.prev_agent = copy.deepcopy(self.ppo_agent)
         model_path = self.models_paths[self.agent_index]
         self.ppo_agent = load_agent(self.env, model_path)
-        print(f'laod new model: {self.ppo_agent}')
+        # print(f'laod new model: {self.ppo_agent}')
+    
+    def agents_different_routs(self, env):
+        copy_env = copy.deepcopy(env)
+        img = copy_env.render()
+        move_sequence, _, _, _ = utils.capture_agent_path(copy_env, self.ppo_agent)
+        path_img_buffer, _ = utils.plot_move_sequence(img, move_sequence, move_color='c')  # Generate the path image
+        
+        # prev_agent_path
+        copy_env = copy.deepcopy(env)
+        img = copy_env.render()
+        prev_move_sequence, _, _, _ = utils.capture_agent_path(copy_env, self.prev_agent)
+        prev_path_img_buffer, _ = utils.plot_move_sequence(img, prev_move_sequence)  # Generate the path image
+        
+        return {'prev_path_image': base64.b64encode(prev_path_img_buffer.getvalue()).decode('ascii'), 'path_image': base64.b64encode(path_img_buffer.getvalue()).decode('ascii')}
+        
         
     
     def end_of_episode_summary(self):
         # Generate the path image
         img = self.episode_start
-        path_img_buffer = utils.plot_move_sequence(img, self.actions_to_moves_sequence(self.episode_actions))  # Generate the path image
+        path_img_buffer, actions_locations = utils.plot_move_sequence(img, self.actions_to_moves_sequence(self.episode_actions))  # Generate the path image
 
         # Convert the image buffer to base64 so it can be displayed in the frontend
         path_img_base64 = base64.b64encode(path_img_buffer.getvalue()).decode('ascii')
         #plot the image
 
-        IDX_TO_ACTION = {Actions.right: 'turn right', Actions.left: 'turn left', Actions.forward: 'move forward', Actions.pickup: 'pickup'}
+        # IDX_TO_ACTION = {Actions.right: 'turn right', Actions.left: 'turn left', Actions.forward: 'move forward', Actions.pickup: 'pickup'}
         # print('episod actions:', self.episode_actions)
         # print("action[0]:", self.episode_actions[0])
-        episode_actions = [IDX_TO_ACTION[action.item() if isinstance(action, np.ndarray) else action] for action in self.episode_actions]
+        # episode_actions = [IDX_TO_ACTION[action.item() if isinstance(action, np.ndarray) else action] for action in self.episode_actions]
 
-        # print(episode_actions)
-        return {'path_image': path_img_base64, 'actions': episode_actions}
+        print(f'action locations: {actions_locations}')
+        print(f'end of episode, invalid moves: {self.invalid_moves}')
+        return {'path_image': path_img_base64, 'actions': actions_locations, 'invalid_moves': self.invalid_moves, 'score': self.last_score}
         
         
 # initialize the environment and the manual control object
 players_sessions = {}
-env = CustomEnv(render_mode="rgb_array", image_full_view=False, highlight=True)
+env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=30)
 env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
 
 # env = CustomEnv(grid_size=8, difficult_grid=True, max_steps=50, num_objects=3, lava_cells=2, render_mode="rgb_array")
@@ -238,7 +261,7 @@ model_paths = {
 }
 
 manual_control = ManualControl(env, model_paths)
-
+# manual_control.reset()
 
 
 # functions that control the flow of the game
@@ -315,6 +338,41 @@ def ppo_action():
         db.session.remove()
     finish_turn(response)
 
+@socketio.on('play_entire_episode')
+def play_entire_episode():
+    try:
+        while True:
+            action, response = manual_control.agent_action()
+            session = players_sessions.get(request.sid)
+            db.session.begin(nested=True)
+            session.record_action(
+                action=action,
+                score=response['score'],
+                reward=response['reward'],
+                done=response['done'],
+                agent_action=response['agent_action'],
+                episode=response['episode'],
+                agent_index=response['agent_index']
+            )
+            db.session.commit()
+            time.sleep(0.3)
+            finish_turn(response)
+            if response['done']:
+                break
+            # if response['done']:  # Start a new episode
+            #     response = manual_control.get_initial_observation()
+            #     emit('game_update', response)
+            #     break
+            # else:
+            #     emit('game_update', response, broadcast=True)
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error('Database operation failed: %s', e)
+        emit('error', {'error': 'Database operation failed'})
+    finally:
+        pass
+        # db.session.remove()
+
 # respond= {'path_image': path_img_base64, 'actions': episode_actions}
 def finish_turn(response):
     if response['done']:
@@ -351,38 +409,6 @@ def finish_turn(response):
 #     else:
 #         emit('game_update', response, broadcast=True)
 
-@socketio.on('play_entire_episode')
-def play_entire_episode():
-    try:
-        while True:
-            action, response = manual_control.agent_action()
-            session = players_sessions.get(request.sid)
-            db.session.begin(nested=True)
-            session.record_action(
-                action=action,
-                score=response['score'],
-                reward=response['reward'],
-                done=response['done'],
-                agent_action=response['agent_action'],
-                episode=response['episode'],
-                agent_index=response['agent_index']
-            )
-            db.session.commit()
-            time.sleep(0.3)
-            finish_turn(response)
-            # if response['done']:  # Start a new episode
-            #     response = manual_control.get_initial_observation()
-            #     emit('game_update', response)
-            #     break
-            # else:
-            #     emit('game_update', response, broadcast=True)
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error('Database operation failed: %s', e)
-        emit('error', {'error': 'Database operation failed'})
-    finally:
-        pass
-        # db.session.remove()
         
 @socketio.on('start_game')
 def start_game(data):
@@ -392,11 +418,12 @@ def start_game(data):
     emit('game_update', response)
 
 
-@socketio.on('game_finished')
+@socketio.on('finish_game')
 def finish_game():
+    print("finish_game")
     scores = manual_control.scores_lst
-    print("Emitting scores:", scores)  # Server-side console log for debugging
-    emit('game_finished', {'scores': scores})
+    print("Scores:", scores)  # Server-side console log for debugging
+    emit('finish_game', {'scores': scores})
 
     
 

@@ -70,7 +70,6 @@ class CustomEnv(MiniGridEnv):
         #     max_steps = size * size * 5
         self.num_objects = num_objects
         self.difficult_grid = difficult_grid
-        self.step_count = 0
         self.num_laval_cells = lava_cells
         self.lava_reward = -1
         self.current_state = None
@@ -319,12 +318,12 @@ class CustomEnv(MiniGridEnv):
             self.on_baord_objects -= 1
     
     def step(self, action):
+        # print(f"step {self.step_count}, action={action}")
         obs, reward, terminated, truncated, info = super().step(action)
         if self.image_full_view:
             obs['image'] = self.grid.encode() # get the full grid image
             self.put_agent_in_obs(obs)
         self.current_state = obs
-        self.step_count += 1
         
         if self.train_env and action == self.actions.pickup and self.carrying and self.carrying.type == "key" and not self.took_key:
             self.took_key = True
@@ -349,14 +348,16 @@ class CustomEnv(MiniGridEnv):
                 ball_color = self.carrying.color
                 reward += self.color_rewards.get(ball_color, 0) 
                 self.carrying = None
-            self.on_baord_objects -= 1
+                self.on_baord_objects -= 1
             # if self.on_baord_objects == 0: # if all balls are collected end the episode
             #     terminated = True
         if truncated:
             terminated = True
             print(f"reached max steps={self.max_steps}")
             reward -= 10
-        reward -= 0.1
+        reward -= 0.05
+        # if terminated:
+        #     print(f"terminated, reward={reward}")
         return obs, reward, terminated, truncated, info
 
 

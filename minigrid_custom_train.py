@@ -5,6 +5,7 @@ from time import time
 import gymnasium as gym
 import minigrid
 import numpy as np
+import matplotlib.pyplot as plt
 import torch as th
 import torch.nn as nn
 from gymnasium.core import ObservationWrapper
@@ -128,7 +129,7 @@ def main():
     parser.add_argument(
         "--load_model",
         # default="minigrid_hard_20241010/iter_1000000_steps",
-        default="minigrid_easy_20241014/iter_1000000_steps",
+        default="minigrid_easy_20241020/iter_1800000_steps",
     )
     parser.add_argument("--render", action="store_true", help="render trained models")
     args = parser.parse_args()
@@ -140,9 +141,11 @@ def main():
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    grid_size = 7
+    grid_size = 10
     if args.train:
-        env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, max_steps=300, num_objects=5, lava_cells=2, train_env=True)
+        env = CustomEnv(grid_size=grid_size, render_mode='rgb_array', difficult_grid=hard_env, max_steps=300, highlight=True,
+                        num_objects=5, lava_cells=2, train_env=True, image_full_view=False, agent_view_size=grid_size*2-1)
+        
         env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
 
         checkpoint_callback = CheckpointCallback(
@@ -151,32 +154,45 @@ def main():
             name_prefix="iter",
         )
 
-        model = PPO(
-            "MultiInputPolicy",
-            env,
-            policy_kwargs=policy_kwargs,
-            verbose=1,
-            tensorboard_log=f"./logs/minigrid_{env_type}_tensorboard/",
-            learning_rate=0.01,
-        )
+        # model = PPO(
+        #     "MultiInputPolicy",
+        #     env,
+        #     policy_kwargs=policy_kwargs,
+        #     verbose=1,
+        #     tensorboard_log=f"./logs/minigrid_{env_type}_tensorboard/",
+        #     learning_rate=0.01,
+        #     ent_coef = 0.05,
+        # )
+        if args.load_model:
+            model = PPO.load(f"models/{args.load_model}", env=env)
+            print(f"Loaded model from {args.load_model}. Continuing training.")
+        else:
+            # Create a new model if no load path is provided
+            model = PPO(
+                "MultiInputPolicy",
+                env,
+                policy_kwargs=policy_kwargs,
+                verbose=1,
+                tensorboard_log=f"./logs/minigrid_{env_type}_tensorboard/",
+                learning_rate=0.001,
+                ent_coef=0.05,
+            )
         model.learn(
-            2e6,
+            1e6,
             tb_log_name=f"{stamp}",
             callback=checkpoint_callback
         )
     else:
         if args.render:
-            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, render_mode='human')
+            env = CustomEnv(grid_size=grid_size, agent_view_size=grid_size*2-1, difficult_grid=hard_env, render_mode='human', image_full_view=False)
         else:
-            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env)
+            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, agent_view_size=grid_size*2-1, image_full_view=False)
         env = ObjObsWrapper(env)
 
         ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
 
         # add the experiment time stamp
         ppo = ppo.load(f"models/{args.load_model}", env=env)
-
-        
 
         number_of_episodes = 5
         for i in range(number_of_episodes):

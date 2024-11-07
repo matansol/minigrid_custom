@@ -28,6 +28,11 @@ import random
 # import os
 # import numpy as np
 
+basic_colors_rewards  = {
+                'red': 2,
+                'green': 2,
+                'blue': 2
+            }
 
 
 class CustomEnv(MiniGridEnv):
@@ -42,7 +47,7 @@ class CustomEnv(MiniGridEnv):
         difficult_grid: bool = False,
         train_env: bool = False,
         lava_cells: int = 2,
-        image_full_view: bool = True,
+        image_full_view: bool = False,
         width: int | None = None,
         height: int | None = None,
         see_through_walls: bool = False,
@@ -52,6 +57,7 @@ class CustomEnv(MiniGridEnv):
         highlight: bool = None,
         tile_size: int = TILE_PIXELS,
         agent_pov: bool = False,
+        colors_rewards: dict = basic_colors_rewards, # all colors have the same reward = 2
         **kwargs,
     ):
         self.agent_start_pos = agent_start_pos
@@ -164,18 +170,7 @@ class CustomEnv(MiniGridEnv):
         self.agent_pov = agent_pov
 
         # Define rewards for each color
-        if change_reward: # 2 option for reward ranking
-            self.color_rewards = {
-                'blue': 2,
-                'green': 1.5,
-                'red': 1
-            }
-        else:
-            self.color_rewards = {
-                'red': 2,
-                'green': 1.5,
-                'blue': 1
-            }
+        self.color_rewards = colors_rewards
 
     def reset(self, **kwargs):
         self.on_baord_objects = 0
@@ -349,13 +344,19 @@ class CustomEnv(MiniGridEnv):
                 reward += self.color_rewards.get(ball_color, 0) 
                 self.carrying = None
                 self.on_baord_objects -= 1
-            # if self.on_baord_objects == 0: # if all balls are collected end the episode
-            #     terminated = True
+
+        # if self.train_env and terminated: # reached the goal
+            # reward += 10
+        
+        # got to the left bottom corner
+        if self.agent_pos == (self.grid.width - 2, self.grid.height - 2):
+            reward += 10
+        
         if truncated:
             terminated = True
             print(f"reached max steps={self.max_steps}")
-            reward -= 10
-        reward -= 0.05
+            # reward -= 10
+        reward -= 0.1
         # if terminated:
         #     print(f"terminated, reward={reward}")
         return obs, reward, terminated, truncated, info

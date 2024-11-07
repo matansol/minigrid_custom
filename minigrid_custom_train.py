@@ -13,11 +13,18 @@ from gymnasium.spaces import Box, Dict
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+import random
 
 from minigrid_custom_env import CustomEnv
 from minigrid.wrappers import FullyObsWrapper, ImgObsWrapper, NoDeath
 
-
+def set_random_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    th.manual_seed(seed)
+    if th.cuda.is_available():
+        th.cuda.manual_seed(seed)
+        th.cuda.manual_seed_all(seed)
 
 class ObjObsWrapper(ObservationWrapper):
     def __init__(self, env):
@@ -122,6 +129,59 @@ class ObjEnvExtractor(BaseFeaturesExtractor):
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         return th.cat(encoded_tensor_list, dim=1)
 
+class ObjEnvExtractorBig(BaseFeaturesExtractor):
+    def __init__(self, observation_space: Dict):
+        # We do not know features-dim here before going over all the items,
+        # so put something dummy for now. PyTorch requires calling
+        # nn.Module.__init__ before adding modules
+        super().__init__(observation_space, features_dim=1)
+
+        extractors = {}
+        total_concat_size = 0
+
+        # We need to know size of the output of this extractor,
+        # so go over all the spaces and compute output feature sizes
+        for key, subspace in observation_space.spaces.items():
+            if key == "image":
+                # We will just downsample one channel of the image by 4x4 and flatten.
+                # Assume the image is single-channel (subspace.shape[0] == 0)
+                cnn = nn.Sequential(
+                    nn.Conv2d(3, 16, (2, 2)),
+                    nn.ReLU(),
+                    nn.Conv2d(16, 32, (2, 2)),
+                    nn.ReLU(),
+                    nn.Conv2d(32, 64, (2, 2)),
+                    nn.ReLU(),
+                    nn.Conv2d(64, 128, (2, 2)),
+                    nn.ReLU(),
+                    nn.Flatten(),
+                )
+
+                # Compute shape by doing one forward pass
+                with th.no_grad():
+                    n_flatten = cnn(
+                        th.as_tensor(subspace.sample()[None]).float()
+                    ).shape[1]
+
+                linear = nn.Sequential(nn.Linear(n_flatten, 128), nn.ReLU())
+                extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
+                total_concat_size += 128
+
+        self.extractors = nn.ModuleDict(extractors)
+
+        # Update the features dim manually
+        self._features_dim = total_concat_size
+
+    def forward(self, observations) -> th.Tensor:
+        encoded_tensor_list = []
+
+        # self.extractors contain nn.Modules that do all the processing.
+        for key, extractor in self.extractors.items():
+            encoded_tensor_list.append(extractor(observations[key]))
+
+        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
+        return th.cat(encoded_tensor_list, dim=1)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -129,28 +189,37 @@ def main():
     parser.add_argument(
         "--load_model",
         # default="minigrid_hard_20241010/iter_1000000_steps",
-        default="minigrid_easy_20241020/iter_1800000_steps",
+        default="minigrid_easy7_20241030/iter_300000_steps",
     )
     parser.add_argument("--render", action="store_true", help="render trained models")
+    parser.add_argument("--seed", type=int, default=42, help="random seed")
     args = parser.parse_args()
 
-    policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
+    policy_kwargs = dict(features_extractor_class=ObjEnvExtractor) # ObjEnvExtractorBig)
+    set_random_seed(args.seed)
+
+    def linear_schedule(initial_value):
+        def schedule(progress_remaining):
+            return progress_remaining * initial_value
+        return schedule
 
     # Create time stamp of experiment
     stamp = datetime.fromtimestamp(time()).strftime("%Y%m%d")
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    grid_size = 10
+    max_steps = 300
+    colors_rewards = {'red': -2.0, 'green': 2, 'blue': 1}
+    grid_size = 8
     if args.train:
-        env = CustomEnv(grid_size=grid_size, render_mode='rgb_array', difficult_grid=hard_env, max_steps=300, highlight=True,
-                        num_objects=5, lava_cells=2, train_env=True, image_full_view=False, agent_view_size=grid_size*2-1)
+        env = CustomEnv(grid_size=grid_size, render_mode='rgb_array', difficult_grid=hard_env, max_steps=max_steps, highlight=True,
+                        num_objects=4, lava_cells=0, train_env=True, image_full_view=False, agent_view_size=7, colors_rewards=colors_rewards)
         
-        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
+        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
 
         checkpoint_callback = CheckpointCallback(
-            save_freq=2e5,
-            save_path=f"./models/minigrid_{env_type}_{stamp}/",
+            save_freq=1e5,
+            save_path=f"./models/basic_redN_{env_type}{grid_size}_{stamp}/",
             name_prefix="iter",
         )
 
@@ -163,7 +232,7 @@ def main():
         #     learning_rate=0.01,
         #     ent_coef = 0.05,
         # )
-        if args.load_model:
+        if not args.load_model:
             model = PPO.load(f"models/{args.load_model}", env=env)
             print(f"Loaded model from {args.load_model}. Continuing training.")
         else:
@@ -173,9 +242,16 @@ def main():
                 env,
                 policy_kwargs=policy_kwargs,
                 verbose=1,
+                seed=42,
                 tensorboard_log=f"./logs/minigrid_{env_type}_tensorboard/",
-                learning_rate=0.001,
+                learning_rate=0.005,
                 ent_coef=0.05,
+                # n_steps=256,
+                # batch_size=32,
+                # clip_range=0.3,
+                # vf_coef=0.7,
+                # gradient_clip=0.6,
+                # linear_schedule=linear_schedule(0.001),   
             )
         model.learn(
             1e6,
@@ -184,9 +260,13 @@ def main():
         )
     else:
         if args.render:
-            env = CustomEnv(grid_size=grid_size, agent_view_size=grid_size*2-1, difficult_grid=hard_env, render_mode='human', image_full_view=False)
+            env = CustomEnv(grid_size=grid_size, agent_view_size=grid_size*2-1, difficult_grid=hard_env, render_mode='human', image_full_view=False, lava_cells=1,
+                            num_objects=3, train_env=False, max_steps=100, colors_rewards=colors_rewards, highlight=True)
         else:
-            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, agent_view_size=grid_size*2-1, image_full_view=False)
+            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, agent_view_size=grid_size*2-1, image_full_view=False, lava_cells=1, num_objects=3, 
+                            train_env=False, max_steps=100, highlight=True)
+            
+        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
         env = ObjObsWrapper(env)
 
         ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
@@ -203,7 +283,7 @@ def main():
                 action, _state = ppo.predict(obs, deterministic=True)
                 obs, reward, terminated, truncated, info = env.step(action)
                 score += reward
-                print(f'Action: {action}, Reward: {reward}, Score: {score}, Terminated: {terminated}')
+                # print(f'Action: {action}, Reward: {reward}, Score: {score}, Terminated: {terminated}')
 
                 if terminated or truncated:
                     print(f"Test score: {score}")

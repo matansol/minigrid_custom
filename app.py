@@ -94,10 +94,11 @@ def image_to_base64(image_array):
     return base64.b64encode(buffered.getvalue()).decode('ascii')
 
                 
-
+SIMMILARITY_CONST = 50
 class ManualControl:
     def __init__(self, env, models_paths):
         self.env = env
+        self.saved_env = None
         self.last_score = None
         self.agent_index = None
         self.ppo_agent = None
@@ -111,9 +112,10 @@ class ManualControl:
         self.agent_last_pos = None
         self.episode_start = None
         self.invalid_moves = 0
-        
+    
     def reset(self):
         obs,_ = self.env.reset()
+        self.saved_env = copy.deepcopy(self.env)
         self.score = 0
         self.invalid_moves = 0
         return obs
@@ -125,14 +127,14 @@ class ManualControl:
         for action in episode_actions:
             if action == 0: # turn left
                 agent_dir = utils.turn_agent(agent_dir, "left")
-                move_sequence.append(small_arrow + agent_dir)
+                move_sequence.append((small_arrow + agent_dir, 'turn left'))
             elif action == 1: # turn right
                 agent_dir = utils.turn_agent(agent_dir, "right")
-                move_sequence.append(small_arrow + agent_dir)
+                move_sequence.append((small_arrow + agent_dir, 'turn right'))
             elif action == 2: # move forward
-                move_sequence.append(agent_dir)
+                move_sequence.append((agent_dir, 'forward'))
             elif action == 3: # pickup
-                move_sequence.append('pickup ' +  agent_dir)
+                move_sequence.append(('pickup ' +  agent_dir, 'pickup'))
         return move_sequence
     
 
@@ -197,12 +199,28 @@ class ManualControl:
             self.agent_index += 1
         if self.agent_index not in self.models_paths.keys():
             return None
-        self.prev_agent = copy.deepcopy(self.ppo_agent)
+        self.prev_agent = self.ppo_agent
         model_path = self.models_paths[self.agent_index]
         self.ppo_agent = load_agent(self.env, model_path)
+        if self.prev_agent is None:
+            self.prev_agent = self.ppo_agent
         # print(f'laod new model: {self.ppo_agent}')
     
-    def agents_different_routs(self, env):
+    def find_simillar_env(self, env):
+        sim_env = copy.deepcopy(env)
+        j = 0
+        while True:
+            sim_env.reset()
+            env_objects = env.grid_objects()
+            sim_objects = sim_env.grid_objects()
+            if utils.state_distance(env_objects, sim_objects) < SIMMILARITY_CONST or j > 10:
+                break
+            j += 1
+        return sim_env
+        
+        
+    def agents_different_routs(self):
+        env = self.find_simillar_env(self.saved_env)
         copy_env = copy.deepcopy(env)
         img = copy_env.render()
         move_sequence, _, _, _ = utils.capture_agent_path(copy_env, self.ppo_agent)
@@ -225,12 +243,7 @@ class ManualControl:
 
         # Convert the image buffer to base64 so it can be displayed in the frontend
         path_img_base64 = base64.b64encode(path_img_buffer.getvalue()).decode('ascii')
-        #plot the image
-
-        # IDX_TO_ACTION = {Actions.right: 'turn right', Actions.left: 'turn left', Actions.forward: 'move forward', Actions.pickup: 'pickup'}
-        # print('episod actions:', self.episode_actions)
-        # print("action[0]:", self.episode_actions[0])
-        # episode_actions = [IDX_TO_ACTION[action.item() if isinstance(action, np.ndarray) else action] for action in self.episode_actions]
+        
 
         print(f'action locations: {actions_locations}')
         print(f'end of episode, invalid moves: {self.invalid_moves}')
@@ -239,7 +252,7 @@ class ManualControl:
         
 # initialize the environment and the manual control object
 players_sessions = {}
-env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=30)
+env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=0)
 env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
 
 # env = CustomEnv(grid_size=8, difficult_grid=True, max_steps=50, num_objects=3, lava_cells=2, render_mode="rgb_array")
@@ -247,17 +260,30 @@ env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
 
 env.reset()
 model_dir = "minigrid_custom_20240907"
+# model_paths = {
+#             0 : model_dir + "/iter_10^5_steps",
+#             1:  model_dir + "/iter_20^5_steps",
+#             2:  model_dir + "/iter_30^5_steps",
+#             3:  model_dir + "/iter_40^5_steps",
+#             4:  model_dir + "/iter_50^5_steps",
+#             5:  model_dir + "/iter_60^5_steps",
+#             6:  model_dir + "/iter_70^5_steps",
+#             7:  model_dir + "/iter_80^5_steps",
+#             8:  model_dir + "/iter_90^5_steps",
+#             9:  model_dir + "/iter_10^6_steps"
+# }
+
 model_paths = {
-            0 : model_dir + "/iter_10^5_steps",
-            1:  model_dir + "/iter_20^5_steps",
-            2:  model_dir + "/iter_30^5_steps",
-            3:  model_dir + "/iter_40^5_steps",
-            4:  model_dir + "/iter_50^5_steps",
-            5:  model_dir + "/iter_60^5_steps",
-            6:  model_dir + "/iter_70^5_steps",
-            7:  model_dir + "/iter_80^5_steps",
-            8:  model_dir + "/iter_90^5_steps",
-            9:  model_dir + "/iter_10^6_steps"
+            # 0 : model_dir + "/iter_10^5_steps",
+            # 1:  model_dir + "/iter_20^5_steps",
+            # 2:  model_dir + "/iter_30^5_steps",
+            # 3:  model_dir + "/iter_40^5_steps",
+            0:  model_dir + "/iter_50^5_steps",
+            1:  model_dir + "/iter_60^5_steps",
+            2:  model_dir + "/iter_70^5_steps",
+            3:  model_dir + "/iter_80^5_steps",
+            4:  model_dir + "/iter_90^5_steps",
+            5:  model_dir + "/iter_10^6_steps"
 }
 
 manual_control = ManualControl(env, model_paths)
@@ -373,7 +399,13 @@ def play_entire_episode():
         pass
         # db.session.remove()
 
-# respond= {'path_image': path_img_base64, 'actions': episode_actions}
+
+@socketio.on('compare_agents')
+def compare_agents():
+    res = manual_control.agents_different_routs()
+    emit('compare_agents', res)
+    
+    
 def finish_turn(response):
     if response['done']:
         summary = manual_control.end_of_episode_summary()  # Get the episode summary

@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', (event) => {
     console.log('Script Loaded');
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -8,6 +7,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const ppoButton = document.getElementById('ppo-button');
     const playEpisodeButton = document.getElementById('play-episode-button'); 
     const nextEpisodeButton = document.getElementById('next-episode-button');
+    const anotherExampleButton = document.getElementById('another-example-button');
+    const compareAgentsButton = document.getElementById('compare-agents-button');
     const finishGameButton = document.getElementById('finish-game-button');
     const gameImage = document.getElementById('game-image');
     const playerNameInput = document.getElementById('player-name');
@@ -88,8 +89,29 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     // Overview page: show actions and next episode button
     nextEpisodeButton.addEventListener('click', () => {
+        console.log('Next Episode button clicked');
         socket.emit('start_game', { playerName: playerNameInput.value });
         showPage('game-page');
+    });
+
+    const nextEpisodeButtonCompare = document.getElementById('next-episode-compare-button');
+    if (nextEpisodeButtonCompare) {
+        nextEpisodeButtonCompare.addEventListener('click', () => {
+            console.log('Next Episode button clicked (Compare Agent Page)');
+            socket.emit('start_game', { playerName: playerNameInput.value });
+            showPage('game-page');
+        });
+    }
+
+    anotherExampleButton.addEventListener('click', () => {
+        socket.emit('compare_agents');
+        showPage('compare-agents-page');
+    });
+    
+    compareAgentsButton.addEventListener('click', () => {
+        // Emit 'compare_agents' event to request images
+        socket.emit('compare_agents');
+        showPage('compare-agents-page');
     });
 
     finishGameButton.addEventListener('click', () => {
@@ -115,6 +137,19 @@ document.addEventListener('DOMContentLoaded', (event) => {
             });
             document.getElementById('overview-game-image').src = 'data:image/png;base64,' + data.image;
         }
+    });
+
+    socket.on('compare_agents', function(data) {
+        // Display the previous agent image
+        const prevAgentImage = document.getElementById('previous-agent-image');
+        prevAgentImage.src = 'data:image/png;base64,' + data.prev_path_image;
+
+        // Display the updated agent image
+        const updatedAgentImage = document.getElementById('updated-agent-image');
+        updatedAgentImage.src = 'data:image/png;base64,' + data.path_image;
+
+        // Show the correct page
+        showPage('compare-agent-update-page');
     });
 
     socket.on('episode_finished', (data) => {

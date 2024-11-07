@@ -12,6 +12,7 @@
             align-items: center;
             justify-content: center;
             flex-direction: column;
+            overflow-y: auto;
         }
         .page {
             display: none; /* Hide all pages initially */
@@ -108,6 +109,18 @@
         .dropdown-item:hover {
             background-color: #f1f1f1;
         }
+        #compare-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        #compare-container div {
+            text-align: center;
+        }
+        #compare-container img {
+            max-width: 100%;
+            height: auto;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
@@ -178,14 +191,33 @@
         </div>
 
         <button id="next-episode-button">Next Episode</button>
-        <button id="finish-game-button">Finish Game</button>
+        <button id="compare-agents-button">Compare Agents</button>
     </div>
 
+    <!-- Compare Agent Update Page -->
+    <div id="compare-agent-update-page" class="page" style="display: none;">
+        <h2>Compare Agent Update</h2>
+        <div id="compare-container" style="display: flex; justify-content: space-around;">
+            <div>
+                <h3>Previous Agent</h3>
+                <img id="previous-agent-image" src="" alt="Previous Agent Image">
+            </div>
+            <div>
+                <h3>Updated Agent</h3>
+                <img id="updated-agent-image" src="" alt="Updated Agent Image">
+            </div>
+        </div>
+        <button id="another-example-button">Another Example</button>
+        <button id="next-episode-compare-button">Next Episode</button>
+        <button id="finish-game-button">Finish Game</button>
+    </div>
 
     <!-- Summary Page -->
     <div id="summary-page" class="page">
         <h2>Game Summary</h2>
-        <ul id="score-list"></ul> <!-- List where scores will be appended -->
+        <div id="score-list-container">
+            <ul id="score-list"></ul>
+        </div>
     </div>
 
     <!-- Dropdown Menu -->

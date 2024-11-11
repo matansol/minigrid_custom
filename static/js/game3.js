@@ -15,7 +15,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const actionList = document.getElementById('actions');
     const scoreList = document.getElementById('score-list');
     const highlight = document.getElementById('highlight');
-    const dropdown = document.getElementById('dropdown'); // Reference to the dropdown element
+    const dropdown = document.getElementById('dropdown'); // Dropdown menu for actions
+    let selectedAction = null;
 
 
     // Page navigation
@@ -260,6 +261,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             
             // Store the index for later reference
             dropdown.dataset.index = event.target.dataset.index;
+            selectedAction = event.target;
         }
     });
 
@@ -269,11 +271,17 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     });
 
+    function handleActionSelection(selectedAction) {
+        console.log('Selected action:', selectedAction.textContent);
+        selectedAction.style.backgroundColor = 'lightblue';
+    }
+
     document.querySelectorAll('.dropdown-item').forEach(item => {
         item.addEventListener('click', (event) => {
             const index = dropdown.dataset.index;
             const action = event.target.textContent;
             console.log(`Action "${action}" selected for index ${index}`);
+            handleActionSelection(selectedAction);
             
             // Perform the action here as needed
             dropdown.style.display = 'none';

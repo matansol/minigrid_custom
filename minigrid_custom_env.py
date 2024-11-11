@@ -26,7 +26,7 @@ from gymnasium import spaces
 import random
 # import pygame
 # import os
-# import numpy as np
+import numpy as np
 
 basic_colors_rewards  = {
                 'red': 2,
@@ -350,7 +350,7 @@ class CustomEnv(MiniGridEnv):
         
         # got to the left bottom corner
         if self.agent_pos == (self.grid.width - 2, self.grid.height - 2):
-            reward += 10
+            reward += 1
         
         if truncated:
             terminated = True

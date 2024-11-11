@@ -94,7 +94,7 @@ def image_to_base64(image_array):
     return base64.b64encode(buffered.getvalue()).decode('ascii')
 
                 
-SIMMILARITY_CONST = 50
+SIMMILARITY_CONST = 500
 class ManualControl:
     def __init__(self, env, models_paths):
         self.env = env
@@ -214,12 +214,15 @@ class ManualControl:
             env_objects = env.grid_objects()
             sim_objects = sim_env.grid_objects()
             if utils.state_distance(env_objects, sim_objects) < SIMMILARITY_CONST or j > 10:
+                if j > 10:
+                    print("No simillar env found")
                 break
             j += 1
         return sim_env
         
         
     def agents_different_routs(self):
+        self.saved_env.reset()
         env = self.find_simillar_env(self.saved_env)
         copy_env = copy.deepcopy(env)
         img = copy_env.render()

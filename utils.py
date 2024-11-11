@@ -142,30 +142,32 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
             # action_loc['height'] = max(move_arrow_sizes[action_name][3], min_hieght) * inlarge_factor
             if action_dir == 'up':
                 # container_y += action_loc['height'] / inlarge_factor * 0.7
-                container_y += 25
+                container_y -= 25
             elif action_dir == 'down':
                 container_y += 25
             elif action_dir == 'right':
                 # container_x += action_loc['width'] / inlarge_factor * 1.1
                 container_x += 41
             else:
-                container_x += -20
+                container_x += -40
             
         elif action_dir in turn_arrow_sizes.keys(): # a small arrow that represents a turn or a pickup
             ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=turn_color, ec=turn_color)
             if action_dir == 'turn up' or action_dir == 'turn down':
                 action_loc['x'] = current_point[0] + container_x + 30
                 action_loc['y'] = current_point[1] + container_y + 10
-                # container_x += 36
-                # container_y += -10
+                container_x += 25
+                container_y += -10
             elif action_dir == 'turn right':
                 # container_x += -5
                 action_loc['x'] = current_point[0] + container_x - 10
                 action_loc['y'] = current_point[1] + container_y + 10
-            else:
-                action_loc['x'] = current_point[0] + container_x - 10
+                container_y += 10
+            else: # turn left
+                action_loc['x'] = current_point[0] + container_x - 20
                 action_loc['y'] = current_point[1] + container_y + 10
-                # container_x += -10
+                container_y += 10
+                container_x += -40
             # action_loc['x'] = current_point[0] + container_x
             # action_loc['y'] = current_point[1] + container_y + 10
             action_loc['width'] = mark_sizes['turn'][0]

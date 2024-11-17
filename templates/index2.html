@@ -23,6 +23,17 @@
         .active {
             display: flex; /* Show active page */
         }
+        #welcome-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 0 500px; /* Add padding for margins on the sides */
+        }
+        #welcome-page-content {
+            max-width: 800px; /* Set a max-width for the content */
+            margin: 0 auto;
+        }
         #game-container {
             display: flex; /* Initially set to flex */
             flex-direction: column;
@@ -129,6 +140,13 @@
     <!-- Welcome Page -->
     <div id="welcome-page" class="page active">
         <h1>Welcome to the Minigrid Game</h1>
+        <p>In the next experiment you will play a custom game controlling a triangle-shaped player. <br>
+            The game is a sequence of episodes where in each episode the player earns points by collecting balls that are scattered in the arena.  
+            Each ball gives 2 points and each action cost 0.1 points.<br>
+            You can control the player using the keybaord arrows and the '1' key to pickup balls, or you can use an pretrained agent to play the game for you. <br>
+            Notice that the agent is suboptimal and you can improve it by providing feedback on its actions in the overview page that will apper onece the episode is over.<br>
+            After the feedback you could watch the agent updated policy compared to the previous one on some examples.
+        </p>
         <input type="text" id="player-name" placeholder="Enter your ID" />
         <button id="start-button">Start</button>
     </div>
@@ -170,6 +188,7 @@
         <!-- Overview Page -->
     <div id="overview-page" class="page" style="display: none;">
         <h2>Episode Overview</h2>
+        <p>The feedback is givern by pressing the actions in the action list on the right.</p>
 
         <!-- Container for the image and the action list -->
         <div id="overview-container" style="display: flex; align-items: flex-start; position: relative;">

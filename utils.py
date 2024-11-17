@@ -218,7 +218,7 @@ def balls_distance(balls):
             ball_dist += np.linalg.norm(np.array(balls[i][:-1]) - np.array(balls[j][:-1]))
     return ball_dist
 
-def balls_groups(balls_list):
+def balls_groups(balls_list, to_print=False):
     print(f"balls_list: {balls_list}")
     groups = []
     in_any_group = set()
@@ -239,14 +239,16 @@ def balls_groups(balls_list):
                     in_any_group.add(j)
                     need_to_check.append(j)
         groups.append(group)
-    print(f"groups: {groups}")
+    if to_print:
+        print(f"groups: {groups}")
     
     res = []
     for group in groups:
         x_center = np.mean([ball[0] for ball in group])
         y_center = np.mean([ball[1] for ball in group])
         res.append((len(group), (x_center, y_center)))
-    print(f"res: {res}")
+    if to_print:
+        print(f"res: {res}")
     return res
 
 def biggest_group(balls_groups):

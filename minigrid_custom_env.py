@@ -363,8 +363,7 @@ class CustomEnv(MiniGridEnv):
         # if terminated:
         #     print(f"terminated, reward={reward}")
         return obs, reward, terminated, truncated, info
-
-
+        
     def get_full_render(self, highlight, tile_size):
         """
         Render a non-paratial observation for visualization
@@ -412,9 +411,6 @@ class CustomEnv(MiniGridEnv):
             highlight_mask=highlight_mask if highlight else None,
         )
 
-        agent_pos = self.agent_pos
-        agent_dir = self.agent_dir
-
         # black all cells that are not highlighted
         if self.partial_obs:
             for j in range(0, self.height):
@@ -429,6 +425,13 @@ class CustomEnv(MiniGridEnv):
                     xmax = (i + 1) * tile_size
                     img[ymin:ymax, xmin:xmax, :] = tile_img
         
+        return img
+
+    def get_full_obs(self):
+        tmp = self.partial_obs
+        self.partial_obs = False
+        img = self.render()
+        self.partial_obs = tmp
         return img
 
 def main():

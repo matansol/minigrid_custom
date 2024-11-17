@@ -176,7 +176,9 @@ class ManualControl:
         if update_agent:
             self.update_agent()
         self.current_obs = self.reset()
-        self.episode_start = self.env.render() # for the overview image
+        print(f"partial obs: {self.env.partial_obs}")
+        self.episode_start = self.env.get_full_obs() # for the overview image
+        print(f"partial obs: {self.env.partial_obs}")
         self.agent_last_pos = self.env.unwrapped.agent_pos
         self.episode_actions = []
         img = self.env.render()
@@ -221,18 +223,23 @@ class ManualControl:
         return sim_env
         
         
-    def agents_different_routs(self):
+    def agents_different_routs(self, count=0):
         self.saved_env.reset()
         env = self.find_simillar_env(self.saved_env)
         copy_env = copy.deepcopy(env)
-        img = copy_env.render()
+        img = copy_env.get_full_obs()
         move_sequence, _, _, _ = utils.capture_agent_path(copy_env, self.ppo_agent)
-        path_img_buffer, _ = utils.plot_move_sequence(img, move_sequence, move_color='c')  # Generate the path image
+        
         
         # prev_agent_path
         copy_env = copy.deepcopy(env)
-        img = copy_env.render()
+        img = copy_env.get_full_obs()
         prev_move_sequence, _, _, _ = utils.capture_agent_path(copy_env, self.prev_agent)
+        if prev_move_sequence == move_sequence and count < 5:
+            count += 1
+            return self.agents_different_routs(count)
+        print(f"agents_different_routs {count} times")
+        path_img_buffer, _ = utils.plot_move_sequence(img, move_sequence, move_color='c')  # Generate the path image
         prev_path_img_buffer, _ = utils.plot_move_sequence(img, prev_move_sequence)  # Generate the path image
         
         return {'prev_path_image': base64.b64encode(prev_path_img_buffer.getvalue()).decode('ascii'), 'path_image': base64.b64encode(path_img_buffer.getvalue()).decode('ascii')}
@@ -255,39 +262,34 @@ class ManualControl:
         
 # initialize the environment and the manual control object
 players_sessions = {}
-env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=0)
-env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
+env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True)
+env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
 
 # env = CustomEnv(grid_size=8, difficult_grid=True, max_steps=50, num_objects=3, lava_cells=2, render_mode="rgb_array")
 # env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-2.0)
 
 env.reset()
-model_dir = "minigrid_custom_20240907"
-# model_paths = {
-#             0 : model_dir + "/iter_10^5_steps",
-#             1:  model_dir + "/iter_20^5_steps",
-#             2:  model_dir + "/iter_30^5_steps",
-#             3:  model_dir + "/iter_40^5_steps",
-#             4:  model_dir + "/iter_50^5_steps",
-#             5:  model_dir + "/iter_60^5_steps",
-#             6:  model_dir + "/iter_70^5_steps",
-#             7:  model_dir + "/iter_80^5_steps",
-#             8:  model_dir + "/iter_90^5_steps",
-#             9:  model_dir + "/iter_10^6_steps"
-# }
-
+model_dir1 = "LavaLaver8_20241112"
+model_dir2 = "LavaHate8_20241112"
 model_paths = {
-            # 0 : model_dir + "/iter_10^5_steps",
-            # 1:  model_dir + "/iter_20^5_steps",
-            # 2:  model_dir + "/iter_30^5_steps",
-            # 3:  model_dir + "/iter_40^5_steps",
-            0:  model_dir + "/iter_50^5_steps",
-            1:  model_dir + "/iter_60^5_steps",
-            2:  model_dir + "/iter_70^5_steps",
-            3:  model_dir + "/iter_80^5_steps",
-            4:  model_dir + "/iter_90^5_steps",
-            5:  model_dir + "/iter_10^6_steps"
+            0 : model_dir1 + "/iter_250000_steps",
+            1:  model_dir1 + "/iter_500000_steps",
+            2:  model_dir2 + "/iter_250000_steps",
+            3:  model_dir2 + "/iter_500000_steps",
 }
+
+# model_paths = {
+#             # 0 : model_dir + "/iter_10^5_steps",
+#             # 1:  model_dir + "/iter_20^5_steps",
+#             # 2:  model_dir + "/iter_30^5_steps",
+#             # 3:  model_dir + "/iter_40^5_steps",
+#             0:  model_dir + "/iter_50^5_steps",
+#             1:  model_dir + "/iter_60^5_steps",
+#             2:  model_dir + "/iter_70^5_steps",
+#             3:  model_dir + "/iter_80^5_steps",
+#             4:  model_dir + "/iter_90^5_steps",
+#             5:  model_dir + "/iter_10^6_steps"
+# }
 
 manual_control = ManualControl(env, model_paths)
 # manual_control.reset()
@@ -415,34 +417,6 @@ def finish_turn(response):
         emit('episode_finished', summary)  # Send the path and actions to the frontend
     else:
         emit('game_update', response, broadcast=True)
-
-    
-# def ppo_action():
-#     action, response = manual_control.agent_action()
-#     session = players_sessions.get(request.sid)
-#     try:
-#         db.session.begin(nested=True)
-#         session.record_action(
-#             action=action,
-#             score=response['score'],
-#             reward=response['reward'],
-#             done=response['done'],
-#             agent_action=response['agent_action'],
-#             episode=response['episode'],
-#             agent_index=response['agent_index']
-#         )
-#         db.session.commit()
-#     except Exception as e:
-#         db.session.rollback()
-#         app.logger.error('Database operation failed: %s', e)
-#         emit('error', {'error': 'Database operation failed'})
-#     finally:
-#         db.session.remove()
-#     if response['done']:  # start a new episode
-#         response = manual_control.get_initial_observation()
-#         emit('game_update', response)
-#     else:
-#         emit('game_update', response, broadcast=True)
 
         
 @socketio.on('start_game')

@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const scoreList = document.getElementById('score-list');
     const highlight = document.getElementById('highlight');
     const dropdown = document.getElementById('dropdown'); // Dropdown menu for actions
+    const placeholderIcon = document.querySelector('.placeholder-icon');
     let selectedAction = null;
 
 
@@ -123,6 +124,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     // When the game updates (new action, score, etc.)
     socket.on('game_update', (data) => {
         gameImage.src = 'data:image/png;base64,' + data.image;
+        placeholderIcon.style.display = 'none';
         document.getElementById('reward').innerText = data.reward;
         document.getElementById('score').innerText = data.score;
         document.getElementById('last_score').innerText = data.last_score;
@@ -167,7 +169,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
         // Update the list of actions
         const actionList = document.getElementById('actions');
         actionList.innerHTML = ''; // Clear previous actions
-        data.actions.forEach((action, index) => {
+        const maxActions = 25;
+        const actionsToShow = data.actions.slice(0, maxActions);
+        actionsToShow.forEach((action, index) => {
             const li = document.createElement('li');
             li.textContent = action.action;
             li.setAttribute('data-index', index);

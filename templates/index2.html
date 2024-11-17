@@ -40,6 +40,10 @@
             align-items: center;
             justify-content: center;
         }
+        .placeholder-icon {
+            font-size: 48px; /* Adjust size as needed */
+            color: #ccc; /* Color of the placeholder icon */
+        }
         #button-container {
             display: flex;
             justify-content: center;
@@ -134,6 +138,7 @@
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
 
@@ -143,9 +148,9 @@
         <p>In the next experiment you will play a custom game controlling a triangle-shaped player. <br>
             The game is a sequence of episodes where in each episode the player earns points by collecting balls that are scattered in the arena.  
             Each ball gives 2 points and each action cost 0.1 points.<br>
-            You can control the player using the keybaord arrows and the '1' key to pickup balls, or you can use an pretrained agent to play the game for you. <br>
-            Notice that the agent is suboptimal and you can improve it by providing feedback on its actions in the overview page that will apper onece the episode is over.<br>
-            After the feedback you could watch the agent updated policy compared to the previous one on some examples.
+            You can control the player using the keyboard arrows and the '1' key to pick up balls, or you can use a pre trained agent to play the game for you. <br>
+            Notice that the agent is suboptimal and you can improve it by providing feedback on its actions in the overview page that will appear once the episode is over.<br>
+            After the feedback you could watch the agent's updated policy compared to the previous one on some examples.
         </p>
         <input type="text" id="player-name" placeholder="Enter your ID" />
         <button id="start-button">Start</button>
@@ -164,6 +169,7 @@
             <!-- Game content with image and instructions -->
             <div id="game-content">
                 <div id="game-image-container">
+                    <i class="fas fa-spinner fa-spin placeholder-icon"></i> <!-- Placeholder icon -->
                     <img id="game-image" src="" alt="Game Image">
                 </div>
                 <div id="key-instructions">
@@ -188,7 +194,7 @@
         <!-- Overview Page -->
     <div id="overview-page" class="page" style="display: none;">
         <h2>Episode Overview</h2>
-        <p>The feedback is givern by pressing the actions in the action list on the right.</p>
+        <p>The feedback is given by pressing the actions in the action list on the right.</p>
 
         <!-- Container for the image and the action list -->
         <div id="overview-container" style="display: flex; align-items: flex-start; position: relative;">

@@ -31,7 +31,7 @@ import numpy as np
 basic_colors_rewards  = {
                 'red': 2,
                 'green': 2,
-                'blue': 2
+                'blue': 2,
             }
 
 
@@ -58,6 +58,8 @@ class CustomEnv(MiniGridEnv):
         tile_size: int = TILE_PIXELS,
         agent_pov: bool = False,
         colors_rewards: dict = basic_colors_rewards, # all colors have the same reward = 2
+        partial_obs: bool = False,
+        # lava_reward: int = 0,
         **kwargs,
     ):
         self.agent_start_pos = agent_start_pos
@@ -65,6 +67,7 @@ class CustomEnv(MiniGridEnv):
         self.agent_dir = agent_start_dir
         self.agent_pos = agent_start_pos
         self.image_full_view = image_full_view
+        self.partial_obs = partial_obs
         
         if not highlight:
             self.highlight = not image_full_view
@@ -76,8 +79,8 @@ class CustomEnv(MiniGridEnv):
         #     max_steps = size * size * 5
         self.num_objects = num_objects
         self.difficult_grid = difficult_grid
-        self.num_laval_cells = lava_cells
-        self.lava_reward = -1
+        self.num_lava_cells = lava_cells
+        # self.lava_reward = lava_reward
         self.current_state = None
         self.took_key = None
         self.step_count = 0
@@ -203,7 +206,7 @@ class CustomEnv(MiniGridEnv):
         self.grid.wall_rect(0, 0, width, height)
         
         # place lava cells
-        for _ in range(self.num_laval_cells):
+        for _ in range(self.num_lava_cells):
             x_loc = self._rand_int(1, width - 2)
             y_loc = self._rand_int(1, height - 2)
             if (x_loc == width - 2 and y_loc == height - 2) or x_loc == 1 and y_loc == 1:
@@ -244,7 +247,7 @@ class CustomEnv(MiniGridEnv):
         self.grid.wall_rect(0, 0, width, height)
         
         # place lava cells
-        for i in range(self.num_laval_cells):
+        for i in range(self.num_lava_cells):
             x_loc = self._rand_int(1, width - 2)
             y_loc = self._rand_int(1, height - 2)
             if (x_loc == width - 2 and y_loc == height - 2) or x_loc == 1 and y_loc == 1:
@@ -350,7 +353,7 @@ class CustomEnv(MiniGridEnv):
         
         # got to the left bottom corner
         if self.agent_pos == (self.grid.width - 2, self.grid.height - 2):
-            reward += 1
+            reward += 5
         
         if truncated:
             terminated = True
@@ -362,6 +365,71 @@ class CustomEnv(MiniGridEnv):
         return obs, reward, terminated, truncated, info
 
 
+    def get_full_render(self, highlight, tile_size):
+        """
+        Render a non-paratial observation for visualization
+        Plus - hide all cells that are not highlighted
+        """
+        # Compute which cells are visible to the agent
+        _, vis_mask = self.gen_obs_grid()
+
+        # Compute the world coordinates of the bottom-left corner
+        # of the agent's view area
+        f_vec = self.dir_vec
+        r_vec = self.right_vec
+        top_left = (
+            self.agent_pos
+            + f_vec * (self.agent_view_size - 1)
+            - r_vec * (self.agent_view_size // 2)
+        )
+
+        # Mask of which cells to highlight
+        highlight_mask = np.zeros(shape=(self.width, self.height), dtype=bool)
+
+        # For each cell in the visibility mask
+        for vis_j in range(0, self.agent_view_size):
+            for vis_i in range(0, self.agent_view_size):
+                # If this cell is not visible, don't highlight it
+                if not vis_mask[vis_i, vis_j]:
+                    continue
+
+                # Compute the world coordinates of this cell
+                abs_i, abs_j = top_left - (f_vec * vis_j) + (r_vec * vis_i)
+
+                if abs_i < 0 or abs_i >= self.width:
+                    continue
+                if abs_j < 0 or abs_j >= self.height:
+                    continue
+
+                # Mark this cell to be highlighted
+                highlight_mask[abs_i, abs_j] = True
+
+        # Render the whole grid
+        img = self.grid.render(
+            tile_size,
+            self.agent_pos,
+            self.agent_dir,
+            highlight_mask=highlight_mask if highlight else None,
+        )
+
+        agent_pos = self.agent_pos
+        agent_dir = self.agent_dir
+
+        # black all cells that are not highlighted
+        if self.partial_obs:
+            for j in range(0, self.height):
+                for i in range(0, self.width):
+                    if highlight_mask[i, j]:
+                        continue
+                    tile_img = 0
+
+                    ymin = j * tile_size
+                    ymax = (j + 1) * tile_size
+                    xmin = i * tile_size
+                    xmax = (i + 1) * tile_size
+                    img[ymin:ymax, xmin:xmax, :] = tile_img
+        
+        return img
 
 def main():
     env = CustomEnv(render_mode="human")

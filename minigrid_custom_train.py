@@ -154,8 +154,8 @@ class ObjEnvExtractorBig(BaseFeaturesExtractor):
                     nn.ReLU(),
                     nn.Conv2d(32, 64, (2, 2)),
                     nn.ReLU(),
-                    nn.Conv2d(64, 128, (2, 2)),
-                    nn.ReLU(),
+                    # nn.Conv2d(64, 64, (2, 2)),
+                    # nn.ReLU(),
                     nn.Flatten(),
                 )
 
@@ -165,9 +165,9 @@ class ObjEnvExtractorBig(BaseFeaturesExtractor):
                         th.as_tensor(subspace.sample()[None]).float()
                     ).shape[1]
 
-                linear = nn.Sequential(nn.Linear(n_flatten, 128), nn.ReLU())
+                linear = nn.Sequential(nn.Linear(n_flatten, 64), nn.ReLU())
                 extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
-                total_concat_size += 128
+                total_concat_size += 64
 
         self.extractors = nn.ModuleDict(extractors)
 
@@ -191,7 +191,7 @@ def main():
     parser.add_argument(
         "--load_model",
         # default="minigrid_hard_20241010/iter_1000000_steps",
-        default="minigrid_easy7_20241030/iter_300000_steps",
+        # default="minigrid_easy7_20241030/iter_300000_steps",
     )
     parser.add_argument("--render", action="store_true", help="render trained models")
     parser.add_argument("--seed", type=int, default=42, help="random seed")
@@ -212,19 +212,20 @@ def main():
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
     max_steps = 300
-    colors_rewards = {'red': 2.0, 'green': 2, 'blue': 2}
-    grid_size = 8
+    colors_rewards = {'red':-2.0, 'green': 2, 'blue': 2}
+    grid_size = 10
+    agent_view_size = 9
     if args.train:
         env = CustomEnv(grid_size=grid_size, render_mode='rgb_array', difficult_grid=hard_env, max_steps=max_steps, highlight=True,
-                        num_objects=4, lava_cells=2, train_env=True, image_full_view=False, agent_view_size=9, colors_rewards=colors_rewards)
+                        num_objects=4, lava_cells=5, train_env=True, image_full_view=False, agent_view_size=agent_view_size, colors_rewards=colors_rewards)
         
-        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
+        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-5.0)
         # env = DummyVecEnv([lambda: env])
         # env = VecNormalize(env, norm_obs=False, norm_reward=True)
 
         checkpoint_callback = CheckpointCallback(
-            save_freq=230e3,
-            save_path=f"./models/basic_L2_{env_type}{grid_size}_{stamp}/",
+            save_freq=250e3,
+            save_path=f"./models/LavaHateN2R{grid_size}_{stamp}/",
             name_prefix="iter",
         )
 
@@ -246,7 +247,7 @@ def main():
         #     learning_rate=0.01,
         #     ent_coef = 0.05,
         # )
-        if not args.load_model:
+        if args.load_model:
             model = PPO.load(f"models/{args.load_model}", env=env)
             print(f"Loaded model from {args.load_model}. Continuing training.")
         else:
@@ -257,10 +258,10 @@ def main():
                     env,
                     policy_kwargs=policy_kwargs,
                     verbose=1,
-                    seed=42,
-                    tensorboard_log=f"./logs/minigrid_{env_type}{grid_size}_tensorboard/",
-                    learning_rate=0.005,
-                    ent_coef=0.05,
+                    # seed=42,
+                    tensorboard_log=f"./logs/LavaLaver{grid_size}_tensorboard/",
+                    # learning_rate=0.005,
+                    # ent_coef=0.5,
                     # n_steps=256,
                     # batch_size=32,
                     # clip_range=0.3,
@@ -295,10 +296,10 @@ def main():
         )
     else:
         if args.render:
-            env = CustomEnv(grid_size=grid_size, agent_view_size=grid_size*2-1, difficult_grid=hard_env, render_mode='human', image_full_view=False, lava_cells=1,
-                            num_objects=3, train_env=False, max_steps=100, colors_rewards=colors_rewards, highlight=True)
+            env = CustomEnv(grid_size=grid_size, agent_view_size=agent_view_size, difficult_grid=hard_env, render_mode='human', image_full_view=False, lava_cells=4,
+                            num_objects=3, train_env=False, max_steps=100, colors_rewards=colors_rewards, highlight=True, partial_obs=True)
         else:
-            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, agent_view_size=grid_size*2-1, image_full_view=False, lava_cells=1, num_objects=3, 
+            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, agent_view_size=agent_view_size, image_full_view=False, lava_cells=1, num_objects=3, 
                             train_env=False, max_steps=100, highlight=True)
             
         env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)

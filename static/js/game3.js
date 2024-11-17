@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     function handleActionSelection(selectedAction) {
         console.log('Selected action:', selectedAction.textContent);
-        selectedAction.style.backgroundColor = 'lightblue';
+        selectedAction.style.backgroundColor = 'lightblue'; 
     }
 
     document.querySelectorAll('.dropdown-item').forEach(item => {

@@ -176,9 +176,9 @@ class ManualControl:
         if update_agent:
             self.update_agent()
         self.current_obs = self.reset()
-        print(f"partial obs: {self.env.partial_obs}")
+        print(f"partial obs: {self.env.unwrapped.partial_obs}")
         self.episode_start = self.env.get_full_obs() # for the overview image
-        print(f"partial obs: {self.env.partial_obs}")
+        print(f"partial obs: {self.env.unwrapped.partial_obs}")
         self.agent_last_pos = self.env.unwrapped.agent_pos
         self.episode_actions = []
         img = self.env.render()

@@ -46,6 +46,7 @@ class CustomEnv(MiniGridEnv):
         num_objects: int = 6,
         difficult_grid: bool = False,
         train_env: bool = False,
+        unique_env: int = 0,
         lava_cells: int = 2,
         image_full_view: bool = False,
         width: int | None = None,
@@ -68,6 +69,7 @@ class CustomEnv(MiniGridEnv):
         self.agent_pos = agent_start_pos
         self.image_full_view = image_full_view
         self.partial_obs = partial_obs
+        self.unique_env = unique_env
         
         if not highlight:
             self.highlight = not image_full_view
@@ -84,6 +86,7 @@ class CustomEnv(MiniGridEnv):
         self.current_state = None
         self.took_key = None
         self.step_count = 0
+        self.initial_objects = [] # list of objects on the grid in the format (x, y, reward when picked)
 
         # super().__init__(
         #     mission_space=mission_space,
@@ -180,6 +183,7 @@ class CustomEnv(MiniGridEnv):
         self.step_count = 0
         self.took_key = False
         self.current_state = {}
+        self.initial_objects = []
         state , info = super().reset()
         if self.image_full_view:
             state['image'] = self.grid.encode()
@@ -196,14 +200,24 @@ class CustomEnv(MiniGridEnv):
         # return "Collect as many balls as possible, colors rank: " + color_rank
 
     def _gen_grid(self, width, height):
+        self.mission = self._gen_mission()
+
+        # Create an empty grid
+        self.grid = Grid(width, height)
+        # Place the agent
+        if self.agent_start_pos is not None:
+            self.agent_pos = self.agent_start_pos
+            self.agent_dir = self.agent_start_dir
+        else:
+            self.place_agent()
+        # Generate the surrounding walls
+        self.grid.wall_rect(0, 0, width, height)
+
+        if self.unique_env > 0:
+            return self._gen_unique_grid(width, height)
         if self.difficult_grid and width >= 8 and height >= 8:
             self._gen_difficult_grid(width, height)
             return
-        # Create an empty grid
-        self.grid = Grid(width, height)
-
-        # Generate the surrounding walls
-        self.grid.wall_rect(0, 0, width, height)
         
         # place lava cells
         for _ in range(self.num_lava_cells):
@@ -221,31 +235,38 @@ class CustomEnv(MiniGridEnv):
                 continue
             color = random.choice(list(self.color_rewards.keys()))
             self.put_obj(Ball(color), x_loc, y_loc)
+            self.initial_objects.append((x_loc, y_loc, self.color_rewards[color]))
         
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
 
-        # Place the agent
-        if self.agent_start_pos is not None:
-            self.agent_pos = self.agent_start_pos
-            self.agent_dir = self.agent_start_dir
-        else:
-            self.place_agent()
 
-        self.mission = self._gen_mission()
+    def _gen_unique_grid(self, width, height):
+        if self.unique_env == 1:
+            # put a red ball in the right top corner and lava cells around it
+            self.put_obj(Ball('red'), width-2, 1)
+            self.initial_objects.append((width-2, 1, self.color_rewards['red']))
+            self.put_obj(Lava(), width-3, 2)
+            self.put_obj(Lava(), width-3, 1)
+            self.put_obj(Lava(), width-2, 2)
 
-    def _gen_difficult_grid(self, width, height):
-        self.grid = Grid(width, height)
-        
-        # Place the agent
-        if self.agent_start_pos is not None:
-            self.agent_pos = self.agent_start_pos
-            self.agent_dir = self.agent_start_dir
-        else:
-            self.place_agent()
-            
-        self.grid.wall_rect(0, 0, width, height)
-        
+            self.put_obj(Ball('blue'), width-4, 3)
+            self.initial_objects.append((width-4, 3, self.color_rewards['blue']))
+        if self.unique_env == 2:
+            self.put_obj(Ball('blue'), width-2, 1)
+            self.initial_objects.append((width-2, 1, self.color_rewards['blue']))
+            self.put_obj(Ball('green'), 1, height-2)
+            self.initial_objects.append((1, height-2, self.color_rewards['green']))
+            self.put_obj(Ball('green'), 2, height-2)
+            self.initial_objects.append((2, height-2, self.color_rewards['green']))
+            self.put_obj(Ball('green'), 3, height-2)
+            self.initial_objects.append((3, height-2, self.color_rewards['green']))
+
+
+        # Place a goal square in the bottom-right corner
+        self.put_obj(Goal(), width - 2, height - 2)
+
+    def _gen_difficult_grid(self, width, height):    
         # place lava cells
         for i in range(self.num_lava_cells):
             x_loc = self._rand_int(1, width - 2)
@@ -281,12 +302,11 @@ class CustomEnv(MiniGridEnv):
                 continue
             color = random.choice(list(self.color_rewards.keys()))
             self.put_obj(Ball(color), x_loc, y_loc)
+            self.initial_objects.append((x_loc, y_loc, self.color_rewards[color]))
         
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
-        
-        self.mission = self._gen_mission()
-    
+            
     def grid_objects(self):
         grid = self.grid
         objects = {"balls": [], "wall": (False, None, None), "key" : (False, None), "lava": []} # wall: (is_wall, splitIdx, doorIdx), key: (is_key, key_pos)
@@ -363,7 +383,41 @@ class CustomEnv(MiniGridEnv):
         # if terminated:
         #     print(f"terminated, reward={reward}")
         return obs, reward, terminated, truncated, info
+
+    def find_optimal_path(self):
+        points = [(1,1,0)] + self.initial_objects
+        points = {i: p for i, p in enumerate(points) if p[2] >= 0}
+        print("points", points) 
+        matrix = np.zeros((len(points.keys()), len(points.keys())))
+        for i in range(len(points)):
+            p1 = points[i]
+            for j in range(len(points)):
+                if i == j:
+                    matrix[i][j] = np.inf
+                    continue
+                matrix[i][j] = np.abs(p1[0] - points[j][0]) + np.abs(p1[1] - points[j][1])
+        total_reward = 0
+        total_steps = 0
+        curent_pos = 0
+        # print("maxtix", matrix)
+        for s in range(len(points)-1):
+            min_steps = np.min(matrix[curent_pos])
+            min_arg = np.argmin(matrix[curent_pos])
+            # print(f"curent_pos {curent_pos}, min_steps {min_steps}, min_arg {min_arg}")
+            total_steps += min_steps
+            total_reward += points[min_arg][2]
+            matrix[:, curent_pos] = np.inf
+            curent_pos = min_arg
+
+        p1 = points[curent_pos]
+        # print(f"reward earned {total_reward}, total steps {total_steps}, curent_pos {p1}")
+        total_steps += np.abs(p1[0] - (self.grid.width - 2)) + np.abs(p1[1] - (self.grid.height - 2)) # go to the goal
+        total_reward -= (total_steps + len(points)*2)*0.1 # the aproximation of number of steps
+        return total_reward, total_steps
+
         
+
+
     def get_full_render(self, highlight, tile_size):
         """
         Render a non-paratial observation for visualization

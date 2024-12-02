@@ -90,6 +90,15 @@
             width: 640px;
             height: 480px;
         }
+        #actions {
+            list-style-type: none; /* Remove default bullet points */
+            padding: 0;
+        }
+        #actions li::before {
+            content: "\25BC"; /* Unicode for upside-down triangle */
+            margin-right: 10px;
+            color: #4e4747; /* Color of the triangle */
+        }
         button {
             padding: 10px 20px;
             font-size: 16px;

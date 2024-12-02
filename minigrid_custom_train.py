@@ -154,8 +154,6 @@ class ObjEnvExtractorBig(BaseFeaturesExtractor):
                     nn.ReLU(),
                     nn.Conv2d(32, 64, (2, 2)),
                     nn.ReLU(),
-                    # nn.Conv2d(64, 64, (2, 2)),
-                    # nn.ReLU(),
                     nn.Flatten(),
                 )
 
@@ -195,7 +193,7 @@ def main():
     )
     parser.add_argument("--render", action="store_true", help="render trained models")
     parser.add_argument("--seed", type=int, default=42, help="random seed")
-    parser.add_argument("--model", type=str, default="ppo", help="what model to train")
+    # parser.add_argument("--model", type=str, default="ppo", help="what model to train")
     args = parser.parse_args()
 
     policy_kwargs = dict(features_extractor_class=ObjEnvExtractor) # ObjEnvExtractorBig)
@@ -212,20 +210,20 @@ def main():
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
     max_steps = 300
-    colors_rewards = {'red':-2.0, 'green': 2, 'blue': 2}
-    grid_size = 10
-    agent_view_size = 9
+    colors_rewards = {'red': 2.0, 'green': 2, 'blue': 2}
+    grid_size = 8
+    agent_view_size = 5
     if args.train:
         env = CustomEnv(grid_size=grid_size, render_mode='rgb_array', difficult_grid=hard_env, max_steps=max_steps, highlight=True,
-                        num_objects=4, lava_cells=5, train_env=True, image_full_view=False, agent_view_size=agent_view_size, colors_rewards=colors_rewards)
+                        num_objects=4, lava_cells=3, train_env=True, image_full_view=False, agent_view_size=agent_view_size, colors_rewards=colors_rewards)
         
-        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-5.0)
+        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
         # env = DummyVecEnv([lambda: env])
         # env = VecNormalize(env, norm_obs=False, norm_reward=True)
 
         checkpoint_callback = CheckpointCallback(
             save_freq=250e3,
-            save_path=f"./models/LavaHateN2R{grid_size}_{stamp}/",
+            save_path=f"./models/LavaHate5_{grid_size}_{stamp}/",
             name_prefix="iter",
         )
 
@@ -252,45 +250,25 @@ def main():
             print(f"Loaded model from {args.load_model}. Continuing training.")
         else:
             # Create a new model if no load path is provided
-            if args.model == "ppo":
-                model = PPO(
-                    "MultiInputPolicy",
-                    env,
-                    policy_kwargs=policy_kwargs,
-                    verbose=1,
-                    # seed=42,
-                    tensorboard_log=f"./logs/LavaLaver{grid_size}_tensorboard/",
-                    # learning_rate=0.005,
-                    # ent_coef=0.5,
-                    # n_steps=256,
-                    # batch_size=32,
-                    # clip_range=0.3,
-                    # vf_coef=0.7,
-                    # gradient_clip=0.6,
-                    # linear_schedule=linear_schedule(0.001),   
-                )
-            else:
-                model = DQN(
-                    "MultiInputPolicy",
-                    env,
-                    verbose=1,
-                    seed=args.seed,
-                    tensorboard_log=f"./logs/minigrid_{env_type}_tensorboard/",
-                    learning_rate=0.001,
-                    buffer_size=10000,
-                    policy_kwargs=policy_kwargs,
-                    exploration_initial_eps=1.0,
-                    exploration_final_eps=0.05,
-                    exploration_fraction=0.5,
-                    # learning_starts=1000,
-                    # train_freq=4,
-                    # gradient_clip=0.6,
-                    # exploration_final_eps=0.01,
-                    # target_update_interval=1000,
-                    )
+            model = PPO(
+                "MultiInputPolicy",
+                env,
+                policy_kwargs=policy_kwargs,
+                verbose=1,
+                # seed=42,
+                tensorboard_log=f"./logs/LavaHate5_{grid_size}_tensorboard/",
+                # learning_rate=0.005,
+                ent_coef=0.5,
+                # n_steps=256,
+                # batch_size=32,
+                # clip_range=0.3,
+                # vf_coef=0.7,
+                # gradient_clip=0.6,
+                # linear_schedule=linear_schedule(0.001),   
+            )
         
         model.learn(
-            1e6,
+            5e5,
             tb_log_name=f"{stamp}",
             callback=checkpoint_callback,
         )

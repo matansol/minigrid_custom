@@ -277,3 +277,21 @@ def state_distance(objects1, objects2):
     distance += np.abs(len([group for group in ball_groups1 if group[0] > 1]) - len([group for group in ball_groups2 if group[0] > 1]))# change in number of real groups(more then 1 ball)
     # distance += np.abs(balls_distance(objects1['balls']) - balls_distance(objects2['balls']))* BALLS_FACTOR
     return distance
+
+
+def evaluate_agent(env, agent, num_episodes=100):
+    total_reward = 0
+    total_illegal_moves = 0
+    for i in range(num_episodes):
+        state, _ = env.reset()
+        done = False
+        while not done:
+            last_obs = state
+            agent_pos_before = env.unwrapped.agent_pos
+            action = agent.predict(state)
+            state, reward, done, _ = env.step(action)
+            total_reward += reward
+            if is_illegal_move(action, last_obs, state, agent_pos_before, env.unwrapped.unagent_pos):
+                total_illegal_moves += 1
+            
+    return total_reward/num_episodes, total_illegal_moves//num_episodes

@@ -209,10 +209,10 @@ def main():
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    max_steps = 300
+    max_steps = 50
     colors_rewards = {'red': 2.0, 'green': 2, 'blue': 2}
     grid_size = 8
-    agent_view_size = 5
+    agent_view_size = 7
     if args.train:
         env = CustomEnv(grid_size=grid_size, render_mode='rgb_array', difficult_grid=hard_env, max_steps=max_steps, highlight=True,
                         num_objects=4, lava_cells=3, train_env=True, image_full_view=False, agent_view_size=agent_view_size, colors_rewards=colors_rewards)
@@ -220,10 +220,10 @@ def main():
         env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
         # env = DummyVecEnv([lambda: env])
         # env = VecNormalize(env, norm_obs=False, norm_reward=True)
-
+        save_name = f"R{max_steps}_LavaHate{agent_view_size}_{grid_size}_{stamp}"
         checkpoint_callback = CheckpointCallback(
             save_freq=250e3,
-            save_path=f"./models/LavaHate5_{grid_size}_{stamp}/",
+            save_path=f"./models/{save_name}/",
             name_prefix="iter",
         )
 
@@ -256,10 +256,10 @@ def main():
                 policy_kwargs=policy_kwargs,
                 verbose=1,
                 # seed=42,
-                tensorboard_log=f"./logs/LavaHate5_{grid_size}_tensorboard/",
-                # learning_rate=0.005,
-                ent_coef=0.5,
-                # n_steps=256,
+                tensorboard_log=f"./logs/{save_name}/",
+                learning_rate=0.01,
+                ent_coef=0.3,
+                n_steps=128,
                 # batch_size=32,
                 # clip_range=0.3,
                 # vf_coef=0.7,
@@ -268,7 +268,7 @@ def main():
             )
         
         model.learn(
-            5e5,
+            2e6,
             tb_log_name=f"{stamp}",
             callback=checkpoint_callback,
         )

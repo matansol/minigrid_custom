@@ -115,10 +115,9 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
                          'left': (-1, 0),
                          'right': (1, 0)}
     # arrows_list = ['right', 'right', 'down', 'down', 'down', 'down', 'down', 'right', 'right', 'up', 'right', 'down']
-    min_width = 10
-    min_hieght = 10
-    container_x, container_y = 55, 40 # 300, 160
-    mark_sizes = {'move_vertical': (25, 50), 'move_horizontal': (80, 20), 'turn': (20, 20), 'pickup': (20, 20)}
+
+    mark_x, mark_y = start_point[0] + 80, start_point[1] + 40 # 300, 160
+    mark_sizes = {'move_vertical': (25, 70), 'move_horizontal': (80, 20), 'turn': (20, 20), 'pickup': (20, 20)}
     # mark_sizes = {'move_vertical': (30, 30), 'move_horizontal': (30, 30), 'turn': (30, 30), 'pickup': (30, 30)}
 
     # mark_move_sizes = {'move_vertical': 20, 'move_horizontal': 20}
@@ -126,69 +125,76 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
     fig, ax = plt.subplots()
     ax.imshow(img)
     current_point = start_point
+    print("start_point:", current_point)
     for action_dir, actual_action in move_sequence:
         full_action = action_dir.split(' ')
         action = full_action[0]
         action_loc = {'action': actual_action}
+        # moving action
         if action_dir in move_arrow_sizes.keys(): # a big arrow that represents a move
             ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=move_color, ec=move_color)
             current_point = (current_point[0] + move_arrow_sizes[action_dir][2], current_point[1] + move_arrow_sizes[action_dir][3])
             mark_size = mark_sizes['move_vertical'] if action_dir == 'up' or action_dir == 'down' else mark_sizes['move_horizontal']
-            action_loc['x'] = current_point[0] + container_x
-            action_loc['y'] = current_point[1] + container_y
+            
+            if action_dir == 'up':
+                mark_y -= 25 + all_arrow_size
+            elif action_dir == 'left': # move left
+                mark_x += - 43 - all_arrow_size
+            action_loc['x'] = mark_x #current_point[0] + mark_x
+            action_loc['y'] = mark_y #current_point[1] + mark_y
             action_loc['width'] = mark_size[0]
             action_loc['height'] = mark_size[1]
             # action_loc['width'] = max(move_arrow_sizes[action_name][2], min_width) * inlarge_factor
             # action_loc['height'] = max(move_arrow_sizes[action_name][3], min_hieght) * inlarge_factor
-            if action_dir == 'up':
-                # container_y += action_loc['height'] / inlarge_factor * 0.7
-                container_y -= 25
-            elif action_dir == 'down':
-                container_y += 25
-            elif action_dir == 'right':
-                # container_x += action_loc['width'] / inlarge_factor * 1.1
-                container_x += 41
-            else:
-                container_x += -40
             
+            if action_dir == 'down':
+                mark_y += 25 + all_arrow_size
+            elif action_dir == 'right':
+                mark_x += 43 + all_arrow_size
+            
+        
+        #turning action   
         elif action_dir in turn_arrow_sizes.keys(): # a small arrow that represents a turn or a pickup
             ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=turn_color, ec=turn_color)
-            if action_dir == 'turn up' or action_dir == 'turn down':
-                action_loc['x'] = current_point[0] + container_x + 30
-                action_loc['y'] = current_point[1] + container_y + 10
-                container_x += 25
-                container_y += -10
+            shift_size = 17
+            turnning_mark_shifts = {'turn up': (0, -shift_size), 'turn down': (0, shift_size), 'turn right': (shift_size, 0), 'turn left': (-shift_size, 0)}
+            x_shift, y_shift = turnning_mark_shifts[action_dir]
+            print("turned to:", action_dir)
+            
+            if action_dir == 'turn up':
+                mark_x -= 2
+                # mark_y += -10
+            elif action_dir == 'turn down':
+                mark_x -= 2
+                # mark_y += -5
             elif action_dir == 'turn right':
-                # container_x += -5
-                action_loc['x'] = current_point[0] + container_x - 10
-                action_loc['y'] = current_point[1] + container_y + 10
-                container_y += 10
+                # pass
+                mark_x -= 2
+                # mark_y += -10
             else: # turn left
-                action_loc['x'] = current_point[0] + container_x - 20
-                action_loc['y'] = current_point[1] + container_y + 10
-                container_y += 10
-                container_x += -40
-            # action_loc['x'] = current_point[0] + container_x
-            # action_loc['y'] = current_point[1] + container_y + 10
+                mark_x += 5
+                # mark_y += -10
+
+            action_loc['x'] = mark_x + x_shift
+            action_loc['y'] = mark_y + y_shift
             action_loc['width'] = mark_sizes['turn'][0]
             action_loc['height'] = mark_sizes['turn'][1]
-            # action_loc['width'] = max(turn_arrow_sizes[action_name][0], min_width) * inlarge_factor
-            # action_loc['height'] = max(turn_arrow_sizes[action_name][1], min_hieght) * inlarge_factor
+
             
-            
+        # pickup action
         elif action == 'pickup':        
             pickup_position = pickup_direction[full_action[1]]
-            print('pickup_position:', pickup_position)
-            print('action:', full_action)
+            # print('pickup_position:', pickup_position)
+            # print('action:', full_action)
             ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=pickup_color)
-            action_loc['x'] = current_point[0] + container_x + 30 * pickup_position[0] + 10
-            action_loc['y'] = current_point[1] + container_y + 10 * pickup_position[1]
+            action_loc['x'] = mark_x + 25 * pickup_position[0]
+            action_loc['y'] = mark_y + 15 * pickup_position[1]
             action_loc['width'] = mark_sizes['pickup'][0]
             action_loc['height'] = mark_sizes['pickup'][1]
             # action_loc['width'] = min_width * inlarge_factor
             # action_loc['height'] = min_hieght * inlarge_factor
         actions_with_location.append(action_loc)
-        print(current_point, full_action)
+        # print(current_point, full_action)
     
     ax.axis('off')
     # plt.show()

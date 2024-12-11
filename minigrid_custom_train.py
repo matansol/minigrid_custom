@@ -209,18 +209,18 @@ def main():
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    max_steps = 50
-    colors_rewards = {'red': 2.0, 'green': 2, 'blue': 2}
+    max_steps = 200
+    colors_rewards = {'red': -2.0, 'green': 2, 'blue': 2}
     grid_size = 8
     agent_view_size = 7
     if args.train:
         env = CustomEnv(grid_size=grid_size, render_mode='rgb_array', difficult_grid=hard_env, max_steps=max_steps, highlight=True,
-                        num_objects=4, lava_cells=3, train_env=True, image_full_view=False, agent_view_size=agent_view_size, colors_rewards=colors_rewards)
+                        num_objects=4, lava_cells=4, train_env=True, image_full_view=False, agent_view_size=agent_view_size, colors_rewards=colors_rewards)
         
         env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
         # env = DummyVecEnv([lambda: env])
         # env = VecNormalize(env, norm_obs=False, norm_reward=True)
-        save_name = f"R{max_steps}_LavaHate{agent_view_size}_{grid_size}_{stamp}"
+        save_name = f"R{max_steps}N_LavaHate{agent_view_size}_{grid_size}_{stamp}"
         checkpoint_callback = CheckpointCallback(
             save_freq=250e3,
             save_path=f"./models/{save_name}/",
@@ -268,7 +268,7 @@ def main():
             )
         
         model.learn(
-            2e6,
+            1e6,
             tb_log_name=f"{stamp}",
             callback=checkpoint_callback,
         )

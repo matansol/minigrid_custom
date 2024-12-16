@@ -60,6 +60,7 @@ class CustomEnv(MiniGridEnv):
         agent_pov: bool = False,
         colors_rewards: dict = basic_colors_rewards, # all colors have the same reward = 2
         partial_obs: bool = False,
+        step_count_observation: bool = False,
         # lava_reward: int = 0,
         **kwargs,
     ):
@@ -70,6 +71,7 @@ class CustomEnv(MiniGridEnv):
         self.image_full_view = image_full_view
         self.partial_obs = partial_obs
         self.unique_env = unique_env
+        self.step_count_observation = step_count_observation
         
         if not highlight:
             self.highlight = not image_full_view
@@ -138,9 +140,13 @@ class CustomEnv(MiniGridEnv):
             {
                 "image": image_observation_space,
                 "direction": spaces.Discrete(4),
+                # "step_count": spaces.Box(low=0, high=max_steps+1, shape=(1,), dtype="int"),
                 # "mission": None,
             }
         )
+        if self.step_count_observation:
+            print("add step count")
+            self.observation_space["step_count"] = spaces.Box(low=0, high=max_steps+1, shape=(1,), dtype="int")
 
         # Range of possible rewards
         self.reward_range = (0, 1)
@@ -189,6 +195,9 @@ class CustomEnv(MiniGridEnv):
             state['image'] = self.grid.encode()
             self.put_agent_in_obs(state)
         self.current_state['image'] = state['image']
+        if self.step_count_observation:
+            self.current_state['step_count'] = self.step_count
+            state['step_count'] = self.step_count
         return state, info
     
     @staticmethod
@@ -337,7 +346,10 @@ class CustomEnv(MiniGridEnv):
     
     def step(self, action):
         # print(f"step {self.step_count}, action={action}")
+        self.step_count += 1
         obs, reward, terminated, truncated, info = super().step(action)
+        if self.step_count_observation:
+            obs['step_count'] = self.step_count
         if self.image_full_view:
             obs['image'] = self.grid.encode() # get the full grid image
             self.put_agent_in_obs(obs)
@@ -371,7 +383,7 @@ class CustomEnv(MiniGridEnv):
         # if self.train_env and terminated: # reached the goal
             # reward += 10
         
-        # got to the left bottom corner
+        # got to the right bottom corner
         if self.agent_pos == (self.grid.width - 2, self.grid.height - 2):
             reward += 5
         

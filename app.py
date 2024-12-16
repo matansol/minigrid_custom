@@ -239,8 +239,14 @@ class ManualControl:
             count += 1
             return self.agents_different_routs(count)
         print(f"agents_different_routs {count} times")
-        path_img_buffer, _ = utils.plot_move_sequence(img, move_sequence, move_color='c')  # Generate the path image
-        prev_path_img_buffer, _ = utils.plot_move_sequence(img, prev_move_sequence)  # Generate the path image
+        converge_action_index = -1
+        for i in range(len(move_sequence)):
+            if move_sequence[i] != prev_move_sequence[i]:
+                converge_action_index = i
+                break
+        print(f"converge_action_index: {converge_action_index}")
+        path_img_buffer, _ = utils.plot_move_sequence(img, move_sequence, move_color='c', converge_action_location=converge_action_index)  # Generate the path image
+        prev_path_img_buffer, _ = utils.plot_move_sequence(img, prev_move_sequence, converge_action_location=converge_action_index)  # Generate the path image
         
         return {'prev_path_image': base64.b64encode(prev_path_img_buffer.getvalue()).decode('ascii'), 'path_image': base64.b64encode(path_img_buffer.getvalue()).decode('ascii')}
         

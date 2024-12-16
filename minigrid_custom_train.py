@@ -14,6 +14,8 @@ from stable_baselines3 import PPO, DQN
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from gymnasium import spaces
+
 
 import random
 
@@ -37,13 +39,17 @@ class ObjObsWrapper(ObservationWrapper):
         super().__init__(env)
 
         size = env.observation_space['image'].shape[0]
-        print(size)
+        print("observation size:", size)
         self.observation_space = Dict(
             {
                 "image": Box(low=0, high=255, shape=(size, size, 3), dtype=np.uint8),
+                # "step_count": Box(low=0, high=env.max_steps+1, shape=(1,), dtype=np.float32),
                 #"mission": Box(low=0.0, high=1.0, shape=(9,), dtype=np.float32),
             }
         )
+        # if env.step_count_observation:
+        #     print("add the step count variable to the observation")
+        #     self.observation_space['step_count'] = spaces.Box(low=0, high=env.max_steps+1, shape=(1,), dtype="int")
 
         # self.color_one_hot_dict = {
         #     "red": np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
@@ -67,11 +73,16 @@ class ObjObsWrapper(ObservationWrapper):
         #         self.obj_one_hot_dict["ball"],
         #     ]
         # )
-
-        wrapped_obs = {
-            "image": obs["image"],
-            # "mission": mission_array,
-        }
+        if self.env.step_count_observation:
+            wrapped_obs = {
+                "image": obs["image"],
+                # "mission": mission_array,
+                "step_count": np.array([obs["step_count"]]),
+            }
+        else:
+            wrapped_obs = {
+                "image": obs["image"],
+            }
 
         return wrapped_obs
 
@@ -86,6 +97,7 @@ class ObjEnvExtractor(BaseFeaturesExtractor):
         extractors = {}
         total_concat_size = 0
 
+        print("Observation space:", observation_space)
         # We need to know size of the output of this extractor,
         # so go over all the spaces and compute output feature sizes
         for key, subspace in observation_space.spaces.items():
@@ -115,6 +127,13 @@ class ObjEnvExtractor(BaseFeaturesExtractor):
             elif key == "mission":
                 extractors["mission"] = nn.Linear(subspace.shape[0], 32)
                 total_concat_size += 32
+            elif key == "step_count": 
+                # Add a linear layer to process the scalar `step_count`
+                extractors["step_count"] = nn.Sequential(
+                    nn.Linear(subspace.shape[0], 16),  # Convert 1D input to 16 features
+                    nn.ReLU(),
+                    )
+                total_concat_size += 16  # Update the total feature size
 
         self.extractors = nn.ModuleDict(extractors)
 
@@ -209,8 +228,8 @@ def main():
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    max_steps = 200
-    colors_rewards = {'red': -2.0, 'green': 2, 'blue': 2}
+    max_steps = 50
+    colors_rewards = {'red': 2.0, 'green': 2, 'blue': 2}
     grid_size = 8
     agent_view_size = 7
     if args.train:
@@ -220,7 +239,7 @@ def main():
         env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
         # env = DummyVecEnv([lambda: env])
         # env = VecNormalize(env, norm_obs=False, norm_reward=True)
-        save_name = f"R{max_steps}N_LavaHate{agent_view_size}_{grid_size}_{stamp}"
+        save_name = f"steps{max_steps}_LavaHate{agent_view_size}_{grid_size}_{stamp}"
         checkpoint_callback = CheckpointCallback(
             save_freq=250e3,
             save_path=f"./models/{save_name}/",
@@ -268,7 +287,7 @@ def main():
             )
         
         model.learn(
-            1e6,
+            1e5,
             tb_log_name=f"{stamp}",
             callback=checkpoint_callback,
         )

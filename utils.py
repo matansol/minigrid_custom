@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import io
 from PIL import Image
 import matplotlib
+from matplotlib.patches import Circle, Rectangle
 import copy
 
 # from IPython.display import HTML
@@ -87,7 +88,6 @@ def capture_agent_path(copy_env, agent):
             move_sequence.append(('pickup ' +  agent_dir, 'pickup'))
     return move_sequence, illigal_moves, total_reward, agent_actions
 
-
 def turn_agent(agent_dir, turn_dir):
     turnning_dict = {("up", "left"): "left", ("up", "right"): "right", 
                      ("down", "left"): "right", ("down", "right"): "left",
@@ -95,7 +95,7 @@ def turn_agent(agent_dir, turn_dir):
                      ("right", "left"): "up", ("right", "right"): "down"}
     return turnning_dict[(agent_dir, turn_dir)]
 
-def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', pickup_color='purple'):    
+def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', pickup_color='purple', converge_action_location = -1):    
     start_point = (50, 50)
     arrow_size = 20
     arrow_head_size = 12
@@ -126,7 +126,12 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
     ax.imshow(img)
     current_point = start_point
     print("start_point:", current_point)
+    i= 0
     for action_dir, actual_action in move_sequence:
+        if i == converge_action_location:
+            # add a round circle:
+            ax.add_patch(Rectangle((current_point[0] - 10, current_point[1]- 10), 30, 30, color='b', alpha=0.4))
+        i += 1
         full_action = action_dir.split(' ')
         action = full_action[0]
         action_loc = {'action': actual_action}
@@ -159,7 +164,7 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
             shift_size = 17
             turnning_mark_shifts = {'turn up': (0, -shift_size), 'turn down': (0, shift_size), 'turn right': (shift_size, 0), 'turn left': (-shift_size, 0)}
             x_shift, y_shift = turnning_mark_shifts[action_dir]
-            print("turned to:", action_dir)
+            # print("turned to:", action_dir)
             
             if action_dir == 'turn up':
                 mark_x -= 2
@@ -285,7 +290,9 @@ def state_distance(objects1, objects2):
     return distance
 
 
-def evaluate_agent(env, agent, num_episodes=100):
+# run the agent and evaluate his prefermances
+# return the average reward and the average number of illegal moves
+def evaluate_agent(env, agent, num_episodes=100) -> (float, float):
     total_reward = 0
     total_illegal_moves = 0
     for i in range(num_episodes):
@@ -294,10 +301,10 @@ def evaluate_agent(env, agent, num_episodes=100):
         while not done:
             last_obs = state
             agent_pos_before = env.unwrapped.agent_pos
-            action = agent.predict(state)
-            state, reward, done, _ = env.step(action)
+            action, _ = agent.predict(state)
+            state, reward, done, _, _ = env.step(action)
             total_reward += reward
-            if is_illegal_move(action, last_obs, state, agent_pos_before, env.unwrapped.unagent_pos):
+            if is_illegal_move(action, last_obs, state, agent_pos_before, env.unwrapped.agent_pos):
                 total_illegal_moves += 1
             
     return total_reward/num_episodes, total_illegal_moves//num_episodes

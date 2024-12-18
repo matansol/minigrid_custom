@@ -22,6 +22,7 @@ import time
 import os
 import matplotlib.pyplot as plt
 import copy
+import random
 
 
 app = Flask(__name__)
@@ -172,13 +173,13 @@ class ManualControl:
     
     # reset the environment and return the observation image. An option to update the agent
     def get_initial_observation(self, update_agent=False):
-        print("get_initial_observation")
+        # print("get_initial_observation")
         if update_agent:
             self.update_agent()
         self.current_obs = self.reset()
-        print(f"partial obs: {self.env.unwrapped.partial_obs}")
+        # print(f"partial obs: {self.env.unwrapped.partial_obs}")
         self.episode_start = self.env.get_full_obs() # for the overview image
-        print(f"partial obs: {self.env.unwrapped.partial_obs}")
+        # print(f"partial obs: {self.env.unwrapped.partial_obs}")
         self.agent_last_pos = self.env.unwrapped.agent_pos
         self.episode_actions = []
         img = self.env.render()
@@ -187,7 +188,7 @@ class ManualControl:
         image_base64 = image_to_base64(img)
         self.episode_num += 1
         print(f"Episode {self.episode_num} started ________________________________________________________________________________________")
-        return {'image': image_base64, 'last_score': self.last_score}
+        return {'image': image_base64, 'last_score': self.last_score, 'action': None, 'reward': 0, 'done': False, 'score': 0, 'episode': self.episode_num, 'agent_action': False, 'agent_index': self.agent_index}
 
     def agent_action(self):
         action, _ = self.ppo_agent.predict(self.current_obs)
@@ -261,14 +262,15 @@ class ManualControl:
         path_img_base64 = base64.b64encode(path_img_buffer.getvalue()).decode('ascii')
         
 
-        print(f'action locations: {actions_locations}')
         print(f'end of episode, invalid moves: {self.invalid_moves}')
         return {'path_image': path_img_base64, 'actions': actions_locations, 'invalid_moves': self.invalid_moves, 'score': self.last_score}
         
         
 # initialize the environment and the manual control object
 players_sessions = {}
-env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True)
+unique_env_id = 0
+unique_env_id = 3
+env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True, unique_env=unique_env_id)
 env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
 
 # env = CustomEnv(grid_size=8, difficult_grid=True, max_steps=50, num_objects=3, lava_cells=2, render_mode="rgb_array")
@@ -300,6 +302,7 @@ model_paths = {
 manual_control = ManualControl(env, model_paths)
 # manual_control.reset()
 
+action_dir = {'ArrowLeft': 'Turn left', 'ArrowRight': 'Turn right', 'ArrowUp': 'Move forward', 'Space': 'Toggle', 'PageUp': 'Pickup', 'PageDown': 'Drop', '1': 'Pickup', '2': 'Drop'}
 
 # functions that control the flow of the game
 @app.route('/')
@@ -309,8 +312,9 @@ def index():
 @socketio.on('send_action')
 def handle_message(action):
     try:
-        session = players_sessions.get(request.sid)
+        # session = players_sessions.get(request.sid)
         response = manual_control.handle_action(action)
+        response['action'] = action_dir[action]
     except Exception as e:
         app.logger.error('Failed to handle action: %s', e)
         return
@@ -338,11 +342,6 @@ def handle_message(action):
     #     db.session.remove()
 
     finish_turn(response)
-    # if response['done']:
-    #     response = manual_control.get_initial_observation(update_agent=True)
-    #     emit('game_update', response)
-    # else:
-    #     emit('game_update', response, broadcast=True)
         
 
 # Handle 'next_episode' event to start a new episode after user views the path
@@ -355,6 +354,7 @@ def next_episode():
 @socketio.on('ppo_action')
 def ppo_action():
     action, response = manual_control.agent_action()
+    # response['action'] = action
     session = players_sessions.get(request.sid)
     try:
         db.session.begin(nested=True)
@@ -380,18 +380,19 @@ def play_entire_episode():
     try:
         while True:
             action, response = manual_control.agent_action()
-            session = players_sessions.get(request.sid)
-            db.session.begin(nested=True)
-            session.record_action(
-                action=action,
-                score=response['score'],
-                reward=response['reward'],
-                done=response['done'],
-                agent_action=response['agent_action'],
-                episode=response['episode'],
-                agent_index=response['agent_index']
-            )
-            db.session.commit()
+            # response['action'] = action
+            # session = players_sessions.get(request.sid)
+            # db.session.begin(nested=True)
+            # session.record_action(
+            #     action=action,
+            #     score=response['score'],
+            #     reward=response['reward'],
+            #     done=response['done'],
+            #     agent_action=response['agent_action'],
+            #     episode=response['episode'],
+            #     agent_index=response['agent_index']
+            # )
+            # db.session.commit()
             time.sleep(0.3)
             finish_turn(response)
             if response['done']:

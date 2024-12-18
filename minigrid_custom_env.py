@@ -270,7 +270,13 @@ class CustomEnv(MiniGridEnv):
             self.initial_objects.append((2, height-2, self.color_rewards['green']))
             self.put_obj(Ball('green'), 3, height-2)
             self.initial_objects.append((3, height-2, self.color_rewards['green']))
-
+        if self.unique_env == 3:
+            self.put_obj(Lava(), 1, 2)
+            self.put_obj(Lava(), 2, 2)
+            self.put_obj(Lava(), 3, 2)
+            self.put_obj(Lava(), 4, 2)
+            self.put_obj(Ball('blue'), 1, 3)
+            self.put_obj(Ball('green'), 1, 4)
 
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
@@ -391,7 +397,7 @@ class CustomEnv(MiniGridEnv):
             terminated = True
             print(f"reached max steps={self.max_steps}")
             # reward -= 10
-        reward -= 0.1
+        reward -= self.step_count/100
         # if terminated:
         #     print(f"terminated, reward={reward}")
         return obs, reward, terminated, truncated, info

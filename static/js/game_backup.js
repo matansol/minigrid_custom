@@ -5,24 +5,20 @@ document.addEventListener('DOMContentLoaded', (event) => {
     
     const startButton = document.getElementById('start-button');
     const ppoButton = document.getElementById('ppo-button');
-    const agentPlayAllButton = document.getElementById('agent_play_all'); 
+    const playEpisodeButton = document.getElementById('play-episode-button'); 
     const nextEpisodeButton = document.getElementById('next-episode-button');
     const anotherExampleButton = document.getElementById('another-example-button');
     const compareAgentsButton = document.getElementById('compare-agents-button');
     const finishGameButton = document.getElementById('finish-game-button');
-    const gotoPhase2Button = document.getElementById('goto-phase2-button');
-    gotoPhase2Button.style.display = 'none';
-    const gameImagePh1 = document.getElementById('game-image-ph1');
-    const gameImagePh2 = document.getElementById('game-image-ph2');
+    const gameImage = document.getElementById('game-image');
     const playerNameInput = document.getElementById('player-name');
     const actionList = document.getElementById('actions');
     const scoreList = document.getElementById('score-list');
     const highlight = document.getElementById('highlight');
     const dropdown = document.getElementById('dropdown'); // Dropdown menu for actions
-    const placeholderIconPh = document.querySelector('#game-image-container .placeholder-icon');
-
+    const placeholderIcon = document.querySelector('.placeholder-icon');
     let selectedAction = null;
-    let phase1_counter = 1;
+
 
     // Page navigation
     function showPage(pageId) {
@@ -40,18 +36,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
 
-    // Function to update the visibility of the gotoPhase2Button
-    function updateGotoPhase2ButtonVisibility() {
-        if (phase1_counter > 1) {
-            gotoPhase2Button.style.display = 'block';
-        } else {
-            gotoPhase2Button.style.display = 'none';
-        }
-    }
-
-    // Initial call to set the button visibility
-    updateGotoPhase2ButtonVisibility();
-
     // Welcome page: start the game
     startButton.addEventListener('click', () => {
         const playerName = playerNameInput.value;
@@ -65,88 +49,51 @@ document.addEventListener('DOMContentLoaded', (event) => {
             console.log('Server acknowledged start_game:', response);
         });
 
-        // Transition to Phase1 game page
-        showPage('ph1-game-page');
+        // Transition to game page
+        showPage('game-page');
     });
 
 
-    
-    if (gotoPhase2Button) {
-        gotoPhase2Button.addEventListener('click', () => {
-            console.log('Going to phase 2');
-            socket.emit('start_game', { playerName: playerNameInput.value });
-            showPage('ph2-game-page');
-        });
-    }
 
-    // phase2 Game page: handle agent actions
-    // if (ppoButton) {
-    //     ppoButton.addEventListener('click', () => {
-    //         socket.emit('ppo_action');
-    //     });
-    // }
+    // Game page: handle agent actions
+    ppoButton.addEventListener('click', () => {
+        socket.emit('ppo_action');
+    });
 
-    if (agentPlayAllButton) {
-        agentPlayAllButton.addEventListener('click', () => {
-            socket.emit('play_entire_episode');
-        });
-    }
-   
+    playEpisodeButton.addEventListener('click', () => {
+        socket.emit('play_entire_episode');
+    });
 
-    // document.addEventListener('keydown', async function(event) {
-    //     const key = event.key;
-    //     const validKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "Space", "PageUp", "PageDown", "1", "2"];
-    //     if (validKeys.includes(key)) {
-    //         // console.log(`Sending action: ${key}`);
+    document.addEventListener('keydown', async function(event) {
+        const key = event.key;
+        const validKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "Space", "PageUp", "PageDown", "1", "2"];
+        if (validKeys.includes(key)) {
+            // console.log(`Sending action: ${key}`);
 
-    //         // Emit 'send_action' with acknowledgment and handle async response
-    //         try {
-    //             const response = await new Promise((resolve, reject) => {
-    //                 socket.emit('send_action', key, (ack) => {
-    //                     if (ack && ack.status === 'success') {  // Safely check if ack is defined and has 'status'
-    //                         resolve(ack);
-    //                     } else {
-    //                         reject('Action processing failed');
-    //                     }
-    //                 });
-    //             });
-    //             // console.log('Action processed:', response);
-    //             document.getElementById('action').innerText = key; // Update action display
-    //         } catch (error) {
-    //             console.error('Error processing action:', error);
-    //         }
-    //     }
-    // });
-    document.addEventListener('keydown', async function (event) {
-        const activePage = document.querySelector('.page.active'); // Identify the active page
-        if (activePage && activePage.id === 'ph1-game-page') {  // Only allow keys on 'ph1-game-page'
-            const key = event.key;
-            const validKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "Space", "PageUp", "PageDown", "1", "2"];
-            if (validKeys.includes(key)) {
-                try {
-                    const response = await new Promise((resolve, reject) => {
-                        socket.emit('send_action', key, (ack) => {
-                            if (ack && ack.status === 'success') {
-                                resolve(ack);
-                            } else {
-                                reject('Action processing failed');
-                            }
-                        });
+            // Emit 'send_action' with acknowledgment and handle async response
+            try {
+                const response = await new Promise((resolve, reject) => {
+                    socket.emit('send_action', key, (ack) => {
+                        if (ack && ack.status === 'success') {  // Safely check if ack is defined and has 'status'
+                            resolve(ack);
+                        } else {
+                            reject('Action processing failed');
+                        }
                     });
-                    document.getElementById('action').innerText = key; // Update action display
-                } catch (error) {
-                    console.error('Error processing action:', error);
-                }
+                });
+                // console.log('Action processed:', response);
+                document.getElementById('action').innerText = key; // Update action display
+            } catch (error) {
+                console.error('Error processing action:', error);
             }
         }
-        // Do nothing on 'ph2-game-page' (keys are ignored)
     });
 
     // Overview page: show actions and next episode button
     nextEpisodeButton.addEventListener('click', () => {
         console.log('Next Episode button clicked');
         socket.emit('start_game', { playerName: playerNameInput.value });
-        showPage('ph2-game-page');
+        showPage('game-page');
     });
 
     const nextEpisodeButtonCompare = document.getElementById('next-episode-compare-button');
@@ -154,10 +101,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
         nextEpisodeButtonCompare.addEventListener('click', () => {
             console.log('Next Episode button clicked (Compare Agent Page)');
             socket.emit('start_game', { playerName: playerNameInput.value });
-            showPage('ph2-game-page');
+            showPage('game-page');
         });
     }
-// TODO: check this button
+
     anotherExampleButton.addEventListener('click', () => {
         socket.emit('compare_agents');
         showPage('compare-agents-page');
@@ -176,26 +123,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     // When the game updates (new action, score, etc.)
     socket.on('game_update', (data) => {
-        const activePage = document.querySelector('.page.active'); // Identify the active page
-        console.log('Game update:', activePage.id, data);
-        if (activePage.id === 'ph1-game-page') {
-            gameImagePh1.src = 'data:image/png;base64,' + data.image;
-            placeholderIconPh.style.display = 'none';
-        } else if (activePage.id === 'ph2-game-page') {
-            gameImagePh2.src = 'data:image/png;base64,' + data.image;
-            console.log('Phase 2 game data:', data.reward, data.score, data.last_score);
-        }
-        // ducument.getElementById('action').innerText = data.action;
-        console.log('action:', data.action);
-        if (data.action) {
-            document.getElementById('action').innerText = data.action;
-        }
+        gameImage.src = 'data:image/png;base64,' + data.image;
+        placeholderIcon.style.display = 'none';
         document.getElementById('reward').innerText = data.reward;
         document.getElementById('score').innerText = data.score;
         document.getElementById('last_score').innerText = data.last_score;
         
         // If the game is finished, move to the overview page
-        if (data.done && activePage.id === 'ph2-game-page') {
+        if (data.done) {
             showPage('overview-page');
             actionList.innerHTML = '';
             data.actions.forEach(action => {
@@ -222,54 +157,43 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     socket.on('episode_finished', (data) => {
         console.log('Episode finished:', data);
-        const activePage = document.querySelector('.page.active'); // Identify the active page
-        if (activePage && activePage.id === 'ph1-game-page') {  // phase 1 - go to 'ph1-game-page' again
-            socket.emit('start_game', { playerName: playerNameInput.value });
-            phase1_counter += 1
-            if (phase1_counter > 1) {
-                gotoPhase2Button.style.display = 'block';
-            }
-            showPage('ph1-game-page');
+    
+        // Update the image of the path taken
+        const overviewGameImage = document.getElementById('overview-game-image');
+        if (overviewGameImage) {
+            overviewGameImage.src = 'data:image/png;base64,' + data.path_image;
+        } else {
+            console.error('Overview game image element not found.');
         }
-        else { // phase 2 
+    
+        // Update the list of actions
+        const actionList = document.getElementById('actions');
+        actionList.innerHTML = ''; // Clear previous actions
+        const maxActions = 25;
+        const actionsToShow = data.actions.slice(0, maxActions);
+        actionsToShow.forEach((action, index) => {
+            const li = document.createElement('li');
+            li.textContent = action.action;
+            li.setAttribute('data-index', index);
+            actionList.appendChild(li);
+        });
 
-            // Update the image of the path taken
-            const overviewGameImage = document.getElementById('overview-game-image');
-            if (overviewGameImage) {
-                overviewGameImage.src = 'data:image/png;base64,' + data.path_image;
-            } else {
-                console.error('Overview game image element not found.');
-            }
-        
-            // Update the list of actions
-            const actionList = document.getElementById('actions');
-            actionList.innerHTML = ''; // Clear previous actions
-            const maxActions = 35;
-            const actionsToShow = data.actions.slice(0, maxActions);
-            actionsToShow.forEach((action, index) => {
-                const li = document.createElement('li');
-                li.textContent = action.action;
-                li.setAttribute('data-index', index);
-                actionList.appendChild(li);
-            });
-
-            positions = data.actions.map(action => ({
-                x: action.x,
-                y: action.y,
-                width: action.width,
-                height: action.height
-            }));
-            // const containerRect = overview-image-container.getBoundingClientRect();
-            // console.log('Container dimensions:', containerRect.width, containerRect.height);
-            // console.log('invalid Actions:', data.invalid_moves);
-            // console.log('score:', data.score);
-            console.log('positions:', positions);
-            document.getElementById('invalid-actions').textContent = data.invalid_moves;
-            document.getElementById('episode-score').textContent = data.score;
-        
-            // Show the correct page
-            showPage('overview-page');
-        }
+        positions = data.actions.map(action => ({
+            x: action.x,
+            y: action.y,
+            width: action.width,
+            height: action.height
+        }));
+        // const containerRect = overview-image-container.getBoundingClientRect();
+        // console.log('Container dimensions:', containerRect.width, containerRect.height);
+        // console.log('invalid Actions:', data.invalid_moves);
+        // console.log('score:', data.score);
+        console.log('positions:', positions);
+        document.getElementById('invalid-actions').textContent = data.invalid_moves;
+        document.getElementById('episode-score').textContent = data.score;
+    
+        // Show the correct page
+        showPage('overview-page');
     });
 
     socket.on('finish_game', function(data) {
@@ -325,6 +249,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     });
 
+    // document.getElementById('actions').addEventListener('mouseout', (event) => {
+    //     // if (event.target.tagName === 'LI') {
+    //     //     highlight.style.display = 'none';
+    //     // }
+    // });
     document.getElementById('actions').addEventListener('click', (event) => {
         if (event.target.tagName === 'LI') {
             const rect = event.target.getBoundingClientRect();

@@ -19,7 +19,7 @@ from gym_minigrid.wrappers import *
 from minigrid_custom_env import *
 from minigrid_custom_train import *
 
-def load_agent(env, model_path):
+def load_agent(env, model_path) -> PPO:
     # policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
     custom_objects = {
         "policy_kwargs": {"features_extractor_class": ObjEnvExtractor},  # Example kernel size
@@ -40,7 +40,7 @@ def is_illegal_move(action, last_obs, obs, agent_pos_befor, agent_pos):
     return False
 
 # resert the environment and run the agent on that environment to find his path
-def capture_agent_path(copy_env, agent):
+def capture_agent_path(copy_env, agent) -> (list, int, int, list):
     illigal_moves = 0
     last_obs = copy_env.unwrapped.current_state
     
@@ -71,7 +71,7 @@ def capture_agent_path(copy_env, agent):
         # plt.show()
         
         
-    number_to_action = {0: 'turn right', 1: 'turn left', 3: 'pickup'}
+    # number_to_action = {0: 'turn right', 1: 'turn left', 3: 'pickup'}
     small_arrow = 'turn ' # small arrow is used to indicate the agent turning left or right
     agent_dir = "right"
     move_sequence = []
@@ -88,14 +88,14 @@ def capture_agent_path(copy_env, agent):
             move_sequence.append(('pickup ' +  agent_dir, 'pickup'))
     return move_sequence, illigal_moves, total_reward, agent_actions
 
-def turn_agent(agent_dir, turn_dir):
+def turn_agent(agent_dir, turn_dir) -> str:
     turnning_dict = {("up", "left"): "left", ("up", "right"): "right", 
                      ("down", "left"): "right", ("down", "right"): "left",
                      ("left", "left"): "down", ("left", "right"): "up",
                      ("right", "left"): "up", ("right", "right"): "down"}
     return turnning_dict[(agent_dir, turn_dir)]
 
-def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', pickup_color='purple', converge_action_location = -1):    
+def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
     start_point = (50, 50)
     arrow_size = 20
     arrow_head_size = 12
@@ -129,8 +129,8 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
     i= 0
     for action_dir, actual_action in move_sequence:
         if i == converge_action_location:
-            # add a round circle:
-            ax.add_patch(Rectangle((current_point[0] - 10, current_point[1]- 10), 30, 30, color='b', alpha=0.4))
+            # add a rectangle to mark the converging point:
+            ax.add_patch(Rectangle((current_point[0] - 10, current_point[1]- 10), 20, 20, color='b', alpha=0.4))
         i += 1
         full_action = action_dir.split(' ')
         action = full_action[0]
@@ -173,7 +173,6 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
                 mark_x -= 2
                 # mark_y += -5
             elif action_dir == 'turn right':
-                # pass
                 mark_x -= 2
                 # mark_y += -10
             else: # turn left
@@ -196,8 +195,6 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
             action_loc['y'] = mark_y + 15 * pickup_position[1]
             action_loc['width'] = mark_sizes['pickup'][0]
             action_loc['height'] = mark_sizes['pickup'][1]
-            # action_loc['width'] = min_width * inlarge_factor
-            # action_loc['height'] = min_hieght * inlarge_factor
         actions_with_location.append(action_loc)
         # print(current_point, full_action)
     

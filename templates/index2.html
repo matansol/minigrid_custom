@@ -58,16 +58,19 @@
             background-color: #f8f8f8;
         }
         #game-content {
-            display: flex;
+            display: flex; /* Keep items side-by-side */
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            position: relative; /* Set relative position for absolute positioning inside */
+            width: 100%;
         }
+        
         #game-image-container {
             width: 640px;
             height: 480px;
             border: 1px solid black;
         }
-        #game-image {
+        #game-image-ph1, #game-image-ph2 {
             width: 100%;
             height: 100%;
         }
@@ -104,6 +107,15 @@
             font-size: 16px;
             cursor: pointer;
             margin-top: 20px;
+        }
+        #goto-phase2-button {
+            position: absolute; /* Position button relative to the container */
+            bottom: 10px; /* Align to the bottom */
+            right: 10px; /* Align to the right */
+            margin: 0; /* Remove any extra margins */
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
         }
         #loading-indicator {
             display: none; /* Initially hidden */
@@ -165,21 +177,53 @@
         <button id="start-button">Start</button>
     </div>
 
-    <!-- Game Page -->
-    <div id="game-page" class="page">
+    <!-- Phase1 - Know The Game Page -->
+    <div id="ph1-game-page" class="page">
         <div id="game-container">
-            <!-- Button container at the top -->
-            <div id="button-container">
-                <button id="ppo-button">Agent Action</button>
-                <button id="play-episode-button">Play Entire Episode</button>
-            </div>
-            <div id="loading-indicator">Loading...</div> <!-- Loading indicator -->
+       <!--      <div id="loading-indicator-ph1">Loading...</div> Loading indicator -->
     
             <!-- Game content with image and instructions -->
             <div id="game-content">
                 <div id="game-image-container">
                     <i class="fas fa-spinner fa-spin placeholder-icon"></i> <!-- Placeholder icon -->
-                    <img id="game-image" src="" alt="Game Image">
+                    <img id="game-image-ph1" src="" alt="Game Image">
+                </div>
+                <div id="key-instructions">
+                    <h3>Key Instructions:</h3>
+                    <p>&uarr; Move Forwards</p>
+                    <p>&larr; Turn Left</p>
+                    <p>&rarr; Turn Right</p>
+                    <p>'1' - Pickup</p>
+                </div>
+                <div id="button-container">
+                    <button id="goto-phase2-button">End Phase1</button>
+                </div>
+            </div>
+    
+            <!-- Game information -->
+            <div id="info-container">
+                <p>Action: <span id="action"></span></p>
+                <p>Reward: <span id="reward"></span></p>
+                <p>Score: <span id="score"></span></p>
+                <p>Last episode score: <span id="last_score"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ph2 agent play Page -->
+    <div id="ph2-game-page" class="page">
+        <div id="game-container">
+            <!-- Button container at the top -->
+            <div id="button-container">
+<!--               <button id="ppo-button">Agent Action</button>-->
+                <button id="agent_play_all">Agent Play</button>
+            </div>
+    
+            <!-- Game content with image and instructions -->
+            <div id="game-content">
+                <div id="game-image-container">
+ <!--                    <i class="fas fa-spinner fa-spin placeholder-icon"></i> Placeholder icon -->
+                    <img id="game-image-ph2" src="" alt="Game Image">
                 </div>
                 <div id="key-instructions">
                     <h3>Key Instructions:</h3>

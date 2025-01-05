@@ -48,6 +48,7 @@ class CustomEnv(MiniGridEnv):
         train_env: bool = False,
         unique_env: int = 0,
         lava_cells: int = 2,
+        step_cost: int = 0.1,
         image_full_view: bool = False,
         width: int | None = None,
         height: int | None = None,
@@ -72,6 +73,7 @@ class CustomEnv(MiniGridEnv):
         self.partial_obs = partial_obs
         self.unique_env = unique_env
         self.step_count_observation = step_count_observation
+        self.step_cost = step_cost
         
         if not highlight:
             self.highlight = not image_full_view
@@ -258,9 +260,9 @@ class CustomEnv(MiniGridEnv):
             self.put_obj(Lava(), width-3, 2)
             self.put_obj(Lava(), width-3, 1)
             self.put_obj(Lava(), width-2, 2)
-
             self.put_obj(Ball('blue'), width-4, 3)
             self.initial_objects.append((width-4, 3, self.color_rewards['blue']))
+
         if self.unique_env == 2:
             self.put_obj(Ball('blue'), width-2, 1)
             self.initial_objects.append((width-2, 1, self.color_rewards['blue']))
@@ -270,13 +272,27 @@ class CustomEnv(MiniGridEnv):
             self.initial_objects.append((2, height-2, self.color_rewards['green']))
             self.put_obj(Ball('green'), 3, height-2)
             self.initial_objects.append((3, height-2, self.color_rewards['green']))
+
         if self.unique_env == 3:
             self.put_obj(Lava(), 1, 2)
             self.put_obj(Lava(), 2, 2)
             self.put_obj(Lava(), 3, 2)
             self.put_obj(Lava(), 4, 2)
             self.put_obj(Ball('blue'), 1, 3)
+            self.initial_objects.append((1, 3, self.color_rewards['blue']))
             self.put_obj(Ball('green'), 1, 4)
+            self.initial_objects.append((1, 4, self.color_rewards['green']))
+
+        if self.unique_env == 4:
+            self.put_obj(Lava(), 1, 3)
+            self.put_obj(Lava(), 2, 3)
+            self.put_obj(Lava(), 3, 3)
+            self.put_obj(Ball('green'), 1, 5)
+            self.initial_objects.append((1, 5, self.color_rewards['green']))
+            self.put_obj(Ball('red'), 1, 4)
+            self.initial_objects.append((1, 4, self.color_rewards['red']))
+            self.put_obj(Ball('blue'), 6, 2)
+            self.initial_objects.append((6, 2, self.color_rewards['blue']))
 
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
@@ -390,14 +406,14 @@ class CustomEnv(MiniGridEnv):
             # reward += 10
         
         # got to the right bottom corner
-        if self.agent_pos == (self.grid.width - 2, self.grid.height - 2):
+        if self.agent_pos == (self.grid.width - 2, self.grid.height - 2) and self.train_env:
             reward += 5
         
         if truncated:
             terminated = True
             print(f"reached max steps={self.max_steps}")
             # reward -= 10
-        reward -= self.step_count/100
+        reward -= self.step_cost
         # if terminated:
         #     print(f"terminated, reward={reward}")
         return obs, reward, terminated, truncated, info

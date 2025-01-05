@@ -1,0 +1,16 @@
+{"time":"2024-12-31T13:51:32.0009902+02:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2024-12-31T13:51:32.0009902+02:00","level":"INFO","msg":"created symlink","path":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20241231_135131-juc23s4s\\logs\\debug-core.log"}
+{"time":"2024-12-31T13:51:32.1206135+02:00","level":"INFO","msg":"created new stream","id":"juc23s4s"}
+{"time":"2024-12-31T13:51:32.1206135+02:00","level":"INFO","msg":"stream: started","id":"juc23s4s"}
+{"time":"2024-12-31T13:51:32.1207518+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"juc23s4s"}
+{"time":"2024-12-31T13:51:32.1208727+02:00","level":"INFO","msg":"sender: started","stream_id":"juc23s4s"}
+{"time":"2024-12-31T13:51:32.1208727+02:00","level":"INFO","msg":"handler: started","stream_id":"juc23s4s"}
+{"time":"2024-12-31T13:51:32.587706+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-12-31T13:51:33.1571389+02:00","level":"INFO","msg":"stream: closing","id":"juc23s4s"}
+{"time":"2024-12-31T13:51:33.285597+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-12-31T13:51:33.2871715+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-12-31T13:51:34.0088548+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-12-31T13:51:34.249508+02:00","level":"INFO","msg":"handler: closed","stream_id":"juc23s4s"}
+{"time":"2024-12-31T13:51:34.249508+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"juc23s4s"}
+{"time":"2024-12-31T13:51:34.249508+02:00","level":"INFO","msg":"sender: closed","stream_id":"juc23s4s"}
+{"time":"2024-12-31T13:51:34.2497626+02:00","level":"INFO","msg":"stream: closed","id":"juc23s4s"}

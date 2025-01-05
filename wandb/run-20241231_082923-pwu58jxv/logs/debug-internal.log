@@ -1,0 +1,18 @@
+{"time":"2024-12-31T08:29:23.7953603+02:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2024-12-31T08:29:23.7953603+02:00","level":"INFO","msg":"created symlink","path":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20241231_082923-pwu58jxv\\logs\\debug-core.log"}
+{"time":"2024-12-31T08:29:23.9115024+02:00","level":"INFO","msg":"created new stream","id":"pwu58jxv"}
+{"time":"2024-12-31T08:29:23.9115024+02:00","level":"INFO","msg":"stream: started","id":"pwu58jxv"}
+{"time":"2024-12-31T08:29:23.9115024+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"pwu58jxv"}
+{"time":"2024-12-31T08:29:23.9115024+02:00","level":"INFO","msg":"sender: started","stream_id":"pwu58jxv"}
+{"time":"2024-12-31T08:29:23.9115024+02:00","level":"INFO","msg":"handler: started","stream_id":"pwu58jxv"}
+{"time":"2024-12-31T08:29:24.5296016+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-12-31T08:29:37.8349357+02:00","level":"INFO","msg":"tensorboard: no root directory after 10 seconds, using working directory"}
+{"time":"2024-12-31T08:29:37.8374958+02:00","level":"ERROR","msg":"tensorboard: error creating symlink","target":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\logs\\ppo\\minigrid_custom_tensorboard\\20241231_1\\events.out.tfevents.1735626567.laptop-amir1.26340.0","symlink":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20241231_082923-pwu58jxv\\files\\logs\\ppo\\minigrid_custom_tensorboard\\20241231_1\\events.out.tfevents.1735626567.laptop-amir1.26340.0","error":"symlink C:\\Users\\matan\\master_thesis\\minigrid_custom\\logs\\ppo\\minigrid_custom_tensorboard\\20241231_1\\events.out.tfevents.1735626567.laptop-amir1.26340.0 C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20241231_082923-pwu58jxv\\files\\logs\\ppo\\minigrid_custom_tensorboard\\20241231_1\\events.out.tfevents.1735626567.laptop-amir1.26340.0: A required privilege is not held by the client."}
+{"time":"2024-12-31T09:40:31.9386681+02:00","level":"INFO","msg":"stream: closing","id":"pwu58jxv"}
+{"time":"2024-12-31T09:40:31.9386681+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-12-31T09:40:31.9390458+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-12-31T09:40:33.9699155+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-12-31T09:40:34.2942646+02:00","level":"INFO","msg":"handler: closed","stream_id":"pwu58jxv"}
+{"time":"2024-12-31T09:40:34.2942646+02:00","level":"INFO","msg":"sender: closed","stream_id":"pwu58jxv"}
+{"time":"2024-12-31T09:40:34.2942646+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"pwu58jxv"}
+{"time":"2024-12-31T09:40:34.2948899+02:00","level":"INFO","msg":"stream: closed","id":"pwu58jxv"}

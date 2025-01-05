@@ -23,8 +23,10 @@ import os
 import matplotlib.pyplot as plt
 import copy
 import random
+import time
 
-
+actions_dict = {0: Actions.left, 1: Actions.right, 2: Actions.forward, 3: Actions.pickup, 4: Actions.drop, 5: Actions.toggle, 6: Actions.done,
+                'turn left': Actions.left, 'turn right': Actions.right, 'forward': Actions.forward, 'pickup': Actions.pickup}
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///testdb.db'
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:GmGJtyAIzmnPuEjbUHFPBlTyxfFPvQOO@roundhouse.proxy.rlwy.net:22844/railway'
@@ -96,7 +98,7 @@ def image_to_base64(image_array):
 
                 
 SIMMILARITY_CONST = 500
-class ManualControl:
+class GameControl:
     def __init__(self, env, models_paths):
         self.env = env
         self.saved_env = None
@@ -113,10 +115,13 @@ class ManualControl:
         self.agent_last_pos = None
         self.episode_start = None
         self.invalid_moves = 0
+        self.user_feedback = None
     
     def reset(self):
         obs,_ = self.env.reset()
         self.saved_env = copy.deepcopy(self.env)
+        self.update_agent(None)
+        print("reset - saved the env")
         self.score = 0
         self.invalid_moves = 0
         return obs
@@ -172,10 +177,9 @@ class ManualControl:
         return self.step(key_to_action[action_str])
     
     # reset the environment and return the observation image. An option to update the agent
-    def get_initial_observation(self, update_agent=False):
+    def get_initial_observation(self):
+        # print("entered get_initial_observation ", time.time())
         # print("get_initial_observation")
-        if update_agent:
-            self.update_agent()
         self.current_obs = self.reset()
         # print(f"partial obs: {self.env.unwrapped.partial_obs}")
         self.episode_start = self.env.get_full_obs() # for the overview image
@@ -192,36 +196,71 @@ class ManualControl:
 
     def agent_action(self):
         action, _ = self.ppo_agent.predict(self.current_obs)
+        action = action.item()
         return action, self.step(action, True)
     
+    def update_env_to_action(self, action_index):
+        tmp_env = copy.deepcopy(self.saved_env)
+        obs = tmp_env.current_state
+        for action in self.episode_actions[:action_index]:
+            obs, r, ter, tru, info = tmp_env.step(action)
+        return tmp_env, obs
+
     # update the agent to the more trained one, if the current agent is the most trained one, do nothing
-    def update_agent(self):
-        if self.agent_index is None:
-            self.agent_index = 0
-        else:
-            self.agent_index += 1
-        if self.agent_index not in self.models_paths.keys():
+    def update_agent(self, data):
+        # if self.agent_index is None:
+        #     self.agent_index = 0
+        # else:
+        #     self.agent_index += 1
+        # if self.agent_index not in self.models_paths.keys():
+        #     return None
+        if self.ppo_agent is None:
+            self.ppo_agent = utils.load_agent(self.env, self.models_paths[0][0])
+            print('load the first model, return')
             return None
-        self.prev_agent = self.ppo_agent
-        model_path = self.models_paths[self.agent_index]
-        self.ppo_agent = load_agent(self.env, model_path)
+        # assert data is not None, "data is None"
+        if data is None: # should never happend
+            print("No data, return")
+            return None
+        if data['updateAgent'] == False:
+            print("No need for update, return")
+            return None
+        self.user_feedback = data['userFeedback']
+        if self.user_feedback is None or len(self.user_feedback) == 0:
+            print("No user feedback, return")
+            return None
+
+        optional_models = []
+        for path in self.models_paths:
+            agent = utils.load_agent(self.env, path[0])
+            print(f'checking model: {path[2]}')
+            model_correctness = 0
+            for action_feedback in self.user_feedback:
+                tmp_env, obs = self.update_env_to_action(action_index=action_feedback['index'])
+                model_action = agent.predict(obs)
+                print(f"model_action[0].item()={model_action[0].item()},  action_feedback['action']={action_feedback['action']}")
+                model_action = actions_dict[model_action[0].item()]
+                print(f"feedback_action: {actions_dict[action_feedback['action']]}, model_predict_action: {model_action}")
+                if model_action == actions_dict[action_feedback['action']]:
+                    print("model is correct")
+                    model_correctness += 1
+            
+            if len(self.user_feedback) - model_correctness <= 2: # number of mistakes allowed
+                optional_models.append(agent)
+        
+        print(f'optional_models: {optional_models}')
+        if len(optional_models) == 0:
+            print("No optional models, return")
+            return None
+        self.ppo_agent = random.choice(optional_models) # choose 1 agent from the optional models
+        print(f'load new model: {self.ppo_agent}')
+
+        # model_path = self.models_paths[self.agent_index][0]
+        # self.ppo_agent = load_agent(self.env, model_path)
         if self.prev_agent is None:
             self.prev_agent = self.ppo_agent
+
         # print(f'laod new model: {self.ppo_agent}')
-    
-    def find_simillar_env(self, env):
-        sim_env = copy.deepcopy(env)
-        j = 0
-        while True:
-            sim_env.reset()
-            env_objects = env.grid_objects()
-            sim_objects = sim_env.grid_objects()
-            if utils.state_distance(env_objects, sim_objects) < SIMMILARITY_CONST or j > 10:
-                if j > 10:
-                    print("No simillar env found")
-                break
-            j += 1
-        return sim_env
         
         
     def agents_different_routs(self, count=0):
@@ -229,13 +268,13 @@ class ManualControl:
         env = self.find_simillar_env(self.saved_env)
         copy_env = copy.deepcopy(env)
         img = copy_env.get_full_obs()
-        move_sequence, _, _, _ = utils.capture_agent_path(copy_env, self.ppo_agent)
+        move_sequence, _, _, agent_actions = utils.capture_agent_path(copy_env, self.ppo_agent)
         
         
         # prev_agent_path
         copy_env = copy.deepcopy(env)
         img = copy_env.get_full_obs()
-        prev_move_sequence, _, _, _ = utils.capture_agent_path(copy_env, self.prev_agent)
+        prev_move_sequence, _, _, prev_agent_actions = utils.capture_agent_path(copy_env, self.prev_agent)
         if prev_move_sequence == move_sequence and count < 5:
             count += 1
             return self.agents_different_routs(count)
@@ -245,31 +284,56 @@ class ManualControl:
             if move_sequence[i] != prev_move_sequence[i]:
                 converge_action_index = i
                 break
-        print(f"converge_action_index: {converge_action_index}")
-        path_img_buffer, _ = utils.plot_move_sequence(img, move_sequence, move_color='c', converge_action_location=converge_action_index)  # Generate the path image
-        prev_path_img_buffer, _ = utils.plot_move_sequence(img, prev_move_sequence, converge_action_location=converge_action_index)  # Generate the path image
+        path_img_buffer, _, _ = utils.plot_move_sequence(img, move_sequence, agent_actions, move_color='c', converge_action_location=converge_action_index)  # Generate the path image
+        prev_path_img_buffer, _, _ = utils.plot_move_sequence(img, prev_move_sequence, prev_agent_actions, converge_action_location=converge_action_index)  # Generate the path image
         
-        return {'prev_path_image': base64.b64encode(prev_path_img_buffer.getvalue()).decode('ascii'), 'path_image': base64.b64encode(path_img_buffer.getvalue()).decode('ascii')}
+        return {'prev_path_image': prev_path_img_buffer, 'path_image': path_img_buffer}
         
-        
+  
     
     def end_of_episode_summary(self):
         # Generate the path image
         img = self.episode_start
-        path_img_buffer, actions_locations = utils.plot_move_sequence(img, self.actions_to_moves_sequence(self.episode_actions))  # Generate the path image
-
+        path_img_base64, actions_locations, images_buf_list = utils.plot_move_sequence(img, 
+                                self.actions_to_moves_sequence(self.episode_actions), self.episode_actions)  # Generate the path image
+        # print(f'end of episode, images_buf_list: {images_buf_list}')
         # Convert the image buffer to base64 so it can be displayed in the frontend
-        path_img_base64 = base64.b64encode(path_img_buffer.getvalue()).decode('ascii')
+        # print(f"img_action_list[0]={images_buf_list[0]}")
+        # path_img_base64 = base64.b64encode(path_img_buffer.getvalue()).decode('ascii')
+        # print("-------------------------------------------------------------------------------------------------------------\n\n\n\n\n\n\n")
+        # print("path_img_base64", path_img_base64)
+        # images_buf_list = [base64.b64encode(img_buf[0].getvalue()).decode('ascii') for img_buf in images_buf_list]
+        # single_img_list = [path_img_base64]*len(images_buf_list)
+        # images_buf_list[0] = path_img_base64
+        # utils.plot_buf_images(images_buf_list)     
+
+        return {'path_image': path_img_base64, 
+                'actions': actions_locations, 
+                'invalid_moves': self.invalid_moves, 
+                'score': self.last_score, 
+                'feedback_images': images_buf_list}
         
 
-        print(f'end of episode, invalid moves: {self.invalid_moves}')
-        return {'path_image': path_img_base64, 'actions': actions_locations, 'invalid_moves': self.invalid_moves, 'score': self.last_score}
-        
-        
+    def find_simillar_env(self, env, deploy=False):
+        sim_env = copy.deepcopy(env)
+        j = 0
+        while True:
+            sim_env.reset()
+            if not deploy: # for testing we do not care what the new env is
+                return sim_env
+            env_objects = env.grid_objects()
+            sim_objects = sim_env.grid_objects()
+            if utils.state_distance(env_objects, sim_objects) < SIMMILARITY_CONST or j > 10:
+                if j > 10:
+                    print("No simillar env found")
+                break
+            j += 1
+        return sim_env
+
 # initialize the environment and the manual control object
 players_sessions = {}
-unique_env_id = 0
-unique_env_id = 3
+unique_env_id = 4
+# unique_env_id = 3
 env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True, unique_env=unique_env_id)
 env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
 
@@ -277,14 +341,17 @@ env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
 # env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-2.0)
 
 env.reset()
-model_dir1 = "LavaLaver8_20241112"
-model_dir2 = "LavaHate8_20241112"
-model_paths = {
-            0 : model_dir1 + "/iter_250000_steps",
-            1:  model_dir1 + "/iter_500000_steps",
-            2:  model_dir2 + "/iter_250000_steps",
-            3:  model_dir2 + "/iter_500000_steps",
-}
+model_dir1 = "models\\LavaLaver8_20241112"
+model_dir2 = "models\\LavaHate8_20241112"
+# Preference vector: (red ball, green ball, blue ball, lava, step penalty)
+model_paths = [
+            # model_dir1 + "/iter_250000_steps", (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112",
+             (model_dir1 + "/iter_500000_steps", (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112"),
+            # model_dir2 + "/iter_250000_steps", (2, 2 ,2, -3, -0.1), "LavaHate8_20241112",
+            (model_dir2 + "/iter_500000_steps", (2, 2 ,2, -3, -0.1), "LavaHate8_20241112"),
+            ("models\\2,2,2,-3,0.2Steps100Grid8_20241230\\best_model", (2, 2 ,2, -3, 0.2), "LavaHate8_20241229"),
+            ("models\\0,5,0,-3,0.2Steps100Grid8_20241231\\best_model", (0, 5 ,0, -3, 0.2), "GreenOnly8_20241231"),
+]
 
 # model_paths = {
 #             # 0 : model_dir + "/iter_10^5_steps",
@@ -299,21 +366,21 @@ model_paths = {
 #             5:  model_dir + "/iter_10^6_steps"
 # }
 
-manual_control = ManualControl(env, model_paths)
-# manual_control.reset()
+game_control = GameControl(env, model_paths)
+game_control.reset()
 
 action_dir = {'ArrowLeft': 'Turn left', 'ArrowRight': 'Turn right', 'ArrowUp': 'Move forward', 'Space': 'Toggle', 'PageUp': 'Pickup', 'PageDown': 'Drop', '1': 'Pickup', '2': 'Drop'}
 
 # functions that control the flow of the game
 @app.route('/')
 def index():
-    return render_template('index2.html')        
+    return render_template('index.html')        
 
 @socketio.on('send_action')
 def handle_message(action):
     try:
         # session = players_sessions.get(request.sid)
-        response = manual_control.handle_action(action)
+        response = game_control.handle_action(action)
         response['action'] = action_dir[action]
     except Exception as e:
         app.logger.error('Failed to handle action: %s', e)
@@ -347,80 +414,92 @@ def handle_message(action):
 # Handle 'next_episode' event to start a new episode after user views the path
 @socketio.on('next_episode')
 def next_episode():
-    response = manual_control.get_initial_observation()
+    response = game_control.get_initial_observation()
     emit('game_update', response)
     
     
 @socketio.on('ppo_action')
 def ppo_action():
-    action, response = manual_control.agent_action()
+    action, response = game_control.agent_action()
     # response['action'] = action
     session = players_sessions.get(request.sid)
-    try:
-        db.session.begin(nested=True)
-        session.record_action(
-            action=action,
-            score=response['score'],
-            reward=response['reward'],
-            done=response['done'],
-            agent_action=response['agent_action'],
-            episode=response['episode'],
-            agent_index=response['agent_index']
-        )
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error('Database operation failed: %s', e)
-    finally:
-        db.session.remove()
+    # try:
+    #     db.session.begin(nested=True)
+    #     session.record_action(
+    #         action=action,
+    #         score=response['score'],
+    #         reward=response['reward'],
+    #         done=response['done'],
+    #         agent_action=response['agent_action'],
+    #         episode=response['episode'],
+    #         agent_index=response['agent_index']
+    #     )
+    #     db.session.commit()
+    # except Exception as e:
+    #     db.session.rollback()
+    #     app.logger.error('Database operation failed: %s', e)
+    # finally:
+    #     db.session.remove()
     finish_turn(response)
 
 @socketio.on('play_entire_episode')
 def play_entire_episode():
-    try:
-        while True:
-            action, response = manual_control.agent_action()
-            # response['action'] = action
-            # session = players_sessions.get(request.sid)
-            # db.session.begin(nested=True)
-            # session.record_action(
-            #     action=action,
-            #     score=response['score'],
-            #     reward=response['reward'],
-            #     done=response['done'],
-            #     agent_action=response['agent_action'],
-            #     episode=response['episode'],
-            #     agent_index=response['agent_index']
-            # )
-            # db.session.commit()
-            time.sleep(0.3)
-            finish_turn(response)
-            if response['done']:
-                break
-            # if response['done']:  # Start a new episode
-            #     response = manual_control.get_initial_observation()
-            #     emit('game_update', response)
-            #     break
-            # else:
-            #     emit('game_update', response, broadcast=True)
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error('Database operation failed: %s', e)
-        emit('error', {'error': 'Database operation failed'})
-    finally:
-        pass
-        # db.session.remove()
+     while True:
+        action, response = game_control.agent_action()
+        # print(f"Agent action: {action}")
+
+        time.sleep(0.3)
+        finish_turn(response)
+        if response['done']:
+            print("Agent Episode finished")
+            break
+    # try:
+    #     while True:
+    #         action, response = manual_control.agent_action()
+    #         print(f"Agent action: {action}")
+    #         # response['action'] = action
+    #         # session = players_sessions.get(request.sid)
+    #         # db.session.begin(nested=True)
+    #         # session.record_action(
+    #         #     action=action,
+    #         #     score=response['score'],
+    #         #     reward=response['reward'],
+    #         #     done=response['done'],
+    #         #     agent_action=response['agent_action'],
+    #         #     episode=response['episode'],
+    #         #     agent_index=response['agent_index']
+    #         # )
+    #         # db.session.commit()
+    #         time.sleep(0.3)
+    #         finish_turn(response)
+    #         if response['done']:
+    #             print("Agent Episode finished")
+    #             break
+    #         # if response['done']:  # Start a new episode
+    #         #     response = manual_control.get_initial_observation()
+    #         #     emit('game_update', response)
+    #         #     break
+    #         # else:
+    #         #     emit('game_update', response, broadcast=True)
+    # except Exception as e:
+    #     db.session.rollback()
+    #     app.logger.error('Database operation failed: %s', e)
+    #     emit('error', {'error': 'Database operation failed'})
+    # finally:
+    #     pass
+    #     # db.session.remove()
 
 
 @socketio.on('compare_agents')
-def compare_agents():
-    res = manual_control.agents_different_routs()
+def compare_agents(data):
+    game_control.update_agent(data)
+    res = game_control.agents_different_routs()
     emit('compare_agents', res)
     
     
 def finish_turn(response):
     if response['done']:
-        summary = manual_control.end_of_episode_summary()  # Get the episode summary
+        summary = game_control.end_of_episode_summary()  # Get the episode summary
         emit('episode_finished', summary)  # Send the path and actions to the frontend
     else:
         emit('game_update', response, broadcast=True)
@@ -430,31 +509,18 @@ def finish_turn(response):
 def start_game(data):
     player_name = data['playerName']
     players_sessions[request.sid] = PlayerSession(player_name)
-    response = manual_control.get_initial_observation(update_agent=True)
+    game_control.update_agent(data) # update only if data['updateAgent']==True and there is feedback
+    response = game_control.get_initial_observation()
     emit('game_update', response)
 
 
 @socketio.on('finish_game')
 def finish_game():
     print("finish_game")
-    scores = manual_control.scores_lst
+    scores = game_control.scores_lst
     print("Scores:", scores)  # Server-side console log for debugging
     emit('finish_game', {'scores': scores})
 
-    
-
-def load_agent(env, model_path):
-    # policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
-    custom_objects = {
-        "policy_kwargs": {"features_extractor_class": ObjEnvExtractor},  # Example kernel size
-        "clip_range": 0.2,  # Example custom parameters
-        "lr_schedule": 0.001  # Example learning rate schedule
-    }
-    # ppo = PPO("MultiInputPolicy", env, verbose=1)
-
-    # Load the model
-    ppo = PPO.load(f"models/{model_path}", custom_objects=custom_objects, env=env)
-    return ppo
 
 if __name__ == '__main__':
     print("Starting the server")

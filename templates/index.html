@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minigrid Game</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .page {
+            display: none; /* Hide all pages initially */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .active {
+            display: flex; /* Show active page */
+        }
+        #welcome-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 0 500px; /* Add padding for margins on the sides */
+        }
+        #welcome-page-content {
+            max-width: 800px; /* Set a max-width for the content */
+            margin: 0 auto;
+        }
+        #game-container {
+            display: flex; /* Initially set to flex */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .placeholder-icon {
+            font-size: 48px; /* Adjust size as needed */
+            color: #ccc; /* Color of the placeholder icon */
+        }
+        #button-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px; /* Add space between buttons and the game */
+        }
+        #button-container button {
+            margin: 0 10px; /* Add space between the buttons */
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background-color: #f8f8f8;
+        }
+        #game-content {
+            display: flex; /* Keep items side-by-side */
+            justify-content: center;
+            align-items: flex-start;
+            position: relative; /* Set relative position for absolute positioning inside */
+            width: 100%;
+        }
+        
+        #game-image-container {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+        }
+        #game-image-ph1, #game-image-ph2 {
+            width: 100%;
+            height: 100%;
+        }
+        #key-instructions {
+            margin-left: 20px;
+            text-align: left;
+            padding: 10px;
+            border: 1px solid black;
+        }
+        #info-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #overview-image-container {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+        }
+        #overview-game-image {
+            width: 640px;
+            height: 480px;
+        }
+        #actions {
+            list-style-type: none; /* Remove default bullet points */
+            padding: 0;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        #goto-phase2-button {
+            position: absolute; /* Position button relative to the container */
+            bottom: 10px; /* Align to the bottom */
+            right: 10px; /* Align to the right */
+            margin: 0; /* Remove any extra margins */
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #loading-indicator {
+            display: none; /* Initially hidden */
+            font-size: 18px;
+            color: #555;
+        }
+        .highlight {
+            position: absolute;
+            background-color: rgba(255, 255, 0, 0.5); /* Half-transparent yellow */
+            border: 1px solid yellow;
+            pointer-events: none;
+            display: block; 
+            z-index: 9999; /* Make sure it's on top of everything */
+        }
+
+        .dropdown {
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            z-index: 1000;
+            width: 200px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .dropdown ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .dropdown ul li {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .dropdown ul li:hover {
+            background-color: #f0f0f0;
+        }
+
+        .selected-action {
+            background-color: lightblue;
+        }
+
+        #current-action::before {
+            content: "\25BC"; /* ▼ */
+            margin-right: 10px;
+            color: #4e4747;
+        }
+
+        /* old dropdown styles */
+        /* .dropdown {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            z-index: 1000;
+        }
+        .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .dropdown-item:hover {
+            background-color: #f1f1f1;
+        } */
+        #compare-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        #compare-container div {
+            text-align: center;
+        }
+        #compare-container img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+    <!-- Welcome Page -->
+    <div id="welcome-page" class="page active">
+        <h1>Welcome to the Minigrid Game</h1>
+        <p>In the next experiment you will play a custom game controlling a triangle-shaped player. <br>
+            The game is a sequence of episodes where in each episode the player earns points by collecting balls that are scattered in the arena.  
+            Each ball gives 2 points and each action cost 0.1 points.<br>
+            You can control the player using the keyboard arrows and the '1' key to pick up balls, or you can use a pre trained agent to play the game for you. <br>
+            Notice that the agent is suboptimal and you can improve it by providing feedback on its actions in the overview page that will appear once the episode is over.<br>
+            After the feedback you could watch the agent's updated policy compared to the previous one on some examples.
+        </p>
+        <input type="text" id="player-name" placeholder="Enter your ID" />
+        <button id="start-button">Start</button>
+    </div>
+
+    <!-- Phase1 - Know The Game Page -->
+    <div id="ph1-game-page" class="page">
+        <div id="game-container">
+       <!--      <div id="loading-indicator-ph1">Loading...</div> Loading indicator -->
+    
+            <!-- Game content with image and instructions -->
+            <div id="game-content">
+                <div id="game-image-container">
+                    <i class="fas fa-spinner fa-spin placeholder-icon"></i> <!-- Placeholder icon -->
+                    <img id="game-image-ph1" src="" alt="Game Image">
+                </div>
+                <div id="key-instructions">
+                    <h3>Key Instructions:</h3>
+                    <p>&uarr; Move Forwards</p>
+                    <p>&larr; Turn Left</p>
+                    <p>&rarr; Turn Right</p>
+                    <p>'1' - Pickup</p>
+                </div>
+                <div id="button-container">
+                    <button id="goto-phase2-button">End Phase1</button>
+                </div>
+            </div>
+    
+            <!-- Game information -->
+            <div id="info-container">
+                <p>Action: <span id="action"></span></p>
+                <p>Reward: <span id="reward"></span></p>
+                <p>Score: <span id="score"></span></p>
+                <p>Last episode score: <span id="last_score"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ph2 agent play Page -->
+    <div id="ph2-game-page" class="page">
+        <div id="game-container">
+            <!-- Button container at the top -->
+            <!-- <div id="button-container">
+                <button id="agent_play_all">Agent Play</button>
+            </div> -->
+            
+    <!--               <button id="ppo-button">Agent Action</button>-->
+
+            <!-- Game content with image and instructions -->
+            <div id="game-content">
+                <div id="game-image-container">
+ <!--                    <i class="fas fa-spinner fa-spin placeholder-icon"></i> Placeholder icon -->
+                    <img id="game-image-ph2" src="" alt="Game Image">
+                </div>
+                <div id="key-instructions">
+                    <h3>Key Instructions:</h3>
+                    <p>&uarr; Move Forwards</p>
+                    <p>&larr; Turn Left</p>
+                    <p>&rarr; Turn Right</p>
+                    <p>'1' - Pickup</p>
+                </div>
+            </div>
+    
+            <!-- Game information -->
+            <div id="info-container">
+                <p>Action: <span id="action"></span></p>
+                <p>Reward: <span id="reward"></span></p>
+                <p>Score: <span id="score"></span></p>
+                <p>Last episode score: <span id="last_score"></span></p>
+            </div>
+        </div>
+    </div>
+
+     <!-- Overview Page -->
+<!-- <div id="overview-page" class="page" style="display: none;">
+    <h2>Episode Overview</h2>
+    <p>The feedback is given by selecting a new action from the dropdown, if desired.</p>
+
+    <div id="overview-container" style="display: flex; align-items: flex-start; flex-direction: column; position: relative;">
+        <div id="current-action-container" style="display: flex; align-items: center; margin-bottom: 10px;">
+            <span>Current Action:</span>
+            <h3 id="current-action" style="margin: 0 10px; cursor: pointer;">ActionName</h3>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <button id="prev-action-button">Back Action</button>
+            <button id="next-action-button">Next Action</button>
+        </div>
+
+        <div id="game-image-container">
+            <img id="overview-game-image" src="" alt="Game Image">
+        </div>
+
+
+        <button id="next-episode-button">Next Episode</button>
+        <button id="compare-agents-button">Compare Agents</button>
+    </div> -->
+
+<!-- Overview Page -->
+<div id="overview-page" class="page" style="display: none;">
+    <h2>Episode Overview</h2>
+    <p>The feedback is given by selecting a new action from the dropdown, if desired.</p>
+  
+    <div id="left-panel" style="display: flex; flex-direction: column; align-items: flex-start; position: relative;">
+
+        <!-- Action controls above the image -->
+        <div id="action-controls" style="display: flex; align-items: center; margin-bottom: 10px;">
+          <span>Current Action:</span>
+          <h3 id="current-action" style="margin: 0 10px; cursor: pointer;">ActionName</h3>
+          <button id="prev-action-button" style="margin-left: 20px;">Back Action</button>
+          <button id="next-action-button" style="margin-left: 10px;">Next Action</button>
+        </div>
+      
+        <!-- Image container (positioned) -->
+        <div id="game-image-container" style="width: 640px; height: 480px; border: 1px solid black;">
+          <img id="overview-game-image" src="" alt="Game Image" style="width: 100%; height: 100%;">
+        </div>
+      
+        <!-- Buttons absolutely positioned at bottom of that same container -->
+        <div id="bottom-buttons" style="
+             position: absolute; 
+             bottom: 10px; 
+             left: 10px;">
+          <button id="next-episode-button">Next Episode</button>
+          <button id="compare-agents-button" style="margin-left: 10px;">Compare Agents</button>
+        </div>
+      </div>
+  </div>
+  
+
+
+<!-- Action Dropdown Menu -->
+<div id="action-dropdown" class="dropdown" style="display: none;">
+    <div class="dropdown-item">forward</div>
+    <div class="dropdown-item">turn right</div>
+    <div class="dropdown-item">turn left</div>
+    <div class="dropdown-item">pickup</div>
+</div>
+
+    
+    <!-- Dropdown Menu -->
+    <!-- <div id="dropdown" class="dropdown">
+        <div class="dropdown-item">forward</div>
+        <div class="dropdown-item">turn right</div>
+        <div class="dropdown-item">turn left</div>
+        <div class="dropdown-item">pickup</div>
+    </div> -->
+
+    <!-- Compare Agent Update Page -->
+    <div id="compare-agent-update-page" class="page" style="display: none;">
+        <h2>Compare Agent Update</h2>
+        <div id="compare-container" style="display: flex; justify-content: space-around;">
+            <div>
+                <h3>Previous Agent</h3>
+                <img id="previous-agent-image" src="" alt="Previous Agent Image">
+            </div>
+            <div>
+                <h3>Updated Agent</h3>
+                <img id="updated-agent-image" src="" alt="Updated Agent Image">
+            </div>
+        </div>
+        <button id="another-example-button">Another Example</button>
+        <button id="next-episode-compare-button">Next Episode</button>
+        <button id="finish-game-button">Finish Game</button>
+    </div>
+
+    <!-- Summary Page -->
+    <div id="summary-page" class="page">
+        <h2>Game Summary</h2>
+        <div id="score-list-container">
+            <ul id="score-list"></ul>
+        </div>
+    </div>
+
+
+    <script src="static/js/game3.js"></script>
+
+</body>
+</html>

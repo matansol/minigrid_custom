@@ -7,6 +7,11 @@ from PIL import Image
 import matplotlib
 from matplotlib.patches import Circle, Rectangle
 import copy
+import csv
+import pandas as pd
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
 
 # from IPython.display import HTML
 # from IPython import display
@@ -27,8 +32,21 @@ def load_agent(env, model_path) -> PPO:
         "lr_schedule": 0.001  # Example learning rate schedule
     }
     # Load the model
-    ppo = PPO.load(f"models/{model_path}", custom_objects=custom_objects, env=env)
+    ppo = PPO.load(f"{model_path}", custom_objects=custom_objects, env=env)
     return ppo
+
+def add_path_to_csv(model_path, preference_vector, name, eval_reward):
+    new_data_dict = {
+        "model_path": [model_path],
+        "preference_vector": [preference_vector],
+        "model_name": [name],
+        "eval_reward": [eval_reward]
+        }
+    new_df = pd.DataFrame(new_data_dict)
+
+    # Append to the existing CSV:
+    new_df.to_csv("models/models_vectors.csv", mode="a", header=False, index=False)
+
 
 def is_illegal_move(action, last_obs, obs, agent_pos_befor, agent_pos):
     if action <= 1: # turn is always legal
@@ -39,8 +57,9 @@ def is_illegal_move(action, last_obs, obs, agent_pos_befor, agent_pos):
         return True
     return False
 
+actions_translation = {0: 'turn left', 1: 'turn right', 2: 'move forward', 3: 'pickup'}
 # resert the environment and run the agent on that environment to find his path
-def capture_agent_path(copy_env, agent) -> (list, int, int, list):
+def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves, number of illegal moves, total reward, list of legal actions
     illigal_moves = 0
     last_obs = copy_env.unwrapped.current_state
     
@@ -86,7 +105,7 @@ def capture_agent_path(copy_env, agent) -> (list, int, int, list):
             move_sequence.append((agent_dir, 'forward'))
         elif action == 3: # pickup
             move_sequence.append(('pickup ' +  agent_dir, 'pickup'))
-    return move_sequence, illigal_moves, total_reward, agent_actions
+    return move_sequence, illigal_moves, total_reward, ligal_actions
 
 def turn_agent(agent_dir, turn_dir) -> str:
     turnning_dict = {("up", "left"): "left", ("up", "right"): "right", 
@@ -95,7 +114,18 @@ def turn_agent(agent_dir, turn_dir) -> str:
                      ("right", "left"): "up", ("right", "right"): "down"}
     return turnning_dict[(agent_dir, turn_dir)]
 
-def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+def ax_to_feedback_image(ax):
+    ax.axis('off')
+    feedback_buf = BytesIO()
+    plt.savefig(feedback_buf, format='png', bbox_inches='tight')
+    feedback_buf.seek(0)
+    img_base64 = base64.b64encode(feedback_buf.getvalue()).decode('ascii')
+    return img_base64
+
+
+def plot_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='orange', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+    imgs_action_list = []
+    feedback_action_color = 'pink'
     start_point = (50, 50)
     arrow_size = 20
     arrow_head_size = 12
@@ -121,22 +151,26 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
     # mark_sizes = {'move_vertical': (30, 30), 'move_horizontal': (30, 30), 'turn': (30, 30), 'pickup': (30, 30)}
 
     # mark_move_sizes = {'move_vertical': 20, 'move_horizontal': 20}
-    inlarge_factor = 2.3
     fig, ax = plt.subplots()
     ax.imshow(img)
     current_point = start_point
-    print("start_point:", current_point)
+
     i= 0
     for action_dir, actual_action in move_sequence:
         if i == converge_action_location:
             # add a rectangle to mark the converging point:
-            ax.add_patch(Rectangle((current_point[0] - 10, current_point[1]- 10), 20, 20, color='b', alpha=0.4))
+            ax.add_patch(Rectangle((current_point[0] - 10, current_point[1]- 10), 15, 15, color='b', alpha=0.4))
         i += 1
         full_action = action_dir.split(' ')
         action = full_action[0]
         action_loc = {'action': actual_action}
         # moving action
         if action_dir in move_arrow_sizes.keys(): # a big arrow that represents a move
+            # add the action arrow to the feedback arrow and save the image
+            ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=feedback_action_color, ec=feedback_action_color)
+            imgs_action_list.append(ax_to_feedback_image(ax))
+
+            # overide the feedback arrow with the real action
             ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=move_color, ec=move_color)
             current_point = (current_point[0] + move_arrow_sizes[action_dir][2], current_point[1] + move_arrow_sizes[action_dir][3])
             mark_size = mark_sizes['move_vertical'] if action_dir == 'up' or action_dir == 'down' else mark_sizes['move_horizontal']
@@ -160,6 +194,11 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
         
         #turning action   
         elif action_dir in turn_arrow_sizes.keys(): # a small arrow that represents a turn or a pickup
+            # add the action arrow to the feedback arrow and save the image
+            ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=feedback_action_color, ec=feedback_action_color)
+            imgs_action_list.append(ax_to_feedback_image(ax))
+
+            # overide the feedback arrow with the real action
             ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=turn_color, ec=turn_color)
             shift_size = 17
             turnning_mark_shifts = {'turn up': (0, -shift_size), 'turn down': (0, shift_size), 'turn right': (shift_size, 0), 'turn left': (-shift_size, 0)}
@@ -188,25 +227,25 @@ def plot_move_sequence(img, move_sequence, move_color='y', turn_color='orange', 
         # pickup action
         elif action == 'pickup':        
             pickup_position = pickup_direction[full_action[1]]
-            # print('pickup_position:', pickup_position)
-            # print('action:', full_action)
+
+            ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=feedback_action_color)
+            imgs_action_list.append(ax_to_feedback_image(ax))
+
+            # overide the feedback arrow with the real action
             ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=pickup_color)
             action_loc['x'] = mark_x + 25 * pickup_position[0]
             action_loc['y'] = mark_y + 15 * pickup_position[1]
             action_loc['width'] = mark_sizes['pickup'][0]
             action_loc['height'] = mark_sizes['pickup'][1]
         actions_with_location.append(action_loc)
-        # print(current_point, full_action)
-    
-    ax.axis('off')
-    # plt.show()
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    plt.close(fig)  # Close the figure to free memory
-    buf.seek(0)
-    
-    # Convert the buffer to an image that can be used by Flask
-    return buf, actions_with_location
+
+        # Capture the current state of the plot
+        # Add a yellow half-transparent rectangle for the last action
+
+        #, actions_translation[agent_true_actions[i-1]]))
+
+    buf = ax_to_feedback_image(ax)
+    return buf, actions_with_location, imgs_action_list
 
 
 
@@ -285,6 +324,28 @@ def state_distance(objects1, objects2):
     distance += np.abs(len([group for group in ball_groups1 if group[0] > 1]) - len([group for group in ball_groups2 if group[0] > 1]))# change in number of real groups(more then 1 ball)
     # distance += np.abs(balls_distance(objects1['balls']) - balls_distance(objects2['balls']))* BALLS_FACTOR
     return distance
+
+# def plot_buf_images(images_buf_list):
+#     # Number of images
+#     num_images = len(images_buf_list)
+#     print('plot_buf_images, num_images:', num_images)
+    
+#     # Create a figure with subplots
+#     fig, axes = plt.subplots(1, num_images, figsize=(15, 5))
+    
+#     if num_images == 1:
+#         axes = [axes]  # Ensure axes is iterable if there's only one image
+    
+#     for ax, img_base64 in zip(axes, images_buf_list):
+#         # Decode the base64 image
+#         img_data = base64.b64decode(img_base64)
+#         img = plt.imread(BytesIO(img_data), format='png')
+        
+#         # Plot the image
+#         ax.imshow(img)
+#         ax.axis('off')  # Hide the axis
+    
+#     plt.show()
 
 
 # run the agent and evaluate his prefermances

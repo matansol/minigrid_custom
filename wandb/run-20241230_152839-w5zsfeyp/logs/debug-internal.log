@@ -1,0 +1,18 @@
+{"time":"2024-12-30T15:28:39.0357448+02:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2024-12-30T15:28:39.0362636+02:00","level":"INFO","msg":"created symlink","path":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20241230_152839-w5zsfeyp\\logs\\debug-core.log"}
+{"time":"2024-12-30T15:28:39.1527464+02:00","level":"INFO","msg":"created new stream","id":"w5zsfeyp"}
+{"time":"2024-12-30T15:28:39.1527464+02:00","level":"INFO","msg":"stream: started","id":"w5zsfeyp"}
+{"time":"2024-12-30T15:28:39.1527464+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"w5zsfeyp"}
+{"time":"2024-12-30T15:28:39.1527464+02:00","level":"INFO","msg":"sender: started","stream_id":"w5zsfeyp"}
+{"time":"2024-12-30T15:28:39.1527464+02:00","level":"INFO","msg":"handler: started","stream_id":"w5zsfeyp"}
+{"time":"2024-12-30T15:28:39.5311306+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-12-30T15:28:52.9519092+02:00","level":"INFO","msg":"tensorboard: no root directory after 10 seconds, using working directory"}
+{"time":"2024-12-30T15:28:52.9533914+02:00","level":"ERROR","msg":"tensorboard: error creating symlink","target":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\logs\\ppo\\minigrid_custom_tensorboard\\20241230_3\\events.out.tfevents.1735565322.laptop-amir1.20108.0","symlink":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20241230_152839-w5zsfeyp\\files\\logs\\ppo\\minigrid_custom_tensorboard\\20241230_3\\events.out.tfevents.1735565322.laptop-amir1.20108.0","error":"symlink C:\\Users\\matan\\master_thesis\\minigrid_custom\\logs\\ppo\\minigrid_custom_tensorboard\\20241230_3\\events.out.tfevents.1735565322.laptop-amir1.20108.0 C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20241230_152839-w5zsfeyp\\files\\logs\\ppo\\minigrid_custom_tensorboard\\20241230_3\\events.out.tfevents.1735565322.laptop-amir1.20108.0: A required privilege is not held by the client."}
+{"time":"2024-12-30T16:45:37.1815203+02:00","level":"INFO","msg":"stream: closing","id":"w5zsfeyp"}
+{"time":"2024-12-30T16:45:37.1864648+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-12-30T16:45:37.1871079+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-12-30T16:45:38.697918+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-12-30T16:45:39.0363829+02:00","level":"INFO","msg":"handler: closed","stream_id":"w5zsfeyp"}
+{"time":"2024-12-30T16:45:39.0363829+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"w5zsfeyp"}
+{"time":"2024-12-30T16:45:39.0363829+02:00","level":"INFO","msg":"sender: closed","stream_id":"w5zsfeyp"}
+{"time":"2024-12-30T16:45:39.0363829+02:00","level":"INFO","msg":"stream: closed","id":"w5zsfeyp"}

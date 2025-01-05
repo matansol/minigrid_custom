@@ -14,9 +14,11 @@ from stable_baselines3 import PPO, DQN
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.monitor import Monitor
 from gymnasium import spaces
 
-
+import wandb
+from wandb.integration.sb3 import WandbCallback
 import random
 
 from minigrid_custom_env import CustomEnv
@@ -218,79 +220,129 @@ def main():
     policy_kwargs = dict(features_extractor_class=ObjEnvExtractor) # ObjEnvExtractorBig)
     set_random_seed(args.seed)
 
-    def linear_schedule(initial_value):
-        def schedule(progress_remaining):
-            return progress_remaining * initial_value
-        return schedule
+    # def linear_schedule(initial_value):
+    #     def schedule(progress_remaining):
+    #         return progress_remaining * initial_value
+    #     return schedule
 
     # Create time stamp of experiment
     stamp = datetime.fromtimestamp(time()).strftime("%Y%m%d")
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    max_steps = 50
-    colors_rewards = {'red': 2.0, 'green': 2, 'blue': 2}
+    max_steps = 100
+    colors_rewards = {'red': 5, 'green': -0.5, 'blue': -0.5}
+    lava_cost = -4
     grid_size = 8
     agent_view_size = 7
+
     if args.train:
-        env = CustomEnv(grid_size=grid_size, render_mode='rgb_array', difficult_grid=hard_env, max_steps=max_steps, highlight=True,
-                        num_objects=4, lava_cells=4, train_env=True, image_full_view=False, agent_view_size=agent_view_size, colors_rewards=colors_rewards)
-        
-        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
-        # env = DummyVecEnv([lambda: env])
-        # env = VecNormalize(env, norm_obs=False, norm_reward=True)
-        save_name = f"steps{max_steps}_LavaHate{agent_view_size}_{grid_size}_{stamp}"
-        checkpoint_callback = CheckpointCallback(
-            save_freq=250e3,
-            save_path=f"./models/{save_name}/",
-            name_prefix="iter",
-        )
+        device = "cuda" if th.cuda.is_available() else "cpu"
 
-        # eval_callback = EvalCallback(
-        #     env,
-        #     best_model_save_path=f"./models/basic_L2_{env_type}{grid_size}_{stamp}/best_model/",
-        #     log_path=f"./logs/minigrid_{env_type}{grid_size}_eval_logs/",
-        #     eval_freq=10000,   # Evaluate every 10,000 steps
-        #     deterministic=True,
-        #     render=False,
-        # )
+        # # Create the base environment
+        # def make_env():
+        #     env = CustomEnv(
+        #         grid_size=grid_size,
+        #         render_mode='rgb_array',
+        #         max_steps=max_steps,
+        #         highlight=True,
+        #         step_cost=0.5,
+        #         num_objects=4,
+        #         lava_cells=5,
+        #         train_env=True,
+        #         image_full_view=False,
+        #         agent_view_size=agent_view_size,
+        #         colors_rewards=colors_rewards
+        #     )
+        #     env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=lava_cost)
+        #     env = Monitor(env)  # Add Monitor for logging
+        #     return env
 
-        # model = PPO(
-        #     "MultiInputPolicy",
-        #     env,
-        #     policy_kwargs=policy_kwargs,
-        #     verbose=1,
-        #     tensorboard_log=f"./logs/minigrid_{env_type}_tensorboard/",
-        #     learning_rate=0.01,
-        #     ent_coef = 0.05,
-        # )
-        if args.load_model:
-            model = PPO.load(f"models/{args.load_model}", env=env)
-            print(f"Loaded model from {args.load_model}. Continuing training.")
-        else:
-            # Create a new model if no load path is provided
-            model = PPO(
-                "MultiInputPolicy",
-                env,
-                policy_kwargs=policy_kwargs,
-                verbose=1,
-                # seed=42,
-                tensorboard_log=f"./logs/{save_name}/",
-                learning_rate=0.01,
-                ent_coef=0.3,
-                n_steps=128,
-                # batch_size=32,
-                # clip_range=0.3,
-                # vf_coef=0.7,
-                # gradient_clip=0.6,
-                # linear_schedule=linear_schedule(0.001),   
+        # # Wrap the environment with DummyVecEnv and VecNormalize
+        # env = DummyVecEnv([make_env])
+        # env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_obs=10.0)
+
+        # # Create the evaluation environment
+        # eval_env = DummyVecEnv([make_env])
+        # eval_env = VecNormalize(eval_env, norm_obs=False, norm_reward=True, clip_obs=10.0)
+
+        env = CustomEnv(
+                grid_size=grid_size,
+                render_mode='rgb_array',
+                max_steps=max_steps,
+                highlight=True,
+                step_cost=0.2,
+                num_objects=4,
+                lava_cells=5,
+                train_env=True,
+                image_full_view=False,
+                agent_view_size=agent_view_size,
+                colors_rewards=colors_rewards
             )
-        
-        model.learn(
-            1e5,
-            tb_log_name=f"{stamp}",
-            callback=checkpoint_callback,
+        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=lava_cost)
+        env = Monitor(env)  # Add Monitor for logging
+        # Access attributes from the underlying environment
+        step_cost = env.step_cost  # Access 'step_cost' from the first environment
+        preference_vector = [colors_rewards['red'], colors_rewards['green'], colors_rewards['blue'], lava_cost, step_cost]
+        pref_str = ",".join([str(i) for i in preference_vector])
+        save_name = pref_str + f"Steps{max_steps}Grid{grid_size}_{stamp}"
+
+        # Set up callbacks
+        eval_callback = EvalCallback(
+            env,
+            best_model_save_path=f'./models/{save_name}/',
+            log_path='./logs/eval_logs/',
+            eval_freq=10000,
+            n_eval_episodes=3,
+            deterministic=True,
+            render=False
         )
+
+        wandb.init(
+            project="minigrid_custom",
+            config={
+                "algorithm": "PPO",
+                "max_steps": max_steps,
+                "preference_vector": preference_vector,
+            },
+            name=f"grid{grid_size}_view{agent_view_size}_{preference_vector}",
+            sync_tensorboard=True,  # Sync tensorboard logs
+            settings=wandb.Settings(symlink=False),
+        )
+
+        wandb_callback = WandbCallback(
+            gradient_save_freq=10000,
+            model_save_freq=100000,
+            model_save_path=f"./models/wandb_models/{preference_vector}",  # Where to save models
+            verbose=2,
+        )
+
+        # Define the PPO model
+        model = PPO(
+            "MultiInputPolicy",
+            env,
+            policy_kwargs=policy_kwargs,
+            verbose=1,
+            learning_rate=0.001,
+            ent_coef=0.02,
+            n_steps=4096,
+            batch_size=32,
+            clip_range=0.2,
+            gamma = 0.8,
+            device=device
+        )
+
+        # Start training
+        print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
+        model.learn(
+            3e5,
+            tb_log_name=f"{stamp}",
+            callback=[eval_callback, wandb_callback],
+        )
+
+        # Save the model and VecNormalize statistics
+        model.save(f"./models/{save_name}_ppo_model")
+        # env.save(f"./models/{save_name}_vecnormalize.pkl")
     else:
         if args.render:
             env = CustomEnv(grid_size=grid_size, agent_view_size=agent_view_size, difficult_grid=hard_env, render_mode='human', image_full_view=False, lava_cells=4,
@@ -300,7 +352,7 @@ def main():
                             train_env=False, max_steps=100, highlight=True)
             
         env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
-        env = ObjObsWrapper(env)
+        # env = ObjObsWrapper(env)
 
         if args.model == "ppo":
             ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)

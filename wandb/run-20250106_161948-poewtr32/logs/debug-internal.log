@@ -1,0 +1,16 @@
+{"time":"2025-01-06T16:19:48.7681263+02:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2025-01-06T16:19:48.7681263+02:00","level":"INFO","msg":"created symlink","path":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20250106_161948-poewtr32\\logs\\debug-core.log"}
+{"time":"2025-01-06T16:19:48.8884293+02:00","level":"INFO","msg":"created new stream","id":"poewtr32"}
+{"time":"2025-01-06T16:19:48.8884293+02:00","level":"INFO","msg":"stream: started","id":"poewtr32"}
+{"time":"2025-01-06T16:19:48.8884293+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"poewtr32"}
+{"time":"2025-01-06T16:19:48.8884293+02:00","level":"INFO","msg":"handler: started","stream_id":"poewtr32"}
+{"time":"2025-01-06T16:19:48.888933+02:00","level":"INFO","msg":"sender: started","stream_id":"poewtr32"}
+{"time":"2025-01-06T16:19:49.2918857+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-06T18:40:34.6490397+02:00","level":"INFO","msg":"stream: closing","id":"poewtr32"}
+{"time":"2025-01-06T18:40:34.6490397+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-06T18:40:34.6498333+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-01-06T18:40:36.3061952+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-01-06T18:40:36.5551479+02:00","level":"INFO","msg":"handler: closed","stream_id":"poewtr32"}
+{"time":"2025-01-06T18:40:36.5551479+02:00","level":"INFO","msg":"sender: closed","stream_id":"poewtr32"}
+{"time":"2025-01-06T18:40:36.5551479+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"poewtr32"}
+{"time":"2025-01-06T18:40:36.5557458+02:00","level":"INFO","msg":"stream: closed","id":"poewtr32"}

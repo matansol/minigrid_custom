@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "C:\Users\matan\master_thesis\minigrid_custom\minigrid_custom_train.py", line 359, in <module>
+    main()
+  File "C:\Users\matan\master_thesis\minigrid_custom\minigrid_custom_train.py", line 294, in main
+    model = PPO(
+TypeError: PPO.__init__() got an unexpected keyword argument 'epochs'

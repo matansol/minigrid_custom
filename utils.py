@@ -123,9 +123,9 @@ def ax_to_feedback_image(ax):
     return img_base64
 
 
-def plot_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='orange', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+def plot_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
     imgs_action_list = []
-    feedback_action_color = 'pink'
+    feedback_action_color = 'cyan'
     start_point = (50, 50)
     arrow_size = 20
     arrow_head_size = 12

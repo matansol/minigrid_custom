@@ -231,6 +231,8 @@ class GameControl:
             return None
 
         optional_models = []
+        most_correct = 0
+        tmp_agent = None
         for path in self.models_paths:
             agent = utils.load_agent(self.env, path[0])
             print(f'checking model: {path[2]}')
@@ -245,15 +247,24 @@ class GameControl:
                     print("model is correct")
                     model_correctness += 1
             
+            # if model_correctness > most_correct:
+            #     most_correct = model_correctness
+            #     tmp_agent = (agent, path[2])
+                
             if len(self.user_feedback) - model_correctness <= 2: # number of mistakes allowed
-                optional_models.append(agent)
+                optional_models.append((agent, path[2]))
         
         print(f'optional_models: {optional_models}')
         if len(optional_models) == 0:
             print("No optional models, return")
             return None
-        self.ppo_agent = random.choice(optional_models) # choose 1 agent from the optional models
-        print(f'load new model: {self.ppo_agent}')
+        agent_tuple = random.choice(optional_models) # choose 1 agent from the optional models
+        # agent_tuple = tmp_agent
+        # if agent_tuple is None:
+        #     print("No optional models, return")
+        #     return None
+        self.ppo_agent = agent_tuple[0]
+        print(f'load new model: {agent_tuple[1]}')
 
         # model_path = self.models_paths[self.agent_index][0]
         # self.ppo_agent = load_agent(self.env, model_path)
@@ -295,17 +306,7 @@ class GameControl:
         # Generate the path image
         img = self.episode_start
         path_img_base64, actions_locations, images_buf_list = utils.plot_move_sequence(img, 
-                                self.actions_to_moves_sequence(self.episode_actions), self.episode_actions)  # Generate the path image
-        # print(f'end of episode, images_buf_list: {images_buf_list}')
-        # Convert the image buffer to base64 so it can be displayed in the frontend
-        # print(f"img_action_list[0]={images_buf_list[0]}")
-        # path_img_base64 = base64.b64encode(path_img_buffer.getvalue()).decode('ascii')
-        # print("-------------------------------------------------------------------------------------------------------------\n\n\n\n\n\n\n")
-        # print("path_img_base64", path_img_base64)
-        # images_buf_list = [base64.b64encode(img_buf[0].getvalue()).decode('ascii') for img_buf in images_buf_list]
-        # single_img_list = [path_img_base64]*len(images_buf_list)
-        # images_buf_list[0] = path_img_base64
-        # utils.plot_buf_images(images_buf_list)     
+                                self.actions_to_moves_sequence(self.episode_actions), self.episode_actions)  # Generate the path image  
 
         return {'path_image': path_img_base64, 
                 'actions': actions_locations, 
@@ -332,7 +333,7 @@ class GameControl:
 
 # initialize the environment and the manual control object
 players_sessions = {}
-unique_env_id = 4
+unique_env_id = 0
 # unique_env_id = 3
 env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True, unique_env=unique_env_id)
 env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
@@ -341,30 +342,19 @@ env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
 # env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-2.0)
 
 env.reset()
+
 model_dir1 = "models\\LavaLaver8_20241112"
 model_dir2 = "models\\LavaHate8_20241112"
 # Preference vector: (red ball, green ball, blue ball, lava, step penalty)
 model_paths = [
             # model_dir1 + "/iter_250000_steps", (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112",
-             (model_dir1 + "/iter_500000_steps", (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112"),
+             (os.path.join("models", "LavaLaver8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112"),
             # model_dir2 + "/iter_250000_steps", (2, 2 ,2, -3, -0.1), "LavaHate8_20241112",
-            (model_dir2 + "/iter_500000_steps", (2, 2 ,2, -3, -0.1), "LavaHate8_20241112"),
-            ("models\\2,2,2,-3,0.2Steps100Grid8_20241230\\best_model", (2, 2 ,2, -3, 0.2), "LavaHate8_20241229"),
-            ("models\\0,5,0,-3,0.2Steps100Grid8_20241231\\best_model", (0, 5 ,0, -3, 0.2), "GreenOnly8_20241231"),
+            (os.path.join("models", "LavaHate8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, -3, -0.1), "LavaHate8_20241112"),
+            (os.path.join("models", "2,2,2,-3,0.2Steps100Grid8_20241230", "best_model.zip"), (2, 2 ,2, -3, -0.2), "LavaHate8_20241229"),
+            (os.path.join("models", "0,5,0,-3,0.2Steps100Grid8_20241231", "best_model.zip"), (0, 5 ,0, -3, -0.2), "GreenOnly8_20241231"),
 ]
 
-# model_paths = {
-#             # 0 : model_dir + "/iter_10^5_steps",
-#             # 1:  model_dir + "/iter_20^5_steps",
-#             # 2:  model_dir + "/iter_30^5_steps",
-#             # 3:  model_dir + "/iter_40^5_steps",
-#             0:  model_dir + "/iter_50^5_steps",
-#             1:  model_dir + "/iter_60^5_steps",
-#             2:  model_dir + "/iter_70^5_steps",
-#             3:  model_dir + "/iter_80^5_steps",
-#             4:  model_dir + "/iter_90^5_steps",
-#             5:  model_dir + "/iter_10^6_steps"
-# }
 
 game_control = GameControl(env, model_paths)
 game_control.reset()

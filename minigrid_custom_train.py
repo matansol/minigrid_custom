@@ -230,41 +230,14 @@ def main():
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    max_steps = 100
-    colors_rewards = {'red': 5, 'green': -0.5, 'blue': -0.5}
+    max_steps = 300
+    colors_rewards = {'red': 3, 'green': 1, 'blue': 0}
     lava_cost = -4
     grid_size = 8
     agent_view_size = 7
 
     if args.train:
         device = "cuda" if th.cuda.is_available() else "cpu"
-
-        # # Create the base environment
-        # def make_env():
-        #     env = CustomEnv(
-        #         grid_size=grid_size,
-        #         render_mode='rgb_array',
-        #         max_steps=max_steps,
-        #         highlight=True,
-        #         step_cost=0.5,
-        #         num_objects=4,
-        #         lava_cells=5,
-        #         train_env=True,
-        #         image_full_view=False,
-        #         agent_view_size=agent_view_size,
-        #         colors_rewards=colors_rewards
-        #     )
-        #     env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=lava_cost)
-        #     env = Monitor(env)  # Add Monitor for logging
-        #     return env
-
-        # # Wrap the environment with DummyVecEnv and VecNormalize
-        # env = DummyVecEnv([make_env])
-        # env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_obs=10.0)
-
-        # # Create the evaluation environment
-        # eval_env = DummyVecEnv([make_env])
-        # eval_env = VecNormalize(eval_env, norm_obs=False, norm_reward=True, clip_obs=10.0)
 
         env = CustomEnv(
                 grid_size=grid_size,
@@ -273,7 +246,7 @@ def main():
                 highlight=True,
                 step_cost=0.2,
                 num_objects=4,
-                lava_cells=5,
+                lava_cells=3,
                 train_env=True,
                 image_full_view=False,
                 agent_view_size=agent_view_size,
@@ -325,23 +298,24 @@ def main():
             verbose=1,
             learning_rate=0.001,
             ent_coef=0.02,
-            n_steps=4096,
+            n_steps=2048,
             batch_size=32,
             clip_range=0.2,
             gamma = 0.8,
+            # epochs=3,
             device=device
         )
 
         # Start training
         print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
         model.learn(
-            3e5,
+            1e6,
             tb_log_name=f"{stamp}",
             callback=[eval_callback, wandb_callback],
         )
 
         # Save the model and VecNormalize statistics
-        model.save(f"./models/{save_name}_ppo_model")
+        # model.save(f"./models/{save_name}_ppo_model")
         # env.save(f"./models/{save_name}_vecnormalize.pkl")
     else:
         if args.render:

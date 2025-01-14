@@ -48,6 +48,13 @@ def add_path_to_csv(model_path, preference_vector, name, eval_reward):
     new_df.to_csv("models/models_vectors.csv", mode="a", header=False, index=False)
 
 
+def image_to_base64(image_array):
+    """Convert NumPy array to a base64-encoded PNG."""
+    img = Image.fromarray(np.uint8(image_array))
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode('ascii')
+
 def is_illegal_move(action, last_obs, obs, agent_pos_befor, agent_pos):
     if action <= 1: # turn is always legal
         return False
@@ -61,7 +68,7 @@ actions_translation = {0: 'turn left', 1: 'turn right', 2: 'move forward', 3: 'p
 # resert the environment and run the agent on that environment to find his path
 def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves, number of illegal moves, total reward, list of legal actions
     illigal_moves = 0
-    last_obs = copy_env.unwrapped.current_state
+    last_obs = copy_env.get_wrapper_attr('current_state')
     
     # last_obs = env.reset()
     # last_obs = last_obs[0]
@@ -73,13 +80,13 @@ def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of 
     # copy_env = copy.deepcopy(env)
     # plt.imshow(copy_env.render())
     while not done:
-        agent_pos_before = copy_env.unwrapped.agent_pos
+        agent_pos_before = copy_env.get_wrapper_attr('agent_pos')
         action, _states = agent.predict(last_obs)
         agent_actions.append(action)
         obs, reward, done, _, info = copy_env.step(action)
         total_reward += reward
         
-        if is_illegal_move(action, last_obs, obs, agent_pos_before, copy_env.agent_pos):
+        if is_illegal_move(action, last_obs, obs, agent_pos_before, copy_env.get_wrapper_attr('agent_pos')):
             illigal_moves += 1
             continue
 
@@ -358,11 +365,11 @@ def evaluate_agent(env, agent, num_episodes=100) -> (float, float):
         done = False
         while not done:
             last_obs = state
-            agent_pos_before = env.unwrapped.agent_pos
+            agent_pos_before = env.get_wrapper_attr('agent_pos')
             action, _ = agent.predict(state)
             state, reward, done, _, _ = env.step(action)
             total_reward += reward
-            if is_illegal_move(action, last_obs, state, agent_pos_before, env.unwrapped.agent_pos):
+            if is_illegal_move(action, last_obs, state, agent_pos_before, env.get_wrapper_attr('agent_pos')):
                 total_illegal_moves += 1
             
     return total_reward/num_episodes, total_illegal_moves//num_episodes

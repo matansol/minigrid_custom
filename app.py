@@ -25,76 +25,121 @@ import copy
 import random
 import time
 
-actions_dict = {0: Actions.left, 1: Actions.right, 2: Actions.forward, 3: Actions.pickup, 4: Actions.drop, 5: Actions.toggle, 6: Actions.done,
-                'turn left': Actions.left, 'turn right': Actions.right, 'forward': Actions.forward, 'pickup': Actions.pickup}
+
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///testdb.db'
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:GmGJtyAIzmnPuEjbUHFPBlTyxfFPvQOO@roundhouse.proxy.rlwy.net:22844/railway'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 socketio = SocketIO(app)
-
-# Setup the engine, typically the same URI
-engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
-
-# Scoped session that ensures different sessions for different threads
-db = SQLAlchemy(app)
-
-def create_database():
-    with app.app_context():
-        db.create_all()
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///testdb.db'
+# Azure DB info:
+# name: dpudb.mysql.database.azure.com
+# password: dpuDB123
+# mysql+pymysql://matansol:dpuDB123@dpudb.mysql.database.azure.com:3306/dpudb?sslmode=required
+# app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://matansol:dpuDB123@dpudb.mysql.database.azure.com:8000/dpudb"
 
 
-# classes definition
-class Player(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
-    actions = db.relationship('Action', backref='player', lazy=True)
+#DB code
+#railway DB:
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:GmGJtyAIzmnPuEjbUHFPBlTyxfFPvQOO@roundhouse.proxy.rlwy.net:22844/railway'
 
-class Action(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    action_type = db.Column(db.String(50))
-    agent_action = db.Column(db.Boolean)
-    score = db.Column(db.Float)
-    reward = db.Column(db.Float)
-    done = db.Column(db.Boolean)
-    player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
-    episode = db.Column(db.Integer)
-    timestamp = db.Column(db.Float)
-    agent_index = db.Column(db.Integer)
-
-class PlayerSession:
-    def __init__(self, player_name):
-        self.player_name = player_name
-        player = Player.query.filter_by(name=player_name).first()
-        if not player:
-            player = Player(name=player_name)
-            db.session.add(player)
-            db.session.commit()
-        self.player = player
-
-    def record_action(self, action, score, reward, done, agent_action=False, episode=None, agent_index=None):
-        return None # Comment out this line to enable database recording
-        new_action = Action(
-            action_type=action,
-            agent_action=agent_action,
-            score=score,
-            reward=reward,
-            done=done,
-            player_id=self.player.id,
-            timestamp=time.time(),
-            episode=episode,
-            agent_index=agent_index
-        )
-        db.session.add(new_action)
-        db.session.commit()
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
-def image_to_base64(image_array):
-    """Convert NumPy array to a base64-encoded PNG."""
-    img = Image.fromarray(np.uint8(image_array))
-    buffered = io.BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode('ascii')
+# # Setup the engine, typically the same URI
+# engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+
+# # Scoped session that ensures different sessions for different threads
+# db = SQLAlchemy(app)
+
+# def create_database():
+#     with app.app_context():
+#         # db.drop_all()
+
+#         db.create_all()
+
+
+# # DB classes definition
+# class Player(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     name = db.Column(db.String(50), unique=True, nullable=False)
+#     actions = db.relationship('Action', backref='player', lazy=True)
+
+# class Action(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     action_type = db.Column(db.String(50))
+#     agent_action = db.Column(db.Boolean)
+#     score = db.Column(db.Float)
+#     reward = db.Column(db.Float)
+#     done = db.Column(db.Boolean)
+#     player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
+#     episode = db.Column(db.Integer)
+#     timestamp = db.Column(db.Float)
+#     agent_index = db.Column(db.Integer)
+#     env_state = db.Column(db.String(1000))
+
+# class FeedbackAction(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     user_id = db.Column(db.Integer, db.ForeignKey('player.id'))
+#     env_state = db.Column(db.String(1000))
+#     agent_action = db.Column(db.String(50))
+#     feedback_action = db.Column(db.String(50))
+#     action_index = db.Column(db.Integer)
+
+
+# class PlayerSession:
+#     def __init__(self, player_name):
+#         self.player_name = player_name
+#         player = Player.query.filter_by(name=player_name).first()
+#         if not player:
+#             player = Player(name=player_name)
+#             db.session.add(player)
+#             db.session.commit()
+#             player = db.session.merge(player)  # Ensure player is bound to the session
+#         self.player = player
+
+#     def record_action(self, action, score, reward, done, agent_action=False, episode=None, agent_index=None, env_state="some state"):
+#         new_action = Action(
+#             action_type=action,
+#             agent_action=agent_action,
+#             score=score,
+#             reward=reward,
+#             done=done,
+#             player_id=self.player.id,
+#             timestamp=time.time(),
+#             episode=episode,
+#             agent_index=agent_index,
+#             env_state=env_state,
+#         )
+#         db.session.add(new_action)
+#         db.session.commit()
+
+    
+#     def record_feedback_action(self, env_state, agent_action, feedback_action, action_index):
+#     # Validate inputs
+#         print("record_feedback_action function - the best")
+#         print(f"env_state: {env_state}, agent_action: {agent_action}, feedback_action: {feedback_action}, action_index: {action_index}")
+#         if not env_state:
+#             raise ValueError("env_state is required")
+#         if agent_action == None or feedback_action == None:
+#             raise ValueError("agent_action and feedback_action are required")
+#         if not self.player.id:
+#             raise ValueError("Invalid player ID")
+
+#         # Create and commit FeedbackAction
+#         try:
+#             new_action = FeedbackAction(
+#                 user_id=self.player.id,
+#                 env_state=env_state,
+#                 agent_action=agent_action,
+#                 feedback_action=feedback_action,
+#                 action_index=action_index,
+#             )
+#             print("created a new feedback action, feedback is ", new_action.feedback_action)
+#             db.session.add(new_action)  # Bind to session
+#             db.session.commit()
+#         except Exception as e:
+#             db.session.rollback()
+#             app.logger.error(f"Failed to insert feedback action: {e}")
+#             raise e
+
 
                 
 SIMMILARITY_CONST = 500
@@ -116,6 +161,8 @@ class GameControl:
         self.episode_start = None
         self.invalid_moves = 0
         self.user_feedback = None
+        self.user_id = None
+        self.current_session = None
     
     def reset(self):
         obs,_ = self.env.reset()
@@ -147,7 +194,7 @@ class GameControl:
     def step(self, action, agent_action=False):
         observation, reward, terminated, truncated, info = self.env.step(action)
         done = terminated or truncated
-        if not utils.is_illegal_move(action, self.current_obs, observation, self.agent_last_pos, self.env.unwrapped.agent_pos):
+        if not utils.is_illegal_move(action, self.current_obs, observation, self.agent_last_pos, self.env.get_wrapper_attr('agent_pos')):
             self.episode_actions.append(action)
         else:
             self.invalid_moves += 1
@@ -158,9 +205,9 @@ class GameControl:
             self.scores_lst.append(self.score)
             self.last_score = self.score
         img = self.env.render()
-        image_base64 = image_to_base64(img)  # Convert to base64
+        image_base64 = utils.image_to_base64(img)  # Convert to base64
         self.current_obs = observation
-        self.agent_last_pos = self.env.unwrapped.agent_pos
+        self.agent_last_pos = self.env.get_wrapper_attr('agent_pos')
         return {'image': image_base64, 'episode': self.episode_num, 'reward': reward, 'done': done, 'score': self.score, 'last_score': self.last_score, 'agent_action': agent_action, 'agent_index': self.agent_index}
 
     def handle_action(self, action_str):
@@ -184,12 +231,12 @@ class GameControl:
         # print(f"partial obs: {self.env.unwrapped.partial_obs}")
         self.episode_start = self.env.get_full_obs() # for the overview image
         # print(f"partial obs: {self.env.unwrapped.partial_obs}")
-        self.agent_last_pos = self.env.unwrapped.agent_pos
+        self.agent_last_pos = self.env.get_wrapper_attr('agent_pos')
         self.episode_actions = []
         img = self.env.render()
         if img is None:
             raise Exception("initial observation rendering failed")
-        image_base64 = image_to_base64(img)
+        image_base64 = utils.image_to_base64(img)
         self.episode_num += 1
         print(f"Episode {self.episode_num} started ________________________________________________________________________________________")
         return {'image': image_base64, 'last_score': self.last_score, 'action': None, 'reward': 0, 'done': False, 'score': 0, 'episode': self.episode_num, 'agent_action': False, 'agent_index': self.agent_index}
@@ -201,26 +248,21 @@ class GameControl:
     
     def update_env_to_action(self, action_index):
         tmp_env = copy.deepcopy(self.saved_env)
-        obs = tmp_env.current_state
+        obs = tmp_env.get_wrapper_attr('current_state')
         for action in self.episode_actions[:action_index]:
             obs, r, ter, tru, info = tmp_env.step(action)
         return tmp_env, obs
 
     # update the agent to the more trained one, if the current agent is the most trained one, do nothing
     def update_agent(self, data):
-        # if self.agent_index is None:
-        #     self.agent_index = 0
-        # else:
-        #     self.agent_index += 1
-        # if self.agent_index not in self.models_paths.keys():
-        #     return None
         if self.ppo_agent is None:
             self.ppo_agent = utils.load_agent(self.env, self.models_paths[0][0])
+            self.prev_agent = self.ppo_agent
             print('load the first model, return')
             return None
         # assert data is not None, "data is None"
         if data is None: # should never happend
-            print("No data, return")
+            print("Data is None, return")
             return None
         if data['updateAgent'] == False:
             print("No need for update, return")
@@ -229,6 +271,34 @@ class GameControl:
         if self.user_feedback is None or len(self.user_feedback) == 0:
             print("No user feedback, return")
             return None
+
+        # DB code
+        # Insert the action_feedback to the database
+        # with app.app_context():
+        
+        # session = players_sessions.get(request.sid)
+        
+        # print(f"feedback record part - session: {session}")
+        # if session is None:
+        #     raise ValueError("Player session not found for SID: {}".format(request.sid))
+        # print(f"user_feedback: {self.user_feedback}")
+        # for action_feedback in self.user_feedback:
+        #     _, obs = self.update_env_to_action(action_index=action_feedback['index'])
+        #     print("set the state of the env to the action of the feedback, obs image: ", type(obs['image']))
+
+        #     # data['actions'] is a dict of all the episode agent action with the action name, locations and more. 
+        #     # in the feedback action we have the index of the agent action and the user feedback action
+        #     agent_action = data['actions'][action_feedback['index']]['action']
+        #     session.record_feedback_action(
+        #         env_state="some state", #str("obs['image']),  # Ensure env_state is passed correctly
+        #         agent_action=actions_dict[agent_action],
+        #         feedback_action=actions_dict[action_feedback['feedback_action']],
+        #         action_index=action_feedback['index']
+        #     )
+            # except Exception as e:
+            #     db.session.rollback()
+            #     app.logger.error(f"Failed to insert feedback action: {e}")
+
 
         optional_models = []
         most_correct = 0
@@ -240,10 +310,10 @@ class GameControl:
             for action_feedback in self.user_feedback:
                 tmp_env, obs = self.update_env_to_action(action_index=action_feedback['index'])
                 model_action = agent.predict(obs)
-                print(f"model_action[0].item()={model_action[0].item()},  action_feedback['action']={action_feedback['action']}")
+                print(f"model_action[0].item()={model_action[0].item()},  action_feedback['action']={action_feedback['feedback_action']}")
                 model_action = actions_dict[model_action[0].item()]
-                print(f"feedback_action: {actions_dict[action_feedback['action']]}, model_predict_action: {model_action}")
-                if model_action == actions_dict[action_feedback['action']]:
+                print(f"feedback_action: {actions_dict[action_feedback['feedback_action']]}, model_predict_action: {model_action}")
+                if model_action == actions_dict[action_feedback['feedback_action']]:
                     print("model is correct")
                     model_correctness += 1
             
@@ -275,6 +345,12 @@ class GameControl:
         
         
     def agents_different_routs(self, count=0):
+        if self.ppo_agent == None or self.prev_agent == None:
+            print(f"No two agents to compare ppo_agent: {self.ppo_agent}, prev_agent: {self.prev_agent}")
+            if self.ppo_agent == None:
+                self.ppo_agent = self.prev_agent
+            else:
+                self.prev_agent = self.ppo_agent
         self.saved_env.reset()
         env = self.find_simillar_env(self.saved_env)
         copy_env = copy.deepcopy(env)
@@ -331,35 +407,6 @@ class GameControl:
             j += 1
         return sim_env
 
-# initialize the environment and the manual control object
-players_sessions = {}
-unique_env_id = 0
-# unique_env_id = 3
-env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True, unique_env=unique_env_id)
-env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
-
-# env = CustomEnv(grid_size=8, difficult_grid=True, max_steps=50, num_objects=3, lava_cells=2, render_mode="rgb_array")
-# env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-2.0)
-
-env.reset()
-
-model_dir1 = "models\\LavaLaver8_20241112"
-model_dir2 = "models\\LavaHate8_20241112"
-# Preference vector: (red ball, green ball, blue ball, lava, step penalty)
-model_paths = [
-            # model_dir1 + "/iter_250000_steps", (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112",
-             (os.path.join("models", "LavaLaver8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112"),
-            # model_dir2 + "/iter_250000_steps", (2, 2 ,2, -3, -0.1), "LavaHate8_20241112",
-            (os.path.join("models", "LavaHate8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, -3, -0.1), "LavaHate8_20241112"),
-            (os.path.join("models", "2,2,2,-3,0.2Steps100Grid8_20241230", "best_model.zip"), (2, 2 ,2, -3, -0.2), "LavaHate8_20241229"),
-            (os.path.join("models", "0,5,0,-3,0.2Steps100Grid8_20241231", "best_model.zip"), (0, 5 ,0, -3, -0.2), "GreenOnly8_20241231"),
-]
-
-
-game_control = GameControl(env, model_paths)
-game_control.reset()
-
-action_dir = {'ArrowLeft': 'Turn left', 'ArrowRight': 'Turn right', 'ArrowUp': 'Move forward', 'Space': 'Toggle', 'PageUp': 'Pickup', 'PageDown': 'Drop', '1': 'Pickup', '2': 'Drop'}
 
 # functions that control the flow of the game
 @app.route('/')
@@ -370,6 +417,9 @@ def index():
 def handle_message(action):
     try:
         # session = players_sessions.get(request.sid)
+
+        # if session is None:
+        #     raise ValueError("Player session not found for SID: {}".format(request.sid))
         response = game_control.handle_action(action)
         response['action'] = action_dir[action]
     except Exception as e:
@@ -377,10 +427,9 @@ def handle_message(action):
         return
     
     # TODO: Uncomment the following block to enable database recording
-    
-    # #insert the action to the database
+    # DB code
+    #insert the action to the database
     # try:
-    #     db.session.begin(nested=True)
     #     session.record_action(
     #         action=action,
     #         score=response['score'],
@@ -388,15 +437,17 @@ def handle_message(action):
     #         done=response['done'],
     #         agent_action=response['agent_action'],
     #         episode=response['episode'],
-    #         agent_index=response['agent_index']
+    #         agent_index=response['agent_index'],
+    #         # env_state=str(response['image'].tolist())
     #     )
-    #     db.session.commit()
+    #     # db.session.commit()
     # except Exception as e:
     #     db.session.rollback()
     #     app.logger.error('Database operation failed: %s', e)
     #     emit('error', {'error': 'Database operation failed'})
     # finally:
     #     db.session.remove()
+    #     pass
 
     finish_turn(response)
         
@@ -411,8 +462,9 @@ def next_episode():
 @socketio.on('ppo_action')
 def ppo_action():
     action, response = game_control.agent_action()
-    # response['action'] = action
-    session = players_sessions.get(request.sid)
+    response['action'] = action
+    #DB code
+    # session = players_sessions.get(request.sid)
     # try:
     #     db.session.begin(nested=True)
     #     session.record_action(
@@ -422,7 +474,9 @@ def ppo_action():
     #         done=response['done'],
     #         agent_action=response['agent_action'],
     #         episode=response['episode'],
-    #         agent_index=response['agent_index']
+    #         agent_index=response['agent_index'],
+    #         feedback_action=False,
+    #         # env_state=response['image']
     #     )
     #     db.session.commit()
     # except Exception as e:
@@ -443,41 +497,41 @@ def play_entire_episode():
         if response['done']:
             print("Agent Episode finished")
             break
-    # try:
-    #     while True:
-    #         action, response = manual_control.agent_action()
-    #         print(f"Agent action: {action}")
-    #         # response['action'] = action
-    #         # session = players_sessions.get(request.sid)
-    #         # db.session.begin(nested=True)
-    #         # session.record_action(
-    #         #     action=action,
-    #         #     score=response['score'],
-    #         #     reward=response['reward'],
-    #         #     done=response['done'],
-    #         #     agent_action=response['agent_action'],
-    #         #     episode=response['episode'],
-    #         #     agent_index=response['agent_index']
-    #         # )
-    #         # db.session.commit()
-    #         time.sleep(0.3)
-    #         finish_turn(response)
-    #         if response['done']:
-    #             print("Agent Episode finished")
-    #             break
-    #         # if response['done']:  # Start a new episode
-    #         #     response = manual_control.get_initial_observation()
-    #         #     emit('game_update', response)
-    #         #     break
-    #         # else:
-    #         #     emit('game_update', response, broadcast=True)
-    # except Exception as e:
-    #     db.session.rollback()
-    #     app.logger.error('Database operation failed: %s', e)
-    #     emit('error', {'error': 'Database operation failed'})
-    # finally:
-    #     pass
-    #     # db.session.remove()
+        # try:
+        #     while True:
+        #         action, response = manual_control.agent_action()
+        #         print(f"Agent action: {action}")
+        #         # response['action'] = action
+        #         # session = players_sessions.get(request.sid)
+        #         # db.session.begin(nested=True)
+        #         # session.record_action(
+        #         #     action=action,
+        #         #     score=response['score'],
+        #         #     reward=response['reward'],
+        #         #     done=response['done'],
+        #         #     agent_action=response['agent_action'],
+        #         #     episode=response['episode'],
+        #         #     agent_index=response['agent_index']
+        #         # )
+        #         # db.session.commit()
+        #         time.sleep(0.3)
+        #         finish_turn(response)
+        #         if response['done']:
+        #             print("Agent Episode finished")
+        #             break
+        #         # if response['done']:  # Start a new episode
+        #         #     response = manual_control.get_initial_observation()
+        #         #     emit('game_update', response)
+        #         #     break
+        #         # else:
+        #         #     emit('game_update', response, broadcast=True)
+        # except Exception as e:
+        #     db.session.rollback()
+        #     app.logger.error('Database operation failed: %s', e)
+        #     emit('error', {'error': 'Database operation failed'})
+        # finally:
+        #     pass
+            # db.session.remove()
 
 
 @socketio.on('compare_agents')
@@ -497,9 +551,17 @@ def finish_turn(response):
         
 @socketio.on('start_game')
 def start_game(data):
+    print("starting the game")
     player_name = data['playerName']
-    players_sessions[request.sid] = PlayerSession(player_name)
-    game_control.update_agent(data) # update only if data['updateAgent']==True and there is feedback
+    game_control.user_id = player_name
+    # data base part
+    # session = PlayerSession(player_name)
+    # session.player = db.session.merge(session.player)  # Ensure binding to the current session
+    # players_sessions[request.sid] = session
+    # game_control.user_id = session.player.id
+    # game_control.current_session = session
+    if data['updateAgent']:
+        game_control.update_agent(data)
     response = game_control.get_initial_observation()
     emit('game_update', response)
 
@@ -513,9 +575,43 @@ def finish_game():
 
 
 if __name__ == '__main__':
+    print("hello world")
+    # initialize the environment and the manual control object
+    players_sessions = {}
+    unique_env_id = 0
+    # unique_env_id = 3
+    env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True, unique_env=unique_env_id)
+    env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
+
+    # env = CustomEnv(grid_size=8, difficult_grid=True, max_steps=50, num_objects=3, lava_cells=2, render_mode="rgb_array")
+    # env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-2.0)
+
+    env.reset()
+
+    model_dir1 = "models\\LavaLaver8_20241112"
+    model_dir2 = "models\\LavaHate8_20241112"
+    # Preference vector: (red ball, green ball, blue ball, lava, step penalty)
+    model_paths = [
+                # model_dir1 + "/iter_250000_steps", (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112",
+                (os.path.join("models", "LavaLaver8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112"),
+                # model_dir2 + "/iter_250000_steps", (2, 2 ,2, -3, -0.1), "LavaHate8_20241112",
+                (os.path.join("models", "LavaHate8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, -3, -0.1), "LavaHate8_20241112"),
+                (os.path.join("models", "2,2,2,-3,0.2Steps100Grid8_20241230", "best_model.zip"), (2, 2 ,2, -3, -0.2), "LavaHate8_20241229"),
+                (os.path.join("models", "0,5,0,-3,0.2Steps100Grid8_20241231", "best_model.zip"), (0, 5 ,0, -3, -0.2), "GreenOnly8_20241231"),
+    ]
+    actions_dict = {0: Actions.left, 1: Actions.right, 2: Actions.forward, 3: Actions.pickup, 4: Actions.drop, 5: Actions.toggle, 6: Actions.done,
+                'turn left': Actions.left, 'turn right': Actions.right, 'forward': Actions.forward, 'pickup': Actions.pickup}
+
+    print("go to create the game control")
+    game_control = GameControl(env, model_paths)
+    game_control.reset()
+
+    action_dir = {'ArrowLeft': 'Turn left', 'ArrowRight': 'Turn right', 'ArrowUp':
+                'Move forward', 'Space': 'Toggle', 'PageUp': 'Pickup', 'PageDown': 'Drop', '1': 'Pickup', '2': 'Drop'}
     print("Starting the server")
     # print(torch.__version__)
     # print(torch.backends.cudnn.enabled) 
+    
     # create_database()
     
     # socketio.run(app, debug=True)

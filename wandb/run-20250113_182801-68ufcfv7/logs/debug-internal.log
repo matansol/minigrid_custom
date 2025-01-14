@@ -1,0 +1,16 @@
+{"time":"2025-01-13T18:28:01.1051208+02:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2025-01-13T18:28:01.1051797+02:00","level":"INFO","msg":"created symlink","path":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20250113_182801-68ufcfv7\\logs\\debug-core.log"}
+{"time":"2025-01-13T18:28:01.3390093+02:00","level":"INFO","msg":"created new stream","id":"68ufcfv7"}
+{"time":"2025-01-13T18:28:01.3395222+02:00","level":"INFO","msg":"stream: started","id":"68ufcfv7"}
+{"time":"2025-01-13T18:28:01.3395222+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"68ufcfv7"}
+{"time":"2025-01-13T18:28:01.3400687+02:00","level":"INFO","msg":"sender: started","stream_id":"68ufcfv7"}
+{"time":"2025-01-13T18:28:01.3400687+02:00","level":"INFO","msg":"handler: started","stream_id":"68ufcfv7"}
+{"time":"2025-01-13T18:28:01.8135294+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-13T18:37:32.4038663+02:00","level":"INFO","msg":"stream: closing","id":"68ufcfv7"}
+{"time":"2025-01-13T18:37:32.405384+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-13T18:37:32.4068469+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-01-13T18:37:33.5980068+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-01-13T18:37:34.0439173+02:00","level":"INFO","msg":"handler: closed","stream_id":"68ufcfv7"}
+{"time":"2025-01-13T18:37:34.0439173+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"68ufcfv7"}
+{"time":"2025-01-13T18:37:34.0440444+02:00","level":"INFO","msg":"sender: closed","stream_id":"68ufcfv7"}
+{"time":"2025-01-13T18:37:34.0443516+02:00","level":"INFO","msg":"stream: closed","id":"68ufcfv7"}

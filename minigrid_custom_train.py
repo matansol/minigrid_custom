@@ -231,7 +231,7 @@ def main():
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
     max_steps = 300
-    colors_rewards = {'red': 3, 'green': 1, 'blue': 0}
+    colors_rewards = {'red': -0.1, 'green': 4, 'blue': -0.1}
     lava_cost = -4
     grid_size = 8
     agent_view_size = 7
@@ -266,7 +266,7 @@ def main():
             best_model_save_path=f'./models/{save_name}/',
             log_path='./logs/eval_logs/',
             eval_freq=10000,
-            n_eval_episodes=3,
+            n_eval_episodes=5,
             deterministic=True,
             render=False
         )
@@ -286,7 +286,7 @@ def main():
         wandb_callback = WandbCallback(
             gradient_save_freq=10000,
             model_save_freq=100000,
-            model_save_path=f"./models/wandb_models/{preference_vector}",  # Where to save models
+            model_save_path=f"./models/wandb_models/{pref_str}",  # Where to save models
             verbose=2,
         )
 
@@ -309,9 +309,9 @@ def main():
         # Start training
         print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
         model.learn(
-            1e6,
+            5e5,
             tb_log_name=f"{stamp}",
-            callback=[eval_callback, wandb_callback],
+            callback=[eval_callback]#, wandb_callback],
         )
 
         # Save the model and VecNormalize statistics

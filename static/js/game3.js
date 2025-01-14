@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
 
     function updateGotoPhase2ButtonVisibility() {
-        if (phase1_counter > 1) {
+        if (phase1_counter > 0) { 
             gotoPhase2Button.style.display = 'block';
         } else {
             gotoPhase2Button.style.display = 'none';
@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         currentActionElement.classList.add('selected-action');
 
         // Save user change
-        userFeedback.push({ index: index, action: newAction });
+        userFeedback.push({ index: index, feedback_action: newAction });
 
         // Send the chosen action to the server
         fetch('/update_action', {

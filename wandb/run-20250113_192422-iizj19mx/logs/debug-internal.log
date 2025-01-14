@@ -1,0 +1,16 @@
+{"time":"2025-01-13T19:24:22.7303148+02:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2025-01-13T19:24:22.7303148+02:00","level":"INFO","msg":"created symlink","path":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20250113_192422-iizj19mx\\logs\\debug-core.log"}
+{"time":"2025-01-13T19:24:22.8445691+02:00","level":"INFO","msg":"created new stream","id":"iizj19mx"}
+{"time":"2025-01-13T19:24:22.8450818+02:00","level":"INFO","msg":"stream: started","id":"iizj19mx"}
+{"time":"2025-01-13T19:24:22.8450818+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"iizj19mx"}
+{"time":"2025-01-13T19:24:22.8450818+02:00","level":"INFO","msg":"sender: started","stream_id":"iizj19mx"}
+{"time":"2025-01-13T19:24:22.8450818+02:00","level":"INFO","msg":"handler: started","stream_id":"iizj19mx"}
+{"time":"2025-01-13T19:24:23.2668685+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-13T20:09:30.8739682+02:00","level":"INFO","msg":"stream: closing","id":"iizj19mx"}
+{"time":"2025-01-13T20:09:30.8739682+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-13T20:09:30.8754403+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-01-13T20:09:32.2394078+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-01-13T20:09:33.7947602+02:00","level":"INFO","msg":"handler: closed","stream_id":"iizj19mx"}
+{"time":"2025-01-13T20:09:33.7949115+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"iizj19mx"}
+{"time":"2025-01-13T20:09:33.7949115+02:00","level":"INFO","msg":"sender: closed","stream_id":"iizj19mx"}
+{"time":"2025-01-13T20:09:33.7954261+02:00","level":"INFO","msg":"stream: closed","id":"iizj19mx"}

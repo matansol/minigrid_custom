@@ -1,0 +1,16 @@
+{"time":"2025-01-13T19:10:43.6063094+02:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2025-01-13T19:10:43.6063094+02:00","level":"INFO","msg":"created symlink","path":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20250113_191043-x81vzlv5\\logs\\debug-core.log"}
+{"time":"2025-01-13T19:10:43.7377535+02:00","level":"INFO","msg":"created new stream","id":"x81vzlv5"}
+{"time":"2025-01-13T19:10:43.7377535+02:00","level":"INFO","msg":"stream: started","id":"x81vzlv5"}
+{"time":"2025-01-13T19:10:43.7377535+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"x81vzlv5"}
+{"time":"2025-01-13T19:10:43.7377535+02:00","level":"INFO","msg":"handler: started","stream_id":"x81vzlv5"}
+{"time":"2025-01-13T19:10:43.7377535+02:00","level":"INFO","msg":"sender: started","stream_id":"x81vzlv5"}
+{"time":"2025-01-13T19:10:44.1984375+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-13T19:20:24.8872485+02:00","level":"INFO","msg":"stream: closing","id":"x81vzlv5"}
+{"time":"2025-01-13T19:20:24.8872485+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-13T19:20:24.8877543+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-01-13T19:20:26.0357922+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-01-13T19:20:26.6547269+02:00","level":"INFO","msg":"handler: closed","stream_id":"x81vzlv5"}
+{"time":"2025-01-13T19:20:26.6547269+02:00","level":"INFO","msg":"sender: closed","stream_id":"x81vzlv5"}
+{"time":"2025-01-13T19:20:26.6547269+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"x81vzlv5"}
+{"time":"2025-01-13T19:20:26.6553357+02:00","level":"INFO","msg":"stream: closed","id":"x81vzlv5"}

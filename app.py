@@ -573,47 +573,40 @@ def finish_game():
     print("Scores:", scores)  # Server-side console log for debugging
     emit('finish_game', {'scores': scores})
 
-@app.before_request
-def setup_game_control():
-    if 'game_control' not in g:
-        g.game_control = GameControl(env, model_paths)
-        g.game_control.reset()
+
+# creating env and game control objects
+
+players_sessions = {}
+unique_env_id = 0
+# unique_env_id = 3
+env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True, unique_env=unique_env_id)
+env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
+env.reset()
+
+model_dir1 = "models\\LavaLaver8_20241112"
+model_dir2 = "models\\LavaHate8_20241112"
+# Preference vector: (red ball, green ball, blue ball, lava, step penalty)
+model_paths = [
+            # model_dir1 + "/iter_250000_steps", (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112",
+            (os.path.join("models", "LavaLaver8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112"),
+            # model_dir2 + "/iter_250000_steps", (2, 2 ,2, -3, -0.1), "LavaHate8_20241112",
+            (os.path.join("models", "LavaHate8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, -3, -0.1), "LavaHate8_20241112"),
+            (os.path.join("models", "2,2,2,-3,0.2Steps100Grid8_20241230", "best_model.zip"), (2, 2 ,2, -3, -0.2), "LavaHate8_20241229"),
+            (os.path.join("models", "0,5,0,-3,0.2Steps100Grid8_20241231", "best_model.zip"), (0, 5 ,0, -3, -0.2), "GreenOnly8_20241231"),
+]
+actions_dict = {0: Actions.left, 1: Actions.right, 2: Actions.forward, 3: Actions.pickup, 4: Actions.drop, 5: Actions.toggle, 6: Actions.done,
+            'turn left': Actions.left, 'turn right': Actions.right, 'forward': Actions.forward, 'pickup': Actions.pickup}
+
+print("go to create the game control")
+
+game_control= GameControl(env, model_paths)
+game_control.reset()
+
+action_dir = {'ArrowLeft': 'Turn left', 'ArrowRight': 'Turn right', 'ArrowUp':
+            'Move forward', 'Space': 'Toggle', 'PageUp': 'Pickup', 'PageDown': 'Drop', '1': 'Pickup', '2': 'Drop'}
 
 if __name__ == '__main__':
-    print("hello world")
     # initialize the environment and the manual control object
-    players_sessions = {}
-    unique_env_id = 0
-    # unique_env_id = 3
-    env = CustomEnv(grid_szie=8, render_mode="rgb_array", image_full_view=False, highlight=True, max_steps=100, lava_cells=3, partial_obs=True, unique_env=unique_env_id)
-    env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
-
-    # env = CustomEnv(grid_size=8, difficult_grid=True, max_steps=50, num_objects=3, lava_cells=2, render_mode="rgb_array")
-    # env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-2.0)
-
-    env.reset()
-
-    model_dir1 = "models\\LavaLaver8_20241112"
-    model_dir2 = "models\\LavaHate8_20241112"
-    # Preference vector: (red ball, green ball, blue ball, lava, step penalty)
-    model_paths = [
-                # model_dir1 + "/iter_250000_steps", (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112",
-                (os.path.join("models", "LavaLaver8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, 0, -0.1), "LavaLaver8_20241112"),
-                # model_dir2 + "/iter_250000_steps", (2, 2 ,2, -3, -0.1), "LavaHate8_20241112",
-                (os.path.join("models", "LavaHate8_20241112", "iter_500000_steps.zip"), (2, 2 ,2, -3, -0.1), "LavaHate8_20241112"),
-                (os.path.join("models", "2,2,2,-3,0.2Steps100Grid8_20241230", "best_model.zip"), (2, 2 ,2, -3, -0.2), "LavaHate8_20241229"),
-                (os.path.join("models", "0,5,0,-3,0.2Steps100Grid8_20241231", "best_model.zip"), (0, 5 ,0, -3, -0.2), "GreenOnly8_20241231"),
-    ]
-    actions_dict = {0: Actions.left, 1: Actions.right, 2: Actions.forward, 3: Actions.pickup, 4: Actions.drop, 5: Actions.toggle, 6: Actions.done,
-                'turn left': Actions.left, 'turn right': Actions.right, 'forward': Actions.forward, 'pickup': Actions.pickup}
-
-    print("go to create the game control")
-    global game_control
-    game_control= GameControl(env, model_paths)
-    game_control.reset()
-
-    action_dir = {'ArrowLeft': 'Turn left', 'ArrowRight': 'Turn right', 'ArrowUp':
-                'Move forward', 'Space': 'Toggle', 'PageUp': 'Pickup', 'PageDown': 'Drop', '1': 'Pickup', '2': 'Drop'}
     print("Starting the server")
     # print(torch.__version__)
     # print(torch.backends.cudnn.enabled) 

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, g
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
@@ -573,6 +573,11 @@ def finish_game():
     print("Scores:", scores)  # Server-side console log for debugging
     emit('finish_game', {'scores': scores})
 
+@app.before_request
+def setup_game_control():
+    if 'game_control' not in g:
+        g.game_control = GameControl(env, model_paths)
+        g.game_control.reset()
 
 if __name__ == '__main__':
     print("hello world")
@@ -603,7 +608,8 @@ if __name__ == '__main__':
                 'turn left': Actions.left, 'turn right': Actions.right, 'forward': Actions.forward, 'pickup': Actions.pickup}
 
     print("go to create the game control")
-    game_control = GameControl(env, model_paths)
+    global game_control
+    game_control= GameControl(env, model_paths)
     game_control.reset()
 
     action_dir = {'ArrowLeft': 'Turn left', 'ArrowRight': 'Turn right', 'ArrowUp':

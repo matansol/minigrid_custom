@@ -19,32 +19,20 @@ import os
 import matplotlib.pyplot as plt
 import time
 import copy
+from dotenv import load_dotenv
+import os
 
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///testdb.db'
-# Azure DB info:
-# name: dpudb.mysql.database.azure.com
-# password: dpuDB123
-# mysql+pymysql://matansol:dpuDB123@dpudb.mysql.database.azure.com:3306/dpudb?sslmode=required
-# app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://matansol:dpuDB123@dpudb.mysql.database.azure.com:8000/dpudb"
-
-
-# azure dpu-server
-# password: Matan_password
-
-# DB code
-# railway DB:
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:GmGJtyAIzmnPuEjbUHFPBlTyxfFPvQOO@roundhouse.proxy.rlwy.net:22844/railway'
-
-# azure mysql:
 
 # ---------------------- FLASK & SOCKETIO SETUP ----------------------
 app = Flask(__name__)
 socketio = SocketIO(app)
 
 # -------------------- Database configuration ---------------------------
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    'mysql+pymysql://matansol:dpuDB123@dpudb.mysql.database.azure.com/mysql_dpu'
-)
+# Load environment variables from .env file
+load_dotenv()
+
+# Get the database URI from the environment variable
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('AZURE_DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy

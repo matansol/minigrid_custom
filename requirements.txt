@@ -15,3 +15,4 @@ gevent==22.10.2
 uwsgi==2.0.22
 stable_baselines3==2.3.2
 torch==2.3.1
+python-dotenv

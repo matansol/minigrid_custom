@@ -1,8 +1,7 @@
 Flask==3.0.3
 Flask_SocketIO==5.3.6
 flask_sqlalchemy==3.1.1
-gym_minigrid==1.2.2
-minigrid==2.3.1
+pandas==2.2.3
 gymnasium==0.29.1
 matplotlib==3.9.2
 minigrid==2.3.1
@@ -11,8 +10,8 @@ Pillow==11.0.0
 pygame==2.5.2
 PyMySQL==1.1.1
 SQLAlchemy==2.0.32
-stable_baselines3==2.3.2
-torch==2.3.1
 gunicorn==20.1.0
 gevent==22.10.2
-wandb==0.19.1
+uwsgi==2.0.22
+stable_baselines3==2.3.2
+torch==2.3.1

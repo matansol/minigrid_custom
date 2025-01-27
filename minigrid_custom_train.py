@@ -10,7 +10,7 @@ import torch as th
 import torch.nn as nn
 from gymnasium.core import ObservationWrapper
 from gymnasium.spaces import Box, Dict
-from stable_baselines3 import PPO, DQN
+from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -25,12 +25,13 @@ from minigrid_custom_env import CustomEnv
 from minigrid.wrappers import FullyObsWrapper, ImgObsWrapper, NoDeath
 
 def set_random_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    th.manual_seed(seed)
-    if th.cuda.is_available():
-        th.cuda.manual_seed(seed)
-        th.cuda.manual_seed_all(seed)
+    # random.seed(seed)
+    # np.random.seed(seed)
+    # th.manual_seed(seed)
+    # if th.cuda.is_available():
+    #     th.cuda.manual_seed(seed)
+    #     th.cuda.manual_seed_all(seed)
+    pass
 
 class ObjObsWrapper(ObservationWrapper):
     def __init__(self, env):

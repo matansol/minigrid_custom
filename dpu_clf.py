@@ -6,23 +6,14 @@ import io
 from PIL import Image
 import matplotlib
 from matplotlib.patches import Circle, Rectangle
-import copy
-import csv
 import pandas as pd
 import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
-
-# from IPython.display import HTML
-# from IPython import display
-# from IPython.display import clear_output
-
-# from gym.wrappers.record_video import RecordVideo
-from gym_minigrid.wrappers import *
-
-
+from stable_baselines3 import PPO
 from minigrid_custom_env import *
-from minigrid_custom_train import *
+
+
 
 def load_agent(env, model_path) -> PPO:
     # policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
@@ -130,7 +121,7 @@ def ax_to_feedback_image(ax):
     return img_base64
 
 
-def plot_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
     imgs_action_list = []
     feedback_action_color = 'cyan'
     start_point = (50, 50)
@@ -254,7 +245,137 @@ def plot_move_sequence(img, move_sequence, agent_true_actions, move_color='y', t
     buf = ax_to_feedback_image(ax)
     return buf, actions_with_location, imgs_action_list
 
+# each move with its own image
+def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+    imgs_action_list = []
+    feedback_action_color = 'cyan'
+    start_point = (50, 50)
+    arrow_size = 20
+    arrow_head_size = 12
+    small_shift = 9
+    actions_with_location = []
+    all_arrow_size = arrow_size + arrow_head_size
+    move_arrow_sizes = {'up': (0, -20, 0, -all_arrow_size), 
+                        'down': (0, 20, 0, all_arrow_size), 
+                        'right': (20, 0, all_arrow_size, 0), 
+                        'left': (-20, 0, -all_arrow_size, 0)}
+    turn_arrow_sizes = {'turn up': (0, -5),
+                        'turn down': (0, 5),
+                        'turn right': (5, 0),
+                        'turn left': (-5, 0)}
+    pickup_direction = {'up': (0, -1),
+                         'down': (0, 1),
+                         'left': (-1, 0),
+                         'right': (1, 0)}
+    # arrows_list = ['right', 'right', 'down', 'down', 'down', 'down', 'down', 'right', 'right', 'up', 'right', 'down']
 
+    mark_x, mark_y = start_point[0] + 80, start_point[1] + 40 # 300, 160
+    mark_sizes = {'move_vertical': (25, 70), 'move_horizontal': (80, 20), 'turn': (20, 20), 'pickup': (20, 20)}
+    # mark_sizes = {'move_vertical': (30, 30), 'move_horizontal': (30, 30), 'turn': (30, 30), 'pickup': (30, 30)}
+
+    # mark_move_sizes = {'move_vertical': 20, 'move_horizontal': 20}
+    
+    
+    current_point = start_point
+
+    i= 0
+    print(f'plot move sequence len: {len(move_sequence)}, imgs len: {len(imgs)}')
+    for action_dir, actual_action in move_sequence:
+        _ , ax = plt.subplots()
+        ax.imshow(imgs[i])
+        if i == converge_action_location:
+            # add a rectangle to mark the converging point:
+            ax.add_patch(Rectangle((current_point[0] - 10, current_point[1]- 10), 15, 15, color='b', alpha=0.4))
+        i += 1
+        full_action = action_dir.split(' ')
+        action = full_action[0]
+        action_loc = {'action': actual_action}
+        # moving action
+        if action_dir in move_arrow_sizes.keys(): # a big arrow that represents a move
+            # add the action arrow to the feedback arrow and save the image
+            ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=feedback_action_color, ec=feedback_action_color)
+            # imgs_action_list.append(ax_to_feedback_image(ax))
+            buf = ax_to_feedback_image(ax)
+
+            # overide the feedback arrow with the real action
+            # ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=move_color, ec=move_color)
+            current_point = (current_point[0] + move_arrow_sizes[action_dir][2], current_point[1] + move_arrow_sizes[action_dir][3])
+            mark_size = mark_sizes['move_vertical'] if action_dir == 'up' or action_dir == 'down' else mark_sizes['move_horizontal']
+            
+            if action_dir == 'up':
+                mark_y -= 25 + all_arrow_size
+            elif action_dir == 'left': # move left
+                mark_x += - 43 - all_arrow_size
+            action_loc['x'] = mark_x #current_point[0] + mark_x
+            action_loc['y'] = mark_y #current_point[1] + mark_y
+            action_loc['width'] = mark_size[0]
+            action_loc['height'] = mark_size[1]
+            # action_loc['width'] = max(move_arrow_sizes[action_name][2], min_width) * inlarge_factor
+            # action_loc['height'] = max(move_arrow_sizes[action_name][3], min_hieght) * inlarge_factor
+            
+            if action_dir == 'down':
+                mark_y += 25 + all_arrow_size
+            elif action_dir == 'right':
+                mark_x += 43 + all_arrow_size
+            
+        
+        #turning action   
+        elif action_dir in turn_arrow_sizes.keys(): # a small arrow that represents a turn or a pickup
+            # add the action arrow to the feedback arrow and save the image
+            ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=feedback_action_color, ec=feedback_action_color)
+            # imgs_action_list.append(ax_to_feedback_image(ax))
+            buf = ax_to_feedback_image(ax)
+        
+            # overide the feedback arrow with the real action
+            # ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=turn_color, ec=turn_color)
+            shift_size = 17
+            turnning_mark_shifts = {'turn up': (0, -shift_size), 'turn down': (0, shift_size), 'turn right': (shift_size, 0), 'turn left': (-shift_size, 0)}
+            x_shift, y_shift = turnning_mark_shifts[action_dir]
+            # print("turned to:", action_dir)
+            
+            if action_dir == 'turn up':
+                mark_x -= 2
+                # mark_y += -10
+            elif action_dir == 'turn down':
+                mark_x -= 2
+                # mark_y += -5
+            elif action_dir == 'turn right':
+                mark_x -= 2
+                # mark_y += -10
+            else: # turn left
+                mark_x += 5
+                # mark_y += -10
+
+            action_loc['x'] = mark_x + x_shift
+            action_loc['y'] = mark_y + y_shift
+            action_loc['width'] = mark_sizes['turn'][0]
+            action_loc['height'] = mark_sizes['turn'][1]
+
+            
+        # pickup action
+        elif action == 'pickup':        
+            pickup_position = pickup_direction[full_action[1]]
+
+            action_sign = ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=feedback_action_color)
+            # imgs_action_list.append(ax_to_feedback_image(ax))
+            buf = ax_to_feedback_image(ax)
+
+            # overide the feedback arrow with the real action
+            # ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=pickup_color)
+            
+            action_loc['x'] = mark_x + 25 * pickup_position[0]
+            action_loc['y'] = mark_y + 15 * pickup_position[1]
+            action_loc['width'] = mark_sizes['pickup'][0]
+            action_loc['height'] = mark_sizes['pickup'][1]
+        actions_with_location.append(action_loc)
+        imgs_action_list.append(buf)
+        plt.close()
+        # Capture the current state of the plot
+        # Add a yellow half-transparent rectangle for the last action
+        
+
+    
+    return buf, actions_with_location, imgs_action_list
 
 WALL_SHIFT_FACTOR = 1
 WALL_FACTOR = 10

@@ -24,5 +24,5 @@ COPY models ./models
 EXPOSE 8000
 
 # Specify the command to run your application
-CMD ["gunicorn", "-w", "3", "--threads", "3", "--max-requests-jitter", "50", "-k", "gevent", "--timeout", "120", "-b", "0.0.0.0:8000", "app:app"]
+CMD ["gunicorn", "-w", "1", "--threads", "3", "--max-requests-jitter", "100", "-k", "gevent", "--timeout", "5000", "-b", "0.0.0.0:8000", "app:app"]
 

@@ -15,11 +15,13 @@ import gymnasium as gym
 from gymnasium.spaces import Box, Dict
 from gymnasium.core import ObservationWrapper
 from gymnasium import spaces
+import torch as th
+import torch.nn as nn
 
 
-# from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 # import torch
-# import torch.nn as nn
+import torch.nn as nn
 
 
 # import matplotlib.pyplot as plt
@@ -33,6 +35,101 @@ basic_colors_rewards  = {
                 'green': 2,
                 'blue': 2,
             }
+
+class ObjObsWrapper(ObservationWrapper):
+    def __init__(self, env):
+        """A wrapper that makes image the only observation.
+        Args:
+            env: The environment to apply the wrapper
+        """
+        super().__init__(env)
+
+        size = env.observation_space['image'].shape[0]
+        print("observation size:", size)
+        self.observation_space = Dict(
+            {
+                "image": Box(low=0, high=255, shape=(size, size, 3), dtype=np.uint8),
+
+            }
+        )
+
+    def observation(self, obs):
+        if self.env.step_count_observation:
+            wrapped_obs = {
+                "image": obs["image"],
+                # "mission": mission_array,
+                "step_count": np.array([obs["step_count"]]),
+            }
+        else:
+            wrapped_obs = {
+                "image": obs["image"],
+            }
+
+        return wrapped_obs
+
+
+class ObjEnvExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space: Dict):
+        # We do not know features-dim here before going over all the items,
+        # so put something dummy for now. PyTorch requires calling
+        # nn.Module.__init__ before adding modules
+        super().__init__(observation_space, features_dim=1)
+
+        extractors = {}
+        total_concat_size = 0
+
+        print("Observation space:", observation_space)
+        # We need to know size of the output of this extractor,
+        # so go over all the spaces and compute output feature sizes
+        for key, subspace in observation_space.spaces.items():
+            if key == "image":
+                # We will just downsample one channel of the image by 4x4 and flatten.
+                # Assume the image is single-channel (subspace.shape[0] == 0)
+                cnn = nn.Sequential(
+                    nn.Conv2d(3, 16, (2, 2)),
+                    nn.ReLU(),
+                    nn.Conv2d(16, 32, (2, 2)),
+                    nn.ReLU(),
+                    nn.Conv2d(32, 64, (2, 2)),
+                    nn.ReLU(),
+                    nn.Flatten(),
+                )
+
+                # Compute shape by doing one forward pass
+                with th.no_grad():
+                    n_flatten = cnn(
+                        th.as_tensor(subspace.sample()[None]).float()
+                    ).shape[1]
+
+                linear = nn.Sequential(nn.Linear(n_flatten, 64), nn.ReLU())
+                extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
+                total_concat_size += 64
+
+            elif key == "mission":
+                extractors["mission"] = nn.Linear(subspace.shape[0], 32)
+                total_concat_size += 32
+            elif key == "step_count": 
+                # Add a linear layer to process the scalar `step_count`
+                extractors["step_count"] = nn.Sequential(
+                    nn.Linear(subspace.shape[0], 16),  # Convert 1D input to 16 features
+                    nn.ReLU(),
+                    )
+                total_concat_size += 16  # Update the total feature size
+
+        self.extractors = nn.ModuleDict(extractors)
+
+        # Update the features dim manually
+        self._features_dim = total_concat_size
+
+    def forward(self, observations) -> th.Tensor:
+        encoded_tensor_list = []
+
+        # self.extractors contain nn.Modules that do all the processing.
+        for key, extractor in self.extractors.items():
+            encoded_tensor_list.append(extractor(observations[key]))
+
+        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
+        return th.cat(encoded_tensor_list, dim=1)
 
 
 class CustomEnv(MiniGridEnv):

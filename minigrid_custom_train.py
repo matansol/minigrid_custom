@@ -25,12 +25,12 @@ from minigrid_custom_env import CustomEnv
 from minigrid.wrappers import FullyObsWrapper, ImgObsWrapper, NoDeath
 
 def set_random_seed(seed):
-    # random.seed(seed)
-    # np.random.seed(seed)
-    # th.manual_seed(seed)
-    # if th.cuda.is_available():
-    #     th.cuda.manual_seed(seed)
-    #     th.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    th.manual_seed(seed)
+    if th.cuda.is_available():
+        th.cuda.manual_seed(seed)
+        th.cuda.manual_seed_all(seed)
     pass
 
 class ObjObsWrapper(ObservationWrapper):
@@ -232,7 +232,7 @@ def main():
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
     max_steps = 300
-    colors_rewards = {'red': -0.1, 'green': 4, 'blue': -0.1}
+    colors_rewards = {'red': 4, 'green': -0.1, 'blue': -0.1}
     lava_cost = -4
     grid_size = 8
     agent_view_size = 7
@@ -246,7 +246,7 @@ def main():
                 max_steps=max_steps,
                 highlight=True,
                 step_cost=0.2,
-                num_objects=4,
+                num_objects=5,
                 lava_cells=3,
                 train_env=True,
                 image_full_view=False,

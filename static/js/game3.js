@@ -170,21 +170,21 @@ document.addEventListener('DOMContentLoaded', (event) => {
         if (activePage.id === 'ph1-game-page') {
             gameImagePh1.src = 'data:image/png;base64,' + data.image;
             placeholderIconPh.style.display = 'none';
+            if (data.action) {
+                document.getElementById('action').innerText = data.action;
+            }
+                console.log('game update data:', data.action, data.reward, data.score, data.last_score);
+                document.getElementById('reward').innerText = data.reward;
+                document.getElementById('score').innerText = data.score;
+                document.getElementById('last_score').innerText = data.last_score;
         } else if (activePage.id === 'ph2-game-page') {
             gameImagePh2.src = 'data:image/png;base64,' + data.image;
-            console.log('Phase 2 game data:', data.reward, data.score, data.last_score);
-        }
-
-        if (data.action) {
-            document.getElementById('action').innerText = data.action;
-        }
-        document.getElementById('reward').innerText = data.reward;
-        document.getElementById('score').innerText = data.score;
-        document.getElementById('last_score').innerText = data.last_score;
-
-        // If the game finishes in phase 2, go to the overview page
-        if (data.done && activePage.id === 'ph2-game-page') {
-            // We'll rely on 'episode_finished' event to show the overview-page
+            if (data.action) {
+                document.getElementById('action2').innerText = data.action;
+            }
+                document.getElementById('reward2').innerText = data.reward;
+                document.getElementById('score2').innerText = data.score;
+                document.getElementById('last_score2').innerText = data.last_score;
         }
     });
 
@@ -206,10 +206,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
         if (activePage && activePage.id === 'ph1-game-page') {
             socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: false });
-            phase1_counter += 1;
-            if (phase1_counter > 1) {
-                gotoPhase2Button.style.display = 'block';
-            }
+            // if to show the finish tutorial button after the first episode
+            // phase1_counter += 1;
+            // if (phase1_counter > 1) {
+            //     gotoPhase2Button.style.display = 'block';
+            // }
             showPage('ph1-game-page');
         } else {
             // Phase 2 has finished, update the overview page
@@ -238,7 +239,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         const currentAction = actions[currentActionIndex];
         console.log('Current action index:', currentActionIndex, currentAction);
         overviewGameImage.src = 'data:image/png;base64,' + feedbackImages[currentActionIndex];
-        console.log('current_image:', overviewGameImage.src);
         currentActionElement.textContent = currentAction.action;
         //optionally remove the selected-action class from the previous action
         currentActionElement.classList.remove('selected-action');

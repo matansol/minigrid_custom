@@ -1,7 +1,6 @@
 .git*
 **/*.pyc
 .venv/
-.env
 deploy-webapp-lightsail-project-files
 images
 logs
@@ -9,4 +8,3 @@ videos
 wandb
 minigrid_custom.ipynb
 test_db.py
-minigrid_custom_train.py

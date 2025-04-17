@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib
+import time
 matplotlib.use('Agg')  # Use the non-interactive Agg backend
 import matplotlib.pyplot as plt
 import io
@@ -12,18 +13,41 @@ import base64
 from io import BytesIO
 from stable_baselines3 import PPO
 from minigrid_custom_env import *
+from minigrid_custom_train import UpgradedObjEnvExtractor
 
 
+def timeit(func):
+    """
+    Decorator to measure the execution time of a function.
+    """
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"Function '{func.__name__}' took {end_time - start_time:.4f} seconds.")
+        return result
+    return wrapper
 
-def load_agent(env, model_path) -> PPO:
+@timeit
+def load_agent(env, model_path, update=False) -> PPO:
     # policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
-    custom_objects = {
+    if update:
+        custom_objects = {
+        "policy_kwargs": {"features_extractor_class": UpgradedObjEnvExtractor},  # Example kernel size
+        "clip_range": 0.2,  # Example custom parameters
+        "lr_schedule": 0.001  # Example learning rate schedule
+    }
+    else:
+        custom_objects = {
         "policy_kwargs": {"features_extractor_class": ObjEnvExtractor},  # Example kernel size
         "clip_range": 0.2,  # Example custom parameters
         "lr_schedule": 0.001  # Example learning rate schedule
     }
     # Load the model
     ppo = PPO.load(f"{model_path}", custom_objects=custom_objects, env=env)
+    # Print environment observation and PPO model observation
+    print("Environment Observation Space:", env.observation_space)
+    print("PPO Model Observation Space:", ppo.observation_space)
     return ppo
 
 def add_path_to_csv(model_path, preference_vector, name, eval_reward):
@@ -37,7 +61,6 @@ def add_path_to_csv(model_path, preference_vector, name, eval_reward):
 
     # Append to the existing CSV:
     new_df.to_csv("models/models_vectors.csv", mode="a", header=False, index=False)
-
 
 def image_to_base64(image_array):
     """Convert NumPy array to a base64-encoded PNG."""
@@ -57,6 +80,8 @@ def is_illegal_move(action, last_obs, obs, agent_pos_befor, agent_pos):
 
 actions_translation = {0: 'turn left', 1: 'turn right', 2: 'move forward', 3: 'pickup'}
 # resert the environment and run the agent on that environment to find his path
+
+@timeit
 def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves, number of illegal moves, total reward, list of legal actions
     illigal_moves = 0
     last_obs = copy_env.get_wrapper_attr('current_state')
@@ -120,7 +145,7 @@ def ax_to_feedback_image(ax):
     img_base64 = base64.b64encode(feedback_buf.getvalue()).decode('ascii')
     return img_base64
 
-
+@timeit
 def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
     imgs_action_list = []
     feedback_action_color = 'cyan'
@@ -246,6 +271,7 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
     return buf, actions_with_location, imgs_action_list
 
 # each move with its own image
+@timeit
 def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
     imgs_action_list = []
     feedback_action_color = 'cyan'
@@ -478,19 +504,30 @@ def state_distance(objects1, objects2):
 
 # run the agent and evaluate his prefermances
 # return the average reward and the average number of illegal moves
-def evaluate_agent(env, agent, num_episodes=100) -> (float, float):
+def evaluate_agent(env, agent, num_episodes=100) -> (float, float, float):
+    """
+    Evaluate the agent on the given environment, return the average reward, the average number of illegal moves, and the average number of moves
+    """
     total_reward = 0
     total_illegal_moves = 0
+    total_moves = 0
     for i in range(num_episodes):
-        state, _ = env.reset()
+        # kwargs = {'simillarity_level': 3}
+        state = env.unwrapped.reset()
+        state = state[0]
+        state = {'image': state['image']}
         done = False
-        while not done:
+        while not (done):
             last_obs = state
-            agent_pos_before = env.get_wrapper_attr('agent_pos')
+            agent_pos_before = env.unwrapped.agent_pos
+            # print(state)
             action, _ = agent.predict(state)
-            state, reward, done, _, _ = env.step(action)
+            state, reward, done, truncle, _ = env.unwrapped.step(action)
+            state = {'image': state['image']}
             total_reward += reward
-            if is_illegal_move(action, last_obs, state, agent_pos_before, env.get_wrapper_attr('agent_pos')):
+            total_moves += 1
+            if is_illegal_move(action, last_obs, state, agent_pos_before, env.unwrapped.agent_pos):
                 total_illegal_moves += 1
+        # print("Episode:", i, "Reward:", total_reward, "Illegal moves:", total_illegal_moves, "Total moves:", total_moves)
             
-    return total_reward/num_episodes, total_illegal_moves//num_episodes
+    return total_reward/num_episodes, total_illegal_moves//num_episodes, total_moves//num_episodes

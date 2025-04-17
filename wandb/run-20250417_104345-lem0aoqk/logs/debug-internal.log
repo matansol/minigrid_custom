@@ -1,0 +1,8 @@
+{"time":"2025-04-17T10:43:45.4874258+03:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2025-04-17T10:43:45.4874258+03:00","level":"INFO","msg":"created symlink","path":"C:\\Users\\matan\\master_thesis\\minigrid_custom\\wandb\\run-20250417_104345-lem0aoqk\\logs\\debug-core.log"}
+{"time":"2025-04-17T10:43:45.6362498+03:00","level":"INFO","msg":"created new stream","id":"lem0aoqk"}
+{"time":"2025-04-17T10:43:45.6368336+03:00","level":"INFO","msg":"stream: started","id":"lem0aoqk"}
+{"time":"2025-04-17T10:43:45.6368336+03:00","level":"INFO","msg":"writer: Do: started","stream_id":"lem0aoqk"}
+{"time":"2025-04-17T10:43:45.6368336+03:00","level":"INFO","msg":"handler: started","stream_id":"lem0aoqk"}
+{"time":"2025-04-17T10:43:45.6368336+03:00","level":"INFO","msg":"sender: started","stream_id":"lem0aoqk"}
+{"time":"2025-04-17T10:43:46.1048234+03:00","level":"INFO","msg":"Starting system monitor"}

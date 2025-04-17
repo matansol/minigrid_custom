@@ -189,11 +189,66 @@
             max-width: 100%;
             height: auto;
         }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Ensure it appears above other elements */
+        }
+
+        .loading-icon {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3; /* Light gray */
+            border-top: 5px solid #3498db; /* Blue */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #loading-overlay p {
+            color: white;
+            font-size: 18px;
+            margin-top: 10px;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
+
+    <!-- Cover Page -->
+    <div id="cover-page" class="page active">
+        <h1>Welcome to the Minigrid Game</h1>
+        <button id="cover-start-button">Start</button>
+    </div>
+
+    <!-- Welcome Page -->
+    <div id="welcome-page" class="page">
+        <h2>Welcome to the Game</h2>
+        <p>In the next experiment you will play a custom game controlling a triangle-shaped player. <br>
+            The game is a sequence of episodes where in each episode the player earns points by collecting balls that are scattered in the arena.  
+            Each ball gives 2 points and each action cost 0.1 points.<br>
+            You can control the player using the keyboard arrows and the '1' key to pick up balls, or you can use a pre trained agent to play the game for you. <br>
+            Notice that the agent is suboptimal and you can improve it by providing feedback on its actions in the overview page that will appear once the episode is over.<br>
+            After the feedback you could watch the agent's updated policy compared to the previous one on some examples.</p>
+        <input type="text" id="player-name" placeholder="Enter your name">
+        <button id="welcome-continue-button">Continue</button>
+    </div>
+
+
 
     <!-- Welcome Page -->
     <div id="welcome-page" class="page active">
@@ -204,10 +259,14 @@
             You can control the player using the keyboard arrows and the '1' key to pick up balls, or you can use a pre trained agent to play the game for you. <br>
             Notice that the agent is suboptimal and you can improve it by providing feedback on its actions in the overview page that will appear once the episode is over.<br>
             After the feedback you could watch the agent's updated policy compared to the previous one on some examples.
-        </p>
-        <input type="text" id="player-name" placeholder="Enter your ID" />
-        <button id="start-button">Start</button>
-    </div>
+    </p>
+            <input type="text" id="player-name" placeholder="Enter your ID" />
+            <button id="start-button">Start</button>
+        </div>
+
+
+
+
 
     <!-- Phase1 - Know The Game Page -->
     <div id="ph1-game-page" class="page">
@@ -215,11 +274,21 @@
             Get to know the game by collecting balls and avoiding the lava cells, every step count so think before you act <br>
         </p>
         <div id="game-container">
-       <!--      <div id="loading-indicator-ph1">Loading...</div> Loading indicator -->
-    
             <!-- Game content with image and instructions -->
             <div id="game-content">
-                <div id="game-image-container">
+                <div id="game-image-container" style="position: relative;">
+                    <div id="step-count-overlay-ph1" style="
+                        position: absolute;
+                        top: 10px;
+                        right: 10px;
+                        color: white;
+                        background-color: rgba(0, 0, 0, 0.5);
+                        padding: 5px 10px;
+                        border-radius: 5px;
+                        font-size: 16px;
+                        z-index: 10;">
+                        Step Count: <span id="step-count-ph1">0</span>
+                    </div>
                     <i class="fas fa-spinner fa-spin placeholder-icon"></i> <!-- Placeholder icon -->
                     <img id="game-image-ph1" src="" alt="Game Image">
                 </div>
@@ -234,7 +303,6 @@
                     <button id="goto-phase2-button">End Tutorial</button>
                 </div>
             </div>
-    
             <!-- Game information -->
             <div id="info-container">
                 <p>Action: <span id="action"></span></p>
@@ -245,21 +313,29 @@
         </div>
     </div>
 
-    <!-- Ph2 agent play Page -->
+    <!-- Phase2 - Agent Play Page -->
     <div id="ph2-game-page" class="page">
-        <p> Let the smart agent play for you, and sees where he makes mistakes, when the episode will be over you will get the chance to give him feedback</p>
+        <p>Let the smart agent play for you, and see where it makes mistakes. When the episode is over, you will get the chance to give feedback.</p>
+        <!-- Start Agent Button -->
+        <div id="button-container-ph2" style="margin-top: 20px; text-align: center;">
+            <button id="start-agent-button" style="display: block;">Start Agent</button>
+        </div>
         <div id="game-container">
-            <!-- Button container at the top -->
-            <!-- <div id="button-container">
-                <button id="agent_play_all">Agent Play</button>
-            </div> -->
-
-    <!--               <button id="ppo-button">Agent Action</button>-->
-
             <!-- Game content with image and instructions -->
             <div id="game-content">
-                <div id="game-image-container">
- <!--                    <i class="fas fa-spinner fa-spin placeholder-icon"></i> Placeholder icon -->
+                <div id="game-image-container" style="position: relative;">
+                    <div id="step-count-overlay-ph2" style="
+                        position: absolute;
+                        top: 10px;
+                        right: 10px;
+                        color: white;
+                        background-color: rgba(0, 0, 0, 0.5);
+                        padding: 5px 10px;
+                        border-radius: 5px;
+                        font-size: 16px;
+                        z-index: 10;">
+                        Step Count: <span id="step-count-ph2">0</span>
+                    </div>
                     <img id="game-image-ph2" src="" alt="Game Image">
                 </div>
                 <div id="key-instructions">
@@ -270,7 +346,6 @@
                     <p>'1' - Pickup</p>
                 </div>
             </div>
-    
             <!-- Game information -->
             <div id="info-container">
                 <p>Action: <span id="action2"></span></p>
@@ -281,7 +356,7 @@
         </div>
     </div>
 
-     <!-- Overview Page -->
+<!-- Overview Page -->
 <!-- <div id="overview-page" class="page" style="display: none;">
     <h2>Episode Overview</h2>
     <p>The feedback is given by selecting a new action from the dropdown, if desired.</p>
@@ -373,6 +448,11 @@
         </div>
     </div>
 
+    <!-- Add this to your HTML -->
+    <div id="loading-overlay" style="display: none;">
+        <div class="loading-icon"></div>
+        <p>Uploading next page...</p>
+    </div>
 
     <script src="static/js/game3.js"></script>
 

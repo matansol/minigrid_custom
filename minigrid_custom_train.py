@@ -8,20 +8,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch as th
 import torch.nn as nn
+from torch.optim.lr_scheduler import StepLR
+
 from gymnasium.core import ObservationWrapper
-from gymnasium.spaces import Box, Dict
+# from gymnasium.spaces import Box, Dict
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, BaseCallback
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
+from gym.wrappers import TimeLimit
 from gymnasium import spaces
+from torch import optim
+from typing import Dict
+
 
 import wandb
 from wandb.integration.sb3 import WandbCallback
 import random
 
-from minigrid_custom_env import CustomEnv
+from minigrid_custom_env import CustomEnv, ObjObsWrapper, ObjEnvExtractor
 from minigrid.wrappers import FullyObsWrapper, ImgObsWrapper, NoDeath
 
 def set_random_seed(seed):
@@ -33,7 +39,7 @@ def set_random_seed(seed):
         th.cuda.manual_seed_all(seed)
     pass
 
-class ObjObsWrapper(ObservationWrapper):
+# class ObjObsWrapper(ObservationWrapper):
     def __init__(self, env):
         """A wrapper that makes image the only observation.
         Args:
@@ -46,7 +52,7 @@ class ObjObsWrapper(ObservationWrapper):
         self.observation_space = Dict(
             {
                 "image": Box(low=0, high=255, shape=(size, size, 3), dtype=np.uint8),
-                # "step_count": Box(low=0, high=env.max_steps+1, shape=(1,), dtype=np.float32),
+                "step_count": Box(low=0, high=env.max_steps+1, shape=(1,), dtype=np.float32),
                 #"mission": Box(low=0.0, high=1.0, shape=(9,), dtype=np.float32),
             }
         )
@@ -90,7 +96,7 @@ class ObjObsWrapper(ObservationWrapper):
         return wrapped_obs
 
 
-class ObjEnvExtractor(BaseFeaturesExtractor):
+# class ObjEnvExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: Dict):
         # We do not know features-dim here before going over all the items,
         # so put something dummy for now. PyTorch requires calling
@@ -153,57 +159,141 @@ class ObjEnvExtractor(BaseFeaturesExtractor):
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         return th.cat(encoded_tensor_list, dim=1)
 
-class ObjEnvExtractorBig(BaseFeaturesExtractor):
-    def __init__(self, observation_space: Dict):
-        # We do not know features-dim here before going over all the items,
-        # so put something dummy for now. PyTorch requires calling
-        # nn.Module.__init__ before adding modules
+class WandbEvalCallback(BaseCallback):
+    """
+    Custom callback for logging evaluation results to wandb and saving the best model.
+    """
+    def __init__(self, eval_env, eval_freq, n_eval_episodes, wandb_run, best_model_save_path, verbose=0):
+        super(WandbEvalCallback, self).__init__(verbose)
+        self.eval_env = eval_env
+        self.eval_freq = eval_freq
+        self.n_eval_episodes = n_eval_episodes
+        self.wandb_run = wandb_run
+        self.best_model_save_path = best_model_save_path
+        self.best_mean_reward = -float("inf")  # Initialize with a very low value
+
+    def _on_step(self) -> bool:
+        # Perform evaluation every `eval_freq` steps
+        if self.n_calls % self.eval_freq == 0:
+            episode_rewards = []
+            episode_lengths = []
+            for _ in range(self.n_eval_episodes):
+                obs = self.eval_env.reset()
+                done = False
+                step_count = 0
+                episode_reward = 0
+                while not done:
+                    action, _ = self.model.predict(obs, deterministic=True)
+                    obs, reward, terminated, truncated = self.eval_env.step(action)
+                    episode_reward += reward
+                    done = terminated or truncated
+                    step_count += 1
+                episode_lengths.append(step_count)
+                episode_rewards.append(episode_reward)
+
+            mean_reward = sum(episode_rewards) / len(episode_rewards)
+            mean_length = sum(episode_lengths) / len(episode_lengths)
+            print(f"Step {self.n_calls}: Mean reward: {mean_reward}, Mean length: {mean_length}")
+
+            # Log to wandb
+            self.wandb_run.log({"mean_reward": mean_reward, "mean_lenth": mean_length, "step": self.n_calls})   
+
+            # Save the best model if the mean reward improves
+            if mean_reward > self.best_mean_reward:
+                self.best_mean_reward = mean_reward
+                print(f"New best mean reward: {mean_reward}. Saving model...")
+                self.model.save(f"{self.best_model_save_path}/best_model")
+
+        return True
+
+
+class UpgradedObjEnvExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space: gym.spaces.Dict):
         super().__init__(observation_space, features_dim=1)
 
-        extractors = {}
-        total_concat_size = 0
+        self.extractors = nn.ModuleDict()
+        total_feature_dim = 0
 
-        # We need to know size of the output of this extractor,
-        # so go over all the spaces and compute output feature sizes
         for key, subspace in observation_space.spaces.items():
             if key == "image":
-                # We will just downsample one channel of the image by 4x4 and flatten.
-                # Assume the image is single-channel (subspace.shape[0] == 0)
-                cnn = nn.Sequential(
-                    nn.Conv2d(3, 16, (2, 2)),
-                    nn.ReLU(),
-                    nn.Conv2d(16, 32, (2, 2)),
-                    nn.ReLU(),
-                    nn.Conv2d(32, 64, (2, 2)),
-                    nn.ReLU(),
-                    nn.Flatten(),
-                )
+                # Get channel count correctly (usually 3 for RGB in MiniGrid)
+                c, h, w = subspace.shape[::-1]  # From (H, W, C) to (C, H, W)
 
-                # Compute shape by doing one forward pass
+                self.extractors["image"] = nn.Sequential(
+                            nn.Conv2d(c, 32, kernel_size=3, stride=1, padding=1),
+                            # nn.BatchNorm2d(32),
+                            nn.ReLU(),
+                            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+                            # nn.BatchNorm2d(64),
+                            nn.ReLU(),
+                            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+                            # nn.BatchNorm2d(64),
+                            nn.ReLU(),
+                            nn.Flatten()
+                        )
+
                 with th.no_grad():
-                    n_flatten = cnn(
-                        th.as_tensor(subspace.sample()[None]).float()
-                    ).shape[1]
+                    sample = th.as_tensor(subspace.sample()[None]).float() / 255.0
+                    sample = sample.permute(0, 3, 1, 2)  # (B, H, W, C) -> (B, C, H, W)
+                    n_flatten = self.extractors["image"](sample).shape[1]
 
-                linear = nn.Sequential(nn.Linear(n_flatten, 64), nn.ReLU())
-                extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
-                total_concat_size += 64
+                self.image_linear = nn.Sequential(
+                    nn.Linear(n_flatten, 64),
+                    nn.ReLU()
+                )
+                total_feature_dim += 64
 
-        self.extractors = nn.ModuleDict(extractors)
+            elif key == "step_count":
+                self.extractors["step_count"] = nn.Sequential(
+                    nn.LayerNorm(subspace.shape),
+                    nn.Linear(subspace.shape[0], 16),
+                    nn.ReLU()
+                )
+                total_feature_dim += 16
 
-        # Update the features dim manually
-        self._features_dim = total_concat_size
+            elif key == "mission":
+                self.extractors["mission"] = nn.Sequential(
+                    nn.LayerNorm(subspace.shape),
+                    nn.Linear(subspace.shape[0], 32),
+                    nn.ReLU()
+                )
+                total_feature_dim += 32
 
-    def forward(self, observations) -> th.Tensor:
-        encoded_tensor_list = []
+        self._features_dim = total_feature_dim
 
-        # self.extractors contain nn.Modules that do all the processing.
-        for key, extractor in self.extractors.items():
-            encoded_tensor_list.append(extractor(observations[key]))
+    def forward(self, observations: Dict[str, th.Tensor]) -> th.Tensor:
+        outputs = []
+        for key, module in self.extractors.items():
+            if key == "image":
+                x = observations["image"].float() / 255.0
+                x = x.permute(0, 3, 1, 2)  # BCHW, very important
+                x = self.extractors["image"](x)
+                x = self.image_linear(x)
+                outputs.append(x)
+            else:
+                outputs.append(module(observations[key].float()))
+        return th.cat(outputs, dim=1)
 
-        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
-        return th.cat(encoded_tensor_list, dim=1)
 
+def create_env(grid_size, agent_view_size, max_steps, highlight, step_cost, num_objects, lava_cells, train_env=True, image_full_view=False, color_rewards=None, step_count_observation=False):
+    env = CustomEnv(
+        grid_size=grid_size,
+        render_mode='rgb_array',
+        max_steps=max_steps,
+        highlight=highlight,
+        step_cost=step_cost,
+        num_objects=num_objects,
+        lava_cells=lava_cells,
+        train_env=train_env,
+        image_full_view=image_full_view,
+        agent_view_size=agent_view_size,
+        color_rewards=color_rewards,
+        step_count_observation=step_count_observation
+    )
+    env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
+    env = TimeLimit(env, max_episode_steps=max_steps)
+    env = Monitor(env)  # Add Monitor for logging
+    return env
 
 def main():
     parser = argparse.ArgumentParser()
@@ -213,13 +303,13 @@ def main():
         # default="minigrid_hard_20241010/iter_1000000_steps",
         # default="minigrid_easy7_20241030/iter_300000_steps",
     )
-    parser.add_argument("--render", action="store_true", help="render trained models")
-    parser.add_argument("--seed", type=int, default=42, help="random seed")
+    # parser.add_argument("--render", action="store_true", help="render trained models")
+    # parser.add_argument("--seed", type=int, default=42, help="random seed")
     # parser.add_argument("--model", type=str, default="ppo", help="what model to train")
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    policy_kwargs = dict(features_extractor_class=ObjEnvExtractor) # ObjEnvExtractorBig)
-    set_random_seed(args.seed)
+    policy_kwargs = dict(features_extractor_class=ObjEnvExtractor,) # )UpgradedObjEnvExtractor
+    # set_random_seed(args.seed)
 
     # def linear_schedule(initial_value):
     #     def schedule(progress_remaining):
@@ -231,129 +321,187 @@ def main():
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    max_steps = 300
-    colors_rewards = {'red': 4, 'green': -0.1, 'blue': -0.1}
-    lava_cost = -4
+    max_steps = 100
+    colors_rewards = {'red': 3, 'green': 3, 'blue': 3}
+    step_count_observation = False
+    lava_cost = -5
     grid_size = 8
     agent_view_size = 7
+    step_cost = 0.1
+    num_lava_cell = 3
+    num_balls = 5
 
-    if args.train:
-        device = "cuda" if th.cuda.is_available() else "cpu"
+    # if args.train:
+    device = "cuda" if th.cuda.is_available() else "cpu"
 
-        env = CustomEnv(
-                grid_size=grid_size,
-                render_mode='rgb_array',
-                max_steps=max_steps,
-                highlight=True,
-                step_cost=0.2,
-                num_objects=5,
-                lava_cells=3,
-                train_env=True,
-                image_full_view=False,
-                agent_view_size=agent_view_size,
-                colors_rewards=colors_rewards
-            )
-        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=lava_cost)
-        env = Monitor(env)  # Add Monitor for logging
-        # Access attributes from the underlying environment
-        step_cost = env.step_cost  # Access 'step_cost' from the first environment
-        preference_vector = [colors_rewards['red'], colors_rewards['green'], colors_rewards['blue'], lava_cost, step_cost]
-        pref_str = ",".join([str(i) for i in preference_vector])
-        save_name = pref_str + f"Steps{max_steps}Grid{grid_size}_{stamp}"
-
-        # Set up callbacks
-        eval_callback = EvalCallback(
-            env,
-            best_model_save_path=f'./models/{save_name}/',
-            log_path='./logs/eval_logs/',
-            eval_freq=10000,
-            n_eval_episodes=5,
-            deterministic=True,
-            render=False
+    train_env = CustomEnv(
+            grid_size=grid_size,
+            render_mode='rgb_array',
+            max_steps=max_steps,
+            highlight=True,
+            step_cost=step_cost,
+            num_objects=num_balls,
+            lava_cells=num_lava_cell,
+            train_env=True,
+            image_full_view=False,
+            agent_view_size=agent_view_size,
+            color_rewards=colors_rewards,
+            step_count_observation=step_count_observation, # Add step count to observation
+            lava_panishment=lava_cost,
         )
+    # train_env = NoDeath(ObjObsWrapper(train_env), no_death_types=('lava',), death_cost=lava_cost)
+    train_env = Monitor(train_env)  # Add Monitor for logging
 
-        wandb.init(
-            project="minigrid_custom",
-            config={
-                "algorithm": "PPO",
-                "max_steps": max_steps,
-                "preference_vector": preference_vector,
-            },
-            name=f"grid{grid_size}_view{agent_view_size}_{preference_vector}",
-            sync_tensorboard=True,  # Sync tensorboard logs
-            settings=wandb.Settings(symlink=False),
+    # Wrap training env
+    # train_env = DummyVecEnv([lambda: create_env(grid_size=grid_size,
+    #                  agent_view_size=agent_view_size,
+    #                  max_steps=max_steps,
+    #                  highlight=True,
+    #                  step_cost=step_cost,
+    #                  num_objects=num_balls,
+    #                  lava_cells=num_lava_cell,
+    #                  train_env=True,
+    #                  image_full_view=False,
+    #                  color_rewards=colors_rewards,
+    #                  step_count_observation=step_count_observation, # add step count to observation
+    #                  )])
+    # train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False, clip_obs=10.0)
+
+    # Access attributes from the underlying environment
+    preference_vector = [colors_rewards['red'], colors_rewards['green'], colors_rewards['blue'], lava_cost, step_cost]
+    pref_str = ",".join([str(i) for i in preference_vector])
+    save_name = pref_str + f"Steps{max_steps}Grid{grid_size}_{stamp}"
+
+    if step_count_observation:
+        save_name = save_name[:-9] + "_Step_Count" + save_name[-9:]
+
+
+    # Set up callbacks
+    # eval_env = DummyVecEnv([lambda: create_env(grid_size=grid_size,
+    #                  agent_view_size=agent_view_size,
+    #                  max_steps=max_steps,
+    #                  highlight=True,
+    #                  step_cost=step_cost,
+    #                  num_objects=num_balls,
+    #                  lava_cells=num_lava_cell,
+    #                  train_env=True,
+    #                  image_full_view=False,
+    #                  color_rewards=colors_rewards,
+    #                  step_count_observation=step_count_observation, # add step count to observation
+    #                  )])
+    # eval_env = VecNormalize(eval_env, norm_obs=True, norm_reward=False, clip_obs=10.0)
+    eval_env = CustomEnv(
+            grid_size=grid_size,
+            render_mode='rgb_array',
+            max_steps=max_steps,
+            highlight=True,
+            step_cost=step_cost,
+            num_objects=num_balls,
+            lava_cells=num_lava_cell,
+            train_env=True,
+            image_full_view=False,
+            agent_view_size=agent_view_size,
+            color_rewards=colors_rewards,
+            step_count_observation=step_count_observation, # Add step count to observation
+            lava_panishment=lava_cost,
         )
+    # eval_env = NoDeath(ObjObsWrapper(eval_env), no_death_types=('lava',), death_cost=lava_cost)
 
-        wandb_callback = WandbCallback(
-            gradient_save_freq=10000,
-            model_save_freq=100000,
-            model_save_path=f"./models/wandb_models/{pref_str}",  # Where to save models
-            verbose=2,
-        )
+    # eval_env = VecTransposeImage(eval_env)
+    eval_callback = EvalCallback(
+        eval_env,
+        best_model_save_path=f'./models/{save_name}/',
+        log_path='./logs/eval_logs/',
+        eval_freq=10000,
+        n_eval_episodes=5,
+        deterministic=True,
+        render=False
+    )
 
-        # Define the PPO model
-        model = PPO(
-            "MultiInputPolicy",
-            env,
-            policy_kwargs=policy_kwargs,
-            verbose=1,
-            learning_rate=0.001,
-            ent_coef=0.02,
-            n_steps=2048,
-            batch_size=32,
-            clip_range=0.2,
-            gamma = 0.8,
-            # epochs=3,
-            device=device
-        )
+    wandb.init(
+        project="minigrid_custom",
+        config={
+            "algorithm": "PPO",
+            "max_steps": max_steps,
+            "preference_vector": preference_vector,
+        },
+        name=f"grid{grid_size}_view{agent_view_size}_{preference_vector}",
+        sync_tensorboard=True,  # Sync tensorboard logs
+        settings=wandb.Settings(symlink=False),
+    )
 
-        # Start training
-        print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
-        model.learn(
-            5e5,
-            tb_log_name=f"{stamp}",
-            callback=[eval_callback]#, wandb_callback],
-        )
+    wandb_eval_callback = WandbEvalCallback(
+        eval_env=eval_env,
+        eval_freq=10000,
+        n_eval_episodes=5,
+        wandb_run=wandb,
+        best_model_save_path=f'./models/{save_name}/',
+    )
 
+    # Define the PPO model
+    model = PPO(
+        "MultiInputPolicy",
+        train_env,
+        policy_kwargs=policy_kwargs,
+        verbose=2,
+        learning_rate=1e-3,
+        ent_coef=3e-3,
+        n_steps=256,
+        batch_size=32,
+        # clip_range=0.3,
+        gamma = 0.9,
+        gae_lambda=0.95,
+        n_epochs=6,
+        # stats_window_size=100,
+        device=device
+    )
+
+    print(f"observation state: {train_env.observation_space}")
+
+    # Start training
+    print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
+    model.learn(
+        10e5,
+        tb_log_name=f"{stamp}",
+        callback=[eval_callback]#, wandb_eval_callback]
+    )
+    train_env.close()
+    eval_env.close()
         # Save the model and VecNormalize statistics
         # model.save(f"./models/{save_name}_ppo_model")
         # env.save(f"./models/{save_name}_vecnormalize.pkl")
-    else:
-        if args.render:
-            env = CustomEnv(grid_size=grid_size, agent_view_size=agent_view_size, difficult_grid=hard_env, render_mode='human', image_full_view=False, lava_cells=4,
-                            num_objects=3, train_env=False, max_steps=100, colors_rewards=colors_rewards, highlight=True, partial_obs=True)
-        else:
-            env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, agent_view_size=agent_view_size, image_full_view=False, lava_cells=1, num_objects=3, 
-                            train_env=False, max_steps=100, highlight=True)
+    # else:
+    #     if args.render:
+    #         env = CustomEnv(grid_size=grid_size, agent_view_size=agent_view_size, difficult_grid=hard_env, render_mode='human', image_full_view=False, lava_cells=4,
+    #                         num_objects=3, train_env=False, max_steps=100, colors_rewards=colors_rewards, highlight=True, partial_obs=True)
+    #     else:
+    #         env = CustomEnv(grid_size=grid_size, difficult_grid=hard_env, agent_view_size=agent_view_size, image_full_view=False, lava_cells=1, num_objects=3, 
+    #                         train_env=False, max_steps=100, highlight=True)
             
-        env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
-        # env = ObjObsWrapper(env)
+    #     env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
+    #     # env = ObjObsWrapper(env)
 
-        if args.model == "ppo":
-            ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
+    #     if args.model == "ppo":
+    #         ppo = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
 
-        # add the experiment time stamp
-            model = ppo.load(f"models/{args.load_model}", env=env)
-        else:
-            dqn = DQN("multiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
-            model = dqn.load(f"models/{args.load_model}", env=env)
+    #     # add the experiment time stamp
+    #         model = ppo.load(f"models/{args.load_model}", env=env)
 
-        number_of_episodes = 5
-        for i in range(number_of_episodes):
-            obs, info = env.reset()
-            score = 0
-            done = False
-            while(not done):
-                action, _state = model.predict(obs, deterministic=True)
-                obs, reward, terminated, truncated, info = env.step(action)
-                score += reward
-                # print(f'Action: {action}, Reward: {reward}, Score: {score}, Terminated: {terminated}')
+    #     number_of_episodes = 5
+    #     for i in range(number_of_episodes):
+    #         obs, info = env.reset()
+    #         score = 0
+    #         done = False
+    #         while(not done):
+    #             action, _state = model.predict(obs, deterministic=True)
+    #             obs, reward, terminated, truncated, info = env.step(action)
+    #             score += reward
+    #             # print(f'Action: {action}, Reward: {reward}, Score: {score}, Terminated: {terminated}')
 
-                if terminated or truncated:
-                    print(f"Test score: {score}")
-                    done = True
+    #             if terminated or truncated:
+    #                 print(f"Test score: {score}")
+    #                 done = True
 
-        env.close()
 
 
 if __name__ == "__main__":

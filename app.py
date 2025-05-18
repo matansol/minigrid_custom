@@ -1,4 +1,6 @@
 import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import time
 import copy
 import random  # needed for random.choice in update_agent
@@ -18,6 +20,8 @@ from minigrid_custom_env import CustomEnv, ObjObsWrapper
 from dpu_clf import *
 from minigrid.core.actions import Actions
 from minigrid.wrappers import FullyObsWrapper, ImgObsWrapper, NoDeath
+from minigrid.core.constants import IDX_TO_OBJECT , IDX_TO_COLOR 
+
 
 from functools import reduce
 from typing import Dict, Any
@@ -71,26 +75,34 @@ class FeedbackAction(Base):
     feedback_action = Column(String(50))
     action_index = Column(Integer)
     timestamp = Column(Float)
+    episode_index = Column(Integer)
+
+class UserChoice(Base):
+    __tablename__ = "user_choices"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(20))
+    old_agent = Column(String(50))
+    new_agent = Column(String(50))
+    timestamp = Column(Float)
+    episode_index = Column(Integer)
+    choice_to_update = Column(Boolean)
+    simillarity_level = Column(Integer)
 
 
 def create_database():
-    """Drops all tables and recreates the database schema."""
-    print("Creating database tables...")
-    Base.metadata.drop_all(bind=engine)
+    """Creates the database tables if they do not already exist."""
+    print("Ensuring database tables are created...")
     Base.metadata.create_all(bind=engine)
 
 
 SIMMILARITY_CONST = 500
 class GameControl:
-    def __init__(self, env, models_paths, simillar_level_env=0):
+    def __init__(self, env, models_paths, models_distance=None, simillar_level_env=0):
         self.env = env
         # self.saved_env = None
-        self.last_score = None
-        self.agent_index = None
-        self.ppo_agent = None
-        self.prev_agent = None
-        self.current_obs = None
+        self.agent_index = next(iter(models_paths.keys()))
         self.models_paths = models_paths
+        self.models_distance = models_distance
         self.episode_num = 0
         self.scores_lst = []
         self.last_obs = None
@@ -98,13 +110,20 @@ class GameControl:
         self.agent_last_pos = None
         self.episode_images = []
         self.episode_obs = []
+        self.episode_agent_locations = []
         self.invalid_moves = 0
         self.user_feedback = None
         self.user_id = None
         self.current_session = None
         self.lava_penalty = -3.0
+        self.last_score = 0
+        self.agent_switch_distance = 3
         self.simillar_level_env = simillar_level_env
         self.saved_env_info = {}
+        self.ppo_agent = None
+        self.prev_agent = None
+        self.current_agent_path = None  # NEW: path string for the current agent
+        self.prev_agent_path = None     # NEW: path string for the previous agent
         
     @timeit
     def reset(self):
@@ -112,7 +131,9 @@ class GameControl:
         if 'direction' in obs:
             obs = {'image': obs['image']}
         self.episode_obs = [obs]
-        # self.saved_env = copy.deepcopy(self.env)
+        self.episode_agent_locations = [(self.env.get_wrapper_attr('agent_pos'), self.env.get_wrapper_attr('agent_dir'))]
+        self.infront_objects = []
+        self.saved_env = copy.deepcopy(self.env)
         self.saved_env_info = {
             'initial_balls': self.env.initial_balls,
             'other_lava_cells': self.env.lava_cells,
@@ -120,7 +141,6 @@ class GameControl:
             'max_steps': self.env.max_steps,
         }
         self.update_agent(None, None)
-        print("reset - saved the env")
         self.score = 0
         self.invalid_moves = 0
         return obs
@@ -151,6 +171,7 @@ class GameControl:
             self.episode_actions.append(action)
             self.episode_images.append(self.env.get_full_image())  # store the grid image for feedback page
             self.episode_obs.append(observation)
+            self.episode_agent_locations.append((self.env.get_wrapper_attr('agent_pos'), self.env.get_wrapper_attr('agent_dir')))
         else:
             self.invalid_moves += 1
 
@@ -190,7 +211,6 @@ class GameControl:
     def get_initial_observation(self):
         self.current_obs = self.reset()
         self.episode_images = [self.env.get_full_image()]  # for the overview image
-        self.episode_actions = [self.env.render()]
         self.agent_last_pos = self.env.get_wrapper_attr('agent_pos')
         self.episode_actions = []
         img = self.env.render()
@@ -214,24 +234,27 @@ class GameControl:
 
     def agent_action(self):
         obs = {'image': self.current_obs['image']}
-        action, _ = self.ppo_agent.predict(obs)
+        action, _ = self.ppo_agent.predict(obs, deterministic=True)
         action = action.item()
         return action, self.step(action, True)
 
-    # def update_env_to_action(self, action_index):
-    #     tmp_env = copy.deepcopy(self.saved_env)
-    #     obs = tmp_env.get_wrapper_attr('current_state')
-    #     for action in self.episode_actions[:action_index]:
-    #         obs, r, ter, tru, info = tmp_env.step(action)
-    #     return tmp_env, obs
+    def update_env_to_action(self, action_index):
+        tmp_env = copy.deepcopy(self.saved_env)
+        obs = tmp_env.get_wrapper_attr('current_state')
+        for action in self.episode_actions[:action_index]:
+            obs, r, ter, tru, info = tmp_env.step(action)
+        return tmp_env, obs
 
     @timeit
     def update_agent(self, data, sid):
         print("update_agent - ", self.ppo_agent)
+        # When loading the first agent
         if self.ppo_agent is None:
-            self.ppo_agent = load_agent(self.env, self.models_paths[0][0])
+            self.ppo_agent = load_agent(self.env, self.models_paths[self.agent_index]['path'])
+            self.current_agent_path = self.models_paths[self.agent_index]['path']  # Save current agent path
             self.prev_agent = self.ppo_agent
-            print('load the first model, return')
+            self.prev_agent_path = self.current_agent_path  # Initially, same as current
+            print('Loaded the first model, returning')
             return None
         if data is None:
             print("Data is None, return")
@@ -250,13 +273,23 @@ class GameControl:
                 try:
                     session = SessionLocal()
                     # _, obs = self.update_env_to_action(action_index=action_feedback['index'])
+                    action_index = action_feedback['index']
+                    if action_index >= len(self.episode_obs):
+                        print(f"action_index {action_index} is out of range for episode_obs")
+                        img = None
+                    else:
+                        obs = self.episode_obs[action_feedback['index']]
+                        img = obs['image']
+                        
                     agent_action = data['actions'][action_feedback['index']]['action']
+                    print(f"____________________ save to DB action_feedback: {actions_dict[action_feedback['feedback_action']]}, agent_action: {actions_dict[agent_action]}")
                     feedback_action = FeedbackAction(
                         user_id=self.user_id,
-                        env_state="some state",  # Ensure env_state is passed correctly
+                        env_state=img,  # TODO: Ensure env_state is passed correctly
                         agent_action = actions_dict[agent_action],
                         feedback_action = actions_dict[action_feedback['feedback_action']],
                         action_index = action_feedback['index'],
+                        episode_index = self.episode_num,
                         timestamp = time.time(),
                     )
                     session.add(feedback_action)
@@ -268,34 +301,51 @@ class GameControl:
                 finally:
                     session.close()
 
-        optional_agents = []
-        most_correct = 0
-        tmp_agent = None
-        for path in self.models_paths:
-            agent = load_agent(self.env, path[0])
-            print(f'checking model: {path[2]}')
+        optimal_agents = []
+        target_models_indexes = self.models_distance[self.agent_index][:self.agent_switch_distance]
+        for model_i, model_name in target_models_indexes:
+            agent_data = self.models_paths[model_i]
+            path = agent_data['path']
+            agent = load_agent(self.env, path)
+            print(f'checking model: {agent_data}, model_name: {model_name}')
+            
             agent_correctness = 0
             for action_feedback in self.user_feedback:
+                if action_feedback['index'] >= len(self.episode_obs):
+                    return
                 saved_obs = self.episode_obs[action_feedback['index']]
-                agent_action = agent.predict(saved_obs)
+                agent_action = agent.predict(saved_obs, deterministic=True)
+                agent_pos, agent_dir = self.episode_agent_locations[action_feedback['index']]
+                # print(f'user feedback: index={action_feedback["index"]},    action={action_feedback} ,  saved_obs: {saved_obs}   agent_pos={agent_pos},  agent_dir={agent_dir}')
 
                 print(f"agent_action[0].item()={agent_action[0].item()},  action_feedback['action']={action_feedback['feedback_action']}")
                 agent_action = actions_dict[agent_action[0].item()]
                 print(f"feedback_action: {actions_dict[action_feedback['feedback_action']]}, agent_predict_action: {agent_action}")
+
+                # infront_objects = get_objects_from_image(saved_obs['image'])
+                tmp_env, tmp_obs = self.update_env_to_action(action_feedback['index'])
+                infront_objects = interesting_objects(tmp_env, tmp_obs, agent_action, actions_dict[action_feedback['feedback_action']])
+                self.infront_objects += list(infront_objects)
+                self.infront_objects = list(set(self.infront_objects))
+
+                print(f"agent pos ={agent_pos}, agent dir = {agent_dir} infront_objects: {[(IDX_TO_OBJECT[obj[0]], IDX_TO_COLOR[obj[1]]) for obj in infront_objects]}")
                 if agent_action == actions_dict[action_feedback['feedback_action']]:
                     print("agent is correct")
                     agent_correctness += 1
 
-            if len(self.user_feedback)==0 or agent_correctness > 0:  # number of mistakes allowed
-                optional_agents.append({"agent":agent, "path": path[2], "correctness": agent_correctness})
+            if len(self.user_feedback)==0 or agent_correctness > 0:  # minimum correctness
+                # optional_agents.append({"agent":agent, "path": path[2], "correctness": agent_correctness})
+                optimal_agents.append({"agent":agent, "path": path, "correctness": agent_correctness, "model_index": model_i})
 
-        print(f'optional_models: {optional_agents}')
-        if len(optional_agents) == 0:
-            print("No optional agent, return")
-            return None
-        new_agent_dict = reduce(lambda a, b: a if a["correctness"] >= b["correctness"] else b, optional_agents) # get the agent with the most correctness
-        print(f'new_agent_dict: {new_agent_dict}')
+        print(f'optional_models: {optimal_agents}')
+        if len(optimal_agents) == 0:
+            optimal_agents.append({"agent":agent, "path": path, "correctness": agent_correctness, "model_index": model_i})
+        new_agent_dict = reduce(lambda a, b: a if a["correctness"] >= b["correctness"] else b, optimal_agents) # get the agent with the most correctness
+        self.prev_agent = self.ppo_agent
+        self.prev_agent_path = self.current_agent_path  # Save the old path before updating
         self.ppo_agent = new_agent_dict["agent"]
+        self.agent_index = new_agent_dict["model_index"]
+        self.current_agent_path = self.models_paths[self.agent_index]['path']  # New current agent path
         print(f'load new model: {new_agent_dict["path"]}')
         if self.prev_agent is None:
             self.prev_agent = self.ppo_agent
@@ -313,34 +363,51 @@ class GameControl:
         env = self.find_simillar_env(simillarity_level)
         copy_env = copy.deepcopy(env)
         img = copy_env.get_full_image()
-        move_sequence, _, _, agent_actions = capture_agent_path(copy_env, self.ppo_agent)
+        updated_move_sequence, _, _, agent_actions = capture_agent_path(copy_env, self.ppo_agent)
 
         # prev_agent_path
         copy_env = copy.deepcopy(env)
-        img = copy_env.get_full_image()
         prev_move_sequence, _, _, prev_agent_actions = capture_agent_path(copy_env, self.prev_agent)
-        if prev_move_sequence == move_sequence and count < 3:
+        if prev_move_sequence == updated_move_sequence and count < 3:
             count += 1
-            return self.agents_different_routs(count)
+            return self.agents_different_routs(simillarity_level=simillarity_level, count=count)
         print(f"agents_different_routs {count} times")
         converge_action_index = -1
-        for i in range(len(move_sequence)):
-            if move_sequence[i] != prev_move_sequence[i]:
+        for i in range(len(updated_move_sequence)):
+            if i >= len(prev_move_sequence):
+                break
+            if updated_move_sequence[i] != prev_move_sequence[i]:
                 converge_action_index = i
                 break
-        path_img_buffer, _, _ = plot_all_move_sequence(img, move_sequence, agent_actions, move_color='c', converge_action_location=converge_action_index)
-        prev_path_img_buffer, _, _ = plot_all_move_sequence(img, prev_move_sequence, prev_agent_actions, converge_action_location=converge_action_index)
+        # path_img_buffer, _, _ = plot_all_move_sequence(img, move_sequence, agent_actions, move_color='c', converge_action_location=converge_action_index)
+        # prev_path_img_buffer, _, _ = plot_all_move_sequence(img, prev_move_sequence, prev_agent_actions, converge_action_location=converge_action_index)
 
-        return {'prev_path_image': prev_path_img_buffer, 'path_image': path_img_buffer}
+        # return {'prev_path_image': prev_path_img_buffer, 'path_image': path_img_buffer}
+        image_base64 = image_to_base64(img)
+        return {'rawImage': image_base64, 
+                'prevMoveSequence': convert_move_sequence_to_jason(prev_move_sequence), 
+                'updatedMoveSequence': convert_move_sequence_to_jason(updated_move_sequence), 
+                'converge_action_index': converge_action_index}
+
 
     @timeit
-    def end_of_episode_summary(self):
-        imgs = self.episode_images
-        path_img_base64, actions_locations, images_buf_list = plot_move_sequence_by_parts(
-            imgs,
-            self.actions_to_moves_sequence(self.episode_actions),
-            self.episode_actions
-        )
+    def end_of_episode_summary(self, need_feedback_data:bool = True):
+        if need_feedback_data:
+            path_img_base64, actions_locations, images_buf_list = plot_move_sequence_by_parts(
+                self.episode_images,
+                self.actions_to_moves_sequence(self.episode_actions),
+                self.episode_actions
+            )
+        else:
+            # path_img_base64, actions_locations, images_buf_list = plot_move_sequence_by_parts(
+            #     self.episode_images,
+            #     self.actions_to_moves_sequence(self.episode_actions),
+            #     self.episode_actions
+            # )
+            path_img_base64 = None
+            actions_locations = None
+            images_buf_list = None
+
         return {'path_image': path_img_base64,
                 'actions': actions_locations,
                 'invalid_moves': self.invalid_moves,
@@ -354,8 +421,10 @@ class GameControl:
         initial_kwargs = {
             'initial_balls': self.saved_env_info['initial_balls'],
             'other_lava_cells': self.saved_env_info['other_lava_cells'],
+            'infront_objects': self.infront_objects,
             "simillarity_level": simillarity_level}
 
+        # random_env = random.randint(1, 10)
         sim_env = CustomEnv(grid_size=8,
                             render_mode="rgb_array",
                             image_full_view=False,
@@ -363,7 +432,7 @@ class GameControl:
                             max_steps=self.saved_env_info['max_steps'],
                             num_lava_cells=self.saved_env_info['num_lava_cells'],
                             partial_obs=True,
-                            unique_env=0,
+                            # unique_env=random_env,
                             simillarity_level=simillarity_level,
                             )
         env_instance = NoDeath(ObjObsWrapper(sim_env), no_death_types=("lava",), death_cost=self.lava_penalty)
@@ -396,24 +465,86 @@ sid_to_user: Dict[str, str] = {}
 # Pre-create a "template" for the environment and the model paths.
 # (These will be used to create a new instance for each user.)
 def create_new_env(lava_penalty) -> CustomEnv:
-    unique_env_id = 0
-    env_instance = CustomEnv(
-        grid_szie=8, render_mode="rgb_array", image_full_view=False,
-        highlight=True, max_steps=100, num_objects=5, lava_cells=4, partial_obs=True,
-        unique_env=unique_env_id
+    set_env = True
+    env_instance = CustomEnv(grid_szie=8, 
+                             render_mode="rgb_array", 
+                             image_full_view=False,
+                             highlight=True, 
+                             max_steps=50, 
+                             num_objects=5, 
+                             lava_cells=4, 
+                             partial_obs=True,
+                            #  set_env=set_env,
     )
     env_instance = NoDeath(ObjObsWrapper(env_instance), no_death_types=("lava",), death_cost=lava_penalty)
     # env_instance.unwrapped.reset()
     return env_instance
 
+
+new_models_dict = {
+    # 1: {"path": "models/3,3,3,0,0.02Steps200Grid8_20250421", "name": "AllColorsLL_0421", "vector":(3,3,3,0,0.02)},
+    1: {"path": "models/2,2,2,0,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLL_0422", "vector":(2,2,2,0,0.2)},
+    2: {"path": "models/2,2,2,0,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLL_0422", "vector":(2,2,2,0,0.2)},
+    3: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector":(2,2,2,-4,0.02)},
+    4: {"path": "models/-0.1,-0.1,4,-4,0.1Steps100Grid8_20250507/best_model.zip", "name": "OnlyBlueLH_0427", "vector":(-0.1,-0.1,4,-4,0.1)},
+    5: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector":(-0.1,3,-0.1,0,0.01)},
+    6: {"path": "models/3,-0.1,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyRedLL_0429", "vector":(3,-0.1,-0.1,0,0.01)},
+    7: {"path": "models/3,3,-1,-2,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLH_0422", "vector":(3,3,-1,-2,0.1)},
+    8: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0422", "vector":(3,3,-1,0,0.1)},
+    
+}
+
+#     1: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector":(2,2,2,-4,0.02)},
+#     2: {"path": "models/2,2,2,-4,0.2Steps100Grid8_20250427/best_model.zip", "name": "AllColorsLH_0427", "vector":(2,2,2,-4,0.2)},
+#     3: {"path": "models/2,2,2,0,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLL_0422", "vector":(2,2,2,0,0.2)},
+#     4: {"path": "models/2,2,2,0,0.3Steps100Grid8_20250427/best_model.zip", "name": "AllColorsLL_0427", "vector":(2,2,2,0,0.3)},
+#     5: {"path": "models/-0.1,-0.1,4,-4,0.1Steps100Grid8_20250507/best_model.zip", "name": "OnlyBlueLH_0427", "vector":(-0.1,-0.1,4,-4,0.1)},
+#     6: {"path": "models/3,3,-1,-2,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLH_0422", "vector":(3,3,-1,-2,0.1)},
+#     7: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0422", "vector":(3,3,-1,0,0.1)},
+#     8: {"path": "models/3,3,3,-2,0.1Steps100Grid8_20250421/best_model.zip", "name": "AllColorsLH_0421", "vector":(3,3,3,-2,0.1)},
+#     9: {"path": "models/3,3,3,0,0.02Steps200Grid8_20250421/best_model.zip", "name": "AllColorsLL_0421", "vector":(3,3,3,0,0.02)},
+#     10: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector":(-0.1,3,-0.1,0,0.01)},
+#     11: {"path": "models/3,-0.1,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyRedLL_0429", "vector":(3,-0.1,-0.1,0,0.01)},
+# }
+
+new_models_distance = {
+    1: [(8, 'AllColorsLL_0421'), (2, 'AllColorsLL_0422'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')],
+    2: [(1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422')],
+    3: [(4, 'OnlyBlueLH_0427'), (7, 'NoBlueLH_0422'), (2, 'AllColorsLL_0422'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+    4: [(3, 'AllColorsLH_0422'), (2, 'AllColorsLL_0422'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429')],
+    5: [(2, 'AllColorsLL_0422'), (7, 'NoBlueLH_0422'), (6, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+    6: [(2, 'AllColorsLL_0422'), (7, 'NoBlueLH_0422'), (5, 'OnlyGreenLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+    7: [(5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (2, 'AllColorsLL_0422'), (1, 'AllColorsLL_0421')],
+    8: [(1, 'AllColorsLL_0421'), (2, 'AllColorsLL_0422'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')]
+}
+
 model_paths = [
     ("models/LavaLaver8_20241112/iter_500000_steps.zip", (2, 2, 2, 0, -0.1), "LavaLaver8_20241112"),
     ("models/LavaHate8_20241112/iter_500000_steps.zip", (2, 2, 2, -3, -0.1), "LavaHate8_20241112"),
-    ("models/2,2,2,-3,0.2Steps100Grid8_20241230/best_model.zip", (2, 2, 2, -3, -0.2), "LavaHate8New_20241229"),
+    ("models/2,2,2,-4,0.2Steps100Grid8_20250427/best_model.zip", (2, 2, 2, -4, -0.2), "LavaHate8New_20241227"),
     ("models/0,5,0,-3,0.2Steps100Grid8_20241231/best_model.zip", (0, 5, 0, -3, -0.2), "GreenOnly8_20241231"),
     ("models/2,2,2,0,0.1Steps250Grid8_20241225/best_model.zip", (2, 2, 2, 0, -0.1), "LavaLaver8New_20241225"),
-    ("models/4,-0.1,-0.1,-4,0.2Steps300Grid8_20250129/best_model.zip", (4, -0.1, -0.1, -4, -0.2), "RedOnly8New_20250129"),
+    # ("models/4,-0.1,-0.1,-4,0.2Steps300Grid8_20250129/best_model.zip", (4, -0.1, -0.1, -4, -0.2), "RedOnly8New_20250129"),
 ]
+
+
+models_dict = {
+    1: {"name": "LavaLaver8_20241112", "vector":(2, 2, 2, 0, -0.1), "path":"models/LavaLaver8_20241112/iter_500000_steps.zip"},
+    2: {"name": "LavaHate8_20241112", "vector":(2, 2, 2, -3, -0.1), "path":"models/LavaHate8_20241112/iter_500000_steps.zip"},
+    3: {"name": "LavaHate8New_20241229", "vector":(2, 2, 2, -3, -0.2), "path":"models/2,2,2,-3,0.2Steps100Grid8_20241230/best_model.zip"},
+    4: {"name": "LavaLaver8New_20241225", "vector":(2, 2, 2, 0, -0.1), "path":"models/2,2,2,0,0.1Steps250Grid8_20241225/best_model.zip"},
+    5: {"name": "GreenOnly8_20241231", "vector":(0, 5, 0, -3, -0.2), "path":"models/0,5,0,-3,0.2Steps100Grid8_20241231/best_model.zip"},
+    6: {"name": "RedOnly8New_20250129", "vector":(4, -0.1, -0.1, -4, -0.2), "path":"models/4,-0.1,-0.1,-4,0.2Steps300Grid8_20250129/best_model.zip"},
+}
+
+models_distances = {1: [4, 2, 3, 5, 6], 
+                    2: [3, 1, 4, 5, 6],
+                    3: [2, 1, 4, 5, 6],
+                    4: [1, 2, 3, 5, 6],
+                    5: [6, 2, 3, 4, 1],
+                    6: [5, 2, 3, 1, 4],
+                    }
+
 
 actions_dict = {
     0: Actions.left,
@@ -437,15 +568,22 @@ action_dir = {
     "PageUp": "Pickup",
     "PageDown": "Drop",
     "1": "Pickup",
-    "2": "Drop"
+    "2": "Drop",
+    0: "turn left",
+    1: "turn right",
+    2: "forward",
+    3: "pickup",
+    4: "drop",
+    5: "toggle",
+    6: "done",
 }
 
 
 # ------------------ UTILITY FUNCTION -----------------------------
-async def finish_turn(response: dict, user_game: GameControl, sid: str):
+async def finish_turn(response: dict, user_game: GameControl, sid: str, need_feedback_data: bool = True):
     """Common logic after an action is processed."""
     if response["done"]:
-        summary = user_game.end_of_episode_summary()
+        summary = user_game.end_of_episode_summary(need_feedback_data)
         # Send the summary to the front-end:
         await sio.emit("episode_finished", summary, to=sid)
     else:
@@ -480,7 +618,7 @@ async def disconnect(sid):
         del sid_to_user[sid]
 
 @sio.on("start_game")
-async def start_game(sid, data):
+async def start_game(sid, data, callback=None):
     """
     When a user starts the game, they send their identifier (playerName).
     Create (or re-use) the GameControl instance corresponding to that user.
@@ -491,15 +629,19 @@ async def start_game(sid, data):
     if user_id not in game_controls:
         # Create a new environment and GameControl instance for the user.
         env_instance = create_new_env(lava_penalty=-3)
-        new_game = GameControl(env_instance, model_paths, simillar_level_env=0)
+        # new_game = GameControl(env_instance, model_paths, simillar_level_env=0)
+        simillarity_level = random.randint(0, 5)
+        new_game = GameControl(env_instance, new_models_dict, new_models_distance, simillar_level_env=1)
         new_game.user_id = user_id
         game_controls[user_id] = new_game
-        print(f"Created new game control for user {user_id}")
+        # print(f"Created new game control for user {user_id} with simillarity level {simillarity_level}")
     else:
         new_game = game_controls[user_id]
         print(f"Reusing existing game control for user {user_id}")
     if data.get("updateAgent", False):
         new_game.update_agent(data, sid)
+    if data.get("setEnv", False):
+        new_game.env.update_set_env(data.get("setEnv"))
     response = new_game.get_initial_observation()
     response['action'] = None
     await sio.emit("game_update", response, to=sid)
@@ -515,9 +657,9 @@ async def handle_send_action(sid, action):
         return
     user_game = game_controls[user_id]
     response = user_game.handle_action(action)
-    # print(f"response action before dict: {action}")
+    print(f"response action before dict: {action}")
     response["action"] = action_dir[action]
-    # print(f"response action after dict: {response['action']}\n")
+    print(f"response action after dict: {response['action']}\n")
 
     if save_to_db:
         print(f"try to save action to db: {action}")
@@ -532,8 +674,7 @@ async def handle_send_action(sid, action):
                 user_id=user_game.user_id,
                 timestamp=time.time(),
                 episode=response["episode"],
-                agent_index=response["agent_index"],
-                env_state="some state",
+                env_state="some state", # user_game.current_obs['image'],  # TODO: Ensure env_state is passed correctly
             )
             session.add(new_action)
             session.commit()
@@ -544,7 +685,7 @@ async def handle_send_action(sid, action):
         finally:
             session.close()
 
-    await finish_turn(response, user_game, sid)
+    await finish_turn(response, user_game, sid, need_feedback_data=False)
     return {"status": "success"}
 
 @sio.on("next_episode")
@@ -577,11 +718,12 @@ async def play_entire_episode(sid):
     user_game = game_controls[user_id]
     while True:
         action, response = user_game.agent_action()
-        response["action"] = action
-        time.sleep(0.3)
+        response["action"] = action_dir[action]
+        time.sleep(0.4)
         await finish_turn(response, user_game, sid)
         if response["done"]:
             print("Agent Episode finished")
+            time.sleep(0.3)
             break
 
 @sio.on("compare_agents")
@@ -592,7 +734,7 @@ async def compare_agents(sid, data): # data={ playerName: playerNameInput.value,
         return
     user_game = game_controls[user_id]
     user_game.update_agent(data, sid)
-    res = user_game.agents_different_routs(data['simillarity_level'])
+    res = user_game.agents_different_routs(user_game.simillar_level_env)#data['simillarity_level'])
     await sio.emit("compare_agents", res, to=sid)
 
 @sio.on("finish_game")
@@ -621,6 +763,51 @@ async def start_cover_page(sid):
 
     # Emit an event to transition to the welcome page
     await sio.emit("go_to_welcome_page", {}, to=sid)
+
+@sio.on("use_old_agent")
+async def use_old_agent(sid, data=None):
+    """
+    Update the agent to the old one.
+    """
+    user_id = sid_to_user.get(sid)
+    if not user_id or user_id not in game_controls:
+        await sio.emit("error", {"error": "User not found"}, to=sid)
+        return
+
+    user_game = game_controls[user_id]
+
+    # Update the agent to the old one
+    if user_game.prev_agent is None:
+        print(f"User {user_id} has no previous agent to switch to.")
+        await sio.emit("agent_updated", {"status": "error", "message": "No previous agent available"}, to=sid)
+    else:
+        # Save the user choice in the DB.
+        # print(f"save to database user choice: user_id: {user_id}, old_agent: {user_game.prev_agent}, new_agent: {user_game.ppo_agent}, episode_index: {user_game.episode_num}, choice_to_updated: {not data['use_old_agent']}")
+        if save_to_db:
+            session = SessionLocal()
+            try:
+                user_choice = UserChoice(
+                    user_id=user_game.user_id,
+                    old_agent=str(user_game.prev_agent),  # adjust as needed
+                    new_agent=str(user_game.ppo_agent),     # after switching, still same objects
+                    timestamp=time.time(),
+                    episode_index=user_game.episode_num,
+                    choice_to_updated=data['use_old_agent'],
+                    simillarity_level=user_game.simillar_level_env,
+                )
+                session.add(user_choice)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                print(f"UserChoice saving failed: {e}")
+            finally:
+                session.close()
+
+        # Update the agent to the old one
+        if data['use_old_agent']:
+            user_game.ppo_agent = user_game.prev_agent
+            print(f"User {user_id} switched to the old agent.")
+            await sio.emit("agent_updated", {"status": "success", "message": "Switched to the old agent"}, to=sid)
 
 # ---------------------- RUNNING THE APP -------------------------
 if __name__ == "__main__":

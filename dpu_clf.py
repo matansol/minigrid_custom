@@ -14,6 +14,10 @@ from io import BytesIO
 from stable_baselines3 import PPO
 from minigrid_custom_env import *
 from minigrid_custom_train import UpgradedObjEnvExtractor
+import json
+import copy
+
+
 
 
 def timeit(func):
@@ -31,6 +35,8 @@ def timeit(func):
 @timeit
 def load_agent(env, model_path, update=False) -> PPO:
     # policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
+    model_path = model_path.split('.zip')[0]
+    print(f'load new model path {model_path}')
     if update:
         custom_objects = {
         "policy_kwargs": {"features_extractor_class": UpgradedObjEnvExtractor},  # Example kernel size
@@ -81,6 +87,33 @@ def is_illegal_move(action, last_obs, obs, agent_pos_befor, agent_pos):
 actions_translation = {0: 'turn left', 1: 'turn right', 2: 'move forward', 3: 'pickup'}
 # resert the environment and run the agent on that environment to find his path
 
+def interesting_objects(env, obs, agent_action, feedback_action):
+    """
+    Get the interesting objects from the observation based on the agent's and feedback's actions.
+    """
+    tmp_env = copy.deepcopy(env)
+    interesting_objects = []
+    interesting_objects += get_objects_from_image(obs['image'], number_of_cells=3)
+    tmp_env.step(agent_action)
+    interesting_objects += get_objects_from_image(tmp_env.get_wrapper_attr('current_state')['image'], number_of_cells=3)
+    env.step(feedback_action)
+    interesting_objects += get_objects_from_image(env.get_wrapper_attr('current_state')['image'], number_of_cells=3)
+    return set(interesting_objects)
+
+def get_objects_from_image(image, number_of_cells=5):
+    """
+    Get the objects from the image and return them as a list of dictionaries.
+    Each dictionary contains the object type, color, and state.
+    """
+    around_objects = []
+    mid = 3 # env.width //2
+    for i in range(2,number_of_cells+2):
+        # ASSERT number_of_objects <= min(env.width, env.height) - 1
+        around_objects.append(image[mid][-i]) # for some reason the obs image is reversed
+    around_objects.append(image[mid+1][-2])
+    around_objects.append(image[mid-1][-2])
+    return list(map(tuple, around_objects))
+
 @timeit
 def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves, number of illegal moves, total reward, list of legal actions
     illigal_moves = 0
@@ -97,7 +130,7 @@ def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of 
     # plt.imshow(copy_env.render())
     while not done:
         agent_pos_before = copy_env.get_wrapper_attr('agent_pos')
-        action, _states = agent.predict(last_obs)
+        action, _states = agent.predict(last_obs, deterministic=True)
         agent_actions.append(action)
         obs, reward, done, _, info = copy_env.step(action)
         total_reward += reward
@@ -129,6 +162,30 @@ def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of 
         elif action == 3: # pickup
             move_sequence.append(('pickup ' +  agent_dir, 'pickup'))
     return move_sequence, illigal_moves, total_reward, ligal_actions
+
+
+def convert_move_sequence_to_jason(move_sequence):
+    """
+    Convert a move_sequence (list of strings) into a JSON-serializable list 
+    where each element is a two-item list: [actionDir, explanation].
+    
+    Example conversion:
+      "turn left"      -> ["turn left", "turn"]
+      "pickup right"   -> ["pickup right", "pickup"]
+      "right"          -> ["right", "forward"]
+    """
+    converted = []
+    for move, action in move_sequence:
+        if move.startswith("turn"):
+            # For turning, we use the string itself as explanation
+            converted.append([move, "turn"])
+        elif move.startswith("pickup"):
+            converted.append([move, "pickup"])
+        else:
+            # Assume all other moves are forward moves
+            converted.append([move, "forward"])
+    return json.dumps(converted)
+
 
 def turn_agent(agent_dir, turn_dir) -> str:
     turnning_dict = {("up", "left"): "left", ("up", "right"): "right", 
@@ -307,7 +364,7 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
     i= 0
     print(f'plot move sequence len: {len(move_sequence)}, imgs len: {len(imgs)}')
     for action_dir, actual_action in move_sequence:
-        _ , ax = plt.subplots()
+        fig , ax = plt.subplots()
         ax.imshow(imgs[i])
         if i == converge_action_location:
             # add a rectangle to mark the converging point:
@@ -395,13 +452,14 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
             action_loc['height'] = mark_sizes['pickup'][1]
         actions_with_location.append(action_loc)
         imgs_action_list.append(buf)
-        plt.close()
+        plt.close(fig)
         # Capture the current state of the plot
         # Add a yellow half-transparent rectangle for the last action
         
 
     
     return buf, actions_with_location, imgs_action_list
+
 
 WALL_SHIFT_FACTOR = 1
 WALL_FACTOR = 10
@@ -479,28 +537,6 @@ def state_distance(objects1, objects2):
     # distance += np.abs(balls_distance(objects1['balls']) - balls_distance(objects2['balls']))* BALLS_FACTOR
     return distance
 
-# def plot_buf_images(images_buf_list):
-#     # Number of images
-#     num_images = len(images_buf_list)
-#     print('plot_buf_images, num_images:', num_images)
-    
-#     # Create a figure with subplots
-#     fig, axes = plt.subplots(1, num_images, figsize=(15, 5))
-    
-#     if num_images == 1:
-#         axes = [axes]  # Ensure axes is iterable if there's only one image
-    
-#     for ax, img_base64 in zip(axes, images_buf_list):
-#         # Decode the base64 image
-#         img_data = base64.b64decode(img_base64)
-#         img = plt.imread(BytesIO(img_data), format='png')
-        
-#         # Plot the image
-#         ax.imshow(img)
-#         ax.axis('off')  # Hide the axis
-    
-#     plt.show()
-
 
 # run the agent and evaluate his prefermances
 # return the average reward and the average number of illegal moves
@@ -511,6 +547,7 @@ def evaluate_agent(env, agent, num_episodes=100) -> (float, float, float):
     total_reward = 0
     total_illegal_moves = 0
     total_moves = 0
+    reached_max_steps = 0
     for i in range(num_episodes):
         # kwargs = {'simillarity_level': 3}
         state = env.unwrapped.reset()
@@ -521,8 +558,10 @@ def evaluate_agent(env, agent, num_episodes=100) -> (float, float, float):
             last_obs = state
             agent_pos_before = env.unwrapped.agent_pos
             # print(state)
-            action, _ = agent.predict(state)
+            action, _ = agent.predict(state, deterministic=True)
             state, reward, done, truncle, _ = env.unwrapped.step(action)
+            if truncle:
+                reached_max_steps += 1
             state = {'image': state['image']}
             total_reward += reward
             total_moves += 1
@@ -530,4 +569,4 @@ def evaluate_agent(env, agent, num_episodes=100) -> (float, float, float):
                 total_illegal_moves += 1
         # print("Episode:", i, "Reward:", total_reward, "Illegal moves:", total_illegal_moves, "Total moves:", total_moves)
             
-    return total_reward/num_episodes, total_illegal_moves//num_episodes, total_moves//num_episodes
+    return total_reward/num_episodes, total_illegal_moves//num_episodes, total_moves//num_episodes, reached_max_steps

@@ -17,14 +17,14 @@ from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback,
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
-from gym.wrappers import TimeLimit
+# from gym.wrappers import TimeLimit
 from gymnasium import spaces
 from torch import optim
 from typing import Dict
 
 
-import wandb
-from wandb.integration.sb3 import WandbCallback
+# import wandb
+# from wandb.integration.sb3 import WandbCallback
 import random
 
 from minigrid_custom_env import CustomEnv, ObjObsWrapper, ObjEnvExtractor
@@ -159,52 +159,52 @@ def set_random_seed(seed):
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         return th.cat(encoded_tensor_list, dim=1)
 
-class WandbEvalCallback(BaseCallback):
-    """
-    Custom callback for logging evaluation results to wandb and saving the best model.
-    """
-    def __init__(self, eval_env, eval_freq, n_eval_episodes, wandb_run, best_model_save_path, verbose=0):
-        super(WandbEvalCallback, self).__init__(verbose)
-        self.eval_env = eval_env
-        self.eval_freq = eval_freq
-        self.n_eval_episodes = n_eval_episodes
-        self.wandb_run = wandb_run
-        self.best_model_save_path = best_model_save_path
-        self.best_mean_reward = -float("inf")  # Initialize with a very low value
+# class WandbEvalCallback(BaseCallback):
+    # """
+    # Custom callback for logging evaluation results to wandb and saving the best model.
+    # """
+    # def __init__(self, eval_env, eval_freq, n_eval_episodes, wandb_run, best_model_save_path, verbose=0):
+    #     super(WandbEvalCallback, self).__init__(verbose)
+    #     self.eval_env = eval_env
+    #     self.eval_freq = eval_freq
+    #     self.n_eval_episodes = n_eval_episodes
+    #     self.wandb_run = wandb_run
+    #     self.best_model_save_path = best_model_save_path
+    #     self.best_mean_reward = -float("inf")  # Initialize with a very low value
 
-    def _on_step(self) -> bool:
-        # Perform evaluation every `eval_freq` steps
-        if self.n_calls % self.eval_freq == 0:
-            episode_rewards = []
-            episode_lengths = []
-            for _ in range(self.n_eval_episodes):
-                obs = self.eval_env.reset()
-                done = False
-                step_count = 0
-                episode_reward = 0
-                while not done:
-                    action, _ = self.model.predict(obs, deterministic=True)
-                    obs, reward, terminated, truncated = self.eval_env.step(action)
-                    episode_reward += reward
-                    done = terminated or truncated
-                    step_count += 1
-                episode_lengths.append(step_count)
-                episode_rewards.append(episode_reward)
+    # def _on_step(self) -> bool:
+    #     # Perform evaluation every `eval_freq` steps
+    #     if self.n_calls % self.eval_freq == 0:
+    #         episode_rewards = []
+    #         episode_lengths = []
+    #         for _ in range(self.n_eval_episodes):
+    #             obs = self.eval_env.reset()
+    #             done = False
+    #             step_count = 0
+    #             episode_reward = 0
+    #             while not done:
+    #                 action, _ = self.model.predict(obs, deterministic=True)
+    #                 obs, reward, terminated, truncated = self.eval_env.step(action)
+    #                 episode_reward += reward
+    #                 done = terminated or truncated
+    #                 step_count += 1
+    #             episode_lengths.append(step_count)
+    #             episode_rewards.append(episode_reward)
 
-            mean_reward = sum(episode_rewards) / len(episode_rewards)
-            mean_length = sum(episode_lengths) / len(episode_lengths)
-            print(f"Step {self.n_calls}: Mean reward: {mean_reward}, Mean length: {mean_length}")
+    #         mean_reward = sum(episode_rewards) / len(episode_rewards)
+    #         mean_length = sum(episode_lengths) / len(episode_lengths)
+    #         print(f"Step {self.n_calls}: Mean reward: {mean_reward}, Mean length: {mean_length}")
 
-            # Log to wandb
-            self.wandb_run.log({"mean_reward": mean_reward, "mean_lenth": mean_length, "step": self.n_calls})   
+    #         # Log to wandb
+    #         self.wandb_run.log({"mean_reward": mean_reward, "mean_lenth": mean_length, "step": self.n_calls})   
 
-            # Save the best model if the mean reward improves
-            if mean_reward > self.best_mean_reward:
-                self.best_mean_reward = mean_reward
-                print(f"New best mean reward: {mean_reward}. Saving model...")
-                self.model.save(f"{self.best_model_save_path}/best_model")
+    #         # Save the best model if the mean reward improves
+    #         if mean_reward > self.best_mean_reward:
+    #             self.best_mean_reward = mean_reward
+    #             print(f"New best mean reward: {mean_reward}. Saving model...")
+    #             self.model.save(f"{self.best_model_save_path}/best_model")
 
-        return True
+    #     return True
 
 
 class UpgradedObjEnvExtractor(BaseFeaturesExtractor):
@@ -291,18 +291,18 @@ def create_env(grid_size, agent_view_size, max_steps, highlight, step_cost, num_
         step_count_observation=step_count_observation
     )
     env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
-    env = TimeLimit(env, max_episode_steps=max_steps)
+    # env = TimeLimit(env, max_episode_steps=max_steps)
     env = Monitor(env)  # Add Monitor for logging
     return env
 
-def main():
+def main(**kwargs):
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action="store_true", help="train the model")
     parser.add_argument(
-        "--load_model",
-        # default="minigrid_hard_20241010/iter_1000000_steps",
-        # default="minigrid_easy7_20241030/iter_300000_steps",
+        "--load_model", type=str, default=None, help="load a trained model"
     )
+
+    args = parser.parse_args()
     # parser.add_argument("--render", action="store_true", help="render trained models")
     # parser.add_argument("--seed", type=int, default=42, help="random seed")
     # parser.add_argument("--model", type=str, default="ppo", help="what model to train")
@@ -322,14 +322,14 @@ def main():
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
     max_steps = 100
-    colors_rewards = {'red': 3, 'green': 3, 'blue': 3}
+    colors_rewards = {'red': -0.1, 'green': 4, 'blue': -0.1}
     step_count_observation = False
-    lava_cost = -5
+    lava_cost = 1
     grid_size = 8
     agent_view_size = 7
     step_cost = 0.1
-    num_lava_cell = 3
-    num_balls = 5
+    num_lava_cell = 4
+    num_balls = 6
 
     # if args.train:
     device = "cuda" if th.cuda.is_available() else "cpu"
@@ -418,55 +418,62 @@ def main():
         render=False
     )
 
-    wandb.init(
-        project="minigrid_custom",
-        config={
-            "algorithm": "PPO",
-            "max_steps": max_steps,
-            "preference_vector": preference_vector,
-        },
-        name=f"grid{grid_size}_view{agent_view_size}_{preference_vector}",
-        sync_tensorboard=True,  # Sync tensorboard logs
-        settings=wandb.Settings(symlink=False),
-    )
+    # wandb.init(
+    #     project="minigrid_custom",
+    #     config={
+    #         "algorithm": "PPO",
+    #         "max_steps": max_steps,
+    #         "preference_vector": preference_vector,
+    #     },
+    #     name=f"grid{grid_size}_view{agent_view_size}_{preference_vector}",
+    #     sync_tensorboard=True,  # Sync tensorboard logs
+    #     settings=wandb.Settings(symlink=False),
+    # )
 
-    wandb_eval_callback = WandbEvalCallback(
-        eval_env=eval_env,
-        eval_freq=10000,
-        n_eval_episodes=5,
-        wandb_run=wandb,
-        best_model_save_path=f'./models/{save_name}/',
-    )
+    # wandb_eval_callback = WandbEvalCallback(
+    #     eval_env=eval_env,
+    #     eval_freq=10000,
+    #     n_eval_episodes=5,
+    #     wandb_run=wandb,
+    #     best_model_save_path=f'./models/{save_name}/',
+    # )
 
-    # Define the PPO model
-    model = PPO(
-        "MultiInputPolicy",
-        train_env,
-        policy_kwargs=policy_kwargs,
-        verbose=2,
-        learning_rate=1e-3,
-        ent_coef=3e-3,
-        n_steps=256,
-        batch_size=32,
-        # clip_range=0.3,
-        gamma = 0.9,
-        gae_lambda=0.95,
-        n_epochs=6,
-        # stats_window_size=100,
-        device=device
-    )
+    if args.load_model:
+        print(f"Loading model from {args.load_model}")
+        model = PPO.load(args.load_model, env=train_env, device=device)
+    else:
+        print("No model specified, creating a new PPO agent")
+        model = PPO(
+            "MultiInputPolicy",
+            train_env,
+            policy_kwargs=policy_kwargs,
+            verbose=2,
+            learning_rate=1e-3,
+            ent_coef=1e-3,
+            n_steps=128,
+            batch_size=32,
+            gamma=0.9,
+            gae_lambda=0.95,
+            n_epochs=6,
+            device=device
+        )
 
     print(f"observation state: {train_env.observation_space}")
 
     # Start training
     print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
     model.learn(
-        10e5,
+        5e5,
         tb_log_name=f"{stamp}",
         callback=[eval_callback]#, wandb_eval_callback]
     )
     train_env.close()
     eval_env.close()
+
+if __name__ == "__main__":
+    main()
+
+
         # Save the model and VecNormalize statistics
         # model.save(f"./models/{save_name}_ppo_model")
         # env.save(f"./models/{save_name}_vecnormalize.pkl")
@@ -504,5 +511,4 @@ def main():
 
 
 
-if __name__ == "__main__":
-    main()
+

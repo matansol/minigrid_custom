@@ -1,3 +1,4 @@
 orig_8_20241111,orig_easy8_20241111\iter_1000000_steps,"[2, 2, 2, 0, -0.1]","(7.769540000000021, 0)"
 LavaLaverNR_Grid8_20241113,models\LavaLaverRedN8_20241113\iter_500000_steps,"[-2, 2, 2, 0, -0.1]","(7.534599999999691, 1)"
 LavaLaverNR_Grid8_20241113,models\LavaLaverRedN8_20241113\iter_500000_steps,"[-2, 2, 2, 0, -0.1]","(7.266079999999693, 1)"
+LavaLaverNR_Grid8_20241113,models\LavaLaverRedN8_20241113\iter_500000_steps,"[-2, 2, 2, 0, -0.1]","(8.444440000000322, 4, 27, 25)"

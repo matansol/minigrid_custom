@@ -7,7 +7,7 @@ from minigrid.manual_control import ManualControl
 from minigrid.minigrid_env import MiniGridEnv
 
 from minigrid.core.actions import Actions
-from minigrid.core.constants import COLOR_NAMES, DIR_TO_VEC, TILE_PIXELS
+from minigrid.core.constants import COLOR_NAMES, DIR_TO_VEC, TILE_PIXELS, IDX_TO_COLOR, IDX_TO_OBJECT, OBJECT_TO_IDX, COLOR_TO_IDX
 from minigrid.core.world_object import Point, WorldObj
 
 
@@ -144,7 +144,7 @@ class CustomEnv(MiniGridEnv):
         self,
         grid_size=8,
         agent_start_pos=(1, 1),
-        agent_start_dir=0,
+        agent_start_dir: int = 0, # 0: right, 1: down, 2: left, 3: up
         max_steps: int = 100, 
         change_reward: bool = False,
         num_objects: int = 6,
@@ -168,10 +168,13 @@ class CustomEnv(MiniGridEnv):
         step_count_observation: bool = False,
         lava_panishment: int = -3,
         small_actions_space: bool = False,
+        # set_env: bool = False, # is the env should be one of the unique envs
         simillarity_level: int = 0,
+        simillar_env_from_near_objects: bool = True,
         # lava_reward: int = 0,
         **kwargs,
     ):
+        self.simillar_env_from_near_objects = simillar_env_from_near_objects
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.agent_dir = agent_start_dir
@@ -181,7 +184,8 @@ class CustomEnv(MiniGridEnv):
         self.unique_env = unique_env
         self.step_count_observation = step_count_observation
         self.step_cost = step_cost
-        self.lava_panishment = lava_panishment    
+        self.lava_panishment = lava_panishment  
+        self.set_env = False  
         if not highlight:
             self.highlight = not image_full_view
 
@@ -270,9 +274,9 @@ class CustomEnv(MiniGridEnv):
 
         self.see_through_walls = see_through_walls
 
-        # Current position and direction of the agent
-        self.agent_pos: np.ndarray | tuple[int, int] = None
-        self.agent_dir: int = None
+        # # Current position and direction of the agent
+        # self.agent_pos: np.ndarray | tuple[int, int] = None
+        # self.agent_dir: int = 0
 
         # Current grid and mission and carrying
         self.grid = Grid(width, height)
@@ -294,13 +298,18 @@ class CustomEnv(MiniGridEnv):
             simillarity_level = kwargs['simillarity_level']
         else:
             simillarity_level = 5
+        if 'set_env' in kwargs:
+            self.set_env = kwargs['set_env']
         self.on_baord_objects = 0
         self.step_count = 0
         self.took_key = False
         self.current_state = {}
         self.initial_balls = []
         self.lava_cells = []
-        self._place_initial_objects(simillarity_level, kwargs)
+        if 'infront_objects' in kwargs:
+            self._place_infront_objects(kwargs['infront_objects'], 5)
+        else:
+            self._place_initial_objects(simillarity_level, kwargs)
         # print("reset new env with balls:", self.initial_balls)
         # print("lava cells:", self.lava_cells)
         state , info = super().reset()
@@ -314,6 +323,9 @@ class CustomEnv(MiniGridEnv):
         
         return state, info
     
+    def update_set_env(self, set_env: bool):
+        self.set_env = set_env
+
     @staticmethod
     def _gen_mission():
         return ""
@@ -334,6 +346,7 @@ class CustomEnv(MiniGridEnv):
 
 
     def _place_initial_objects(self, simillarity_level, kwargs):
+    
         """
         Create the initial balls list based on the simillarity level and the other initial_balls passed in the kwargs.
         simillarity_level: 0  - all balls and lava in the same locations
@@ -342,27 +355,16 @@ class CustomEnv(MiniGridEnv):
         simillarity_level: 3 - same colors but different balls locations, lava same location 
         simillarity_level: 4+ - random balls with random colors
         """
+        print("place initial objects")
+        print("simillarity level:", simillarity_level)
+        print("kwargs:", kwargs)
         added_lava = False
         if simillarity_level == 0 and "initial_balls" in kwargs and isinstance(kwargs["initial_balls"], list):
             if "other_lava_cells" in kwargs: 
                 self.create_lava_locations(kwargs['other_lava_cells'], 0)
                 added_lava = True
             self.initial_balls = kwargs['initial_balls'] # all balls in the same locations
-
-            # base_balls = kwargs['initial_balls']
-            # all noise in the balls placed on the grid
-            # for ball in base_balls:
-            #     noise_factor = 0
-            #     dx = random.randint(-noise_factor, noise_factor)
-            #     dy = random.randint(-noise_factor, noise_factor)
-            #     x = max(min(ball[0] + dx, self.width - 2), 1)
-            #     y = max(min(ball[1] + dy, self.height - 2), 1)
-
-            #     if (x, y) == (self.width - 2, self.height - 2) or (x, y) == (1, 1):
-            #         continue
-            #     b_color = ball[2]
-            #     self.initial_balls.append((x, y, b_color, self.color_rewards[b_color])) # (x, y, color, reward when picked)
-        
+            
         elif simillarity_level == 1 and "initial_balls" in kwargs and isinstance(kwargs["initial_balls"], list):
             if "other_lava_cells" in kwargs: 
                 self.create_lava_locations(kwargs['other_lava_cells'], 0)
@@ -430,7 +432,31 @@ class CustomEnv(MiniGridEnv):
                     continue
                 self.lava_cells.append((x,y))
 
+        print("initial balls:", self.initial_balls)
+        print("lava cells:", self.lava_cells)
 
+    def _place_infront_objects(self, infront_objects, number_of_objects=5):
+        """
+        Make an env with the same objects as the ones in the infront_objects list
+        """
+        print("place infront objects")
+        for obj in infront_objects:
+            print("obj:", obj)
+            for i in range(number_of_objects):
+                x = random.randint(1, self.width - 2)
+                y = random.randint(1, self.height - 2)
+                if (x, y) == (self.width - 2, self.height - 2) or (x, y) == (1, 1):
+                    continue
+                if IDX_TO_OBJECT[obj[0]] == 'lava':
+                    self.lava_cells.append((x,y))
+
+                elif IDX_TO_OBJECT[obj[0]] == 'ball':
+                    color = IDX_TO_COLOR[obj[1]]
+                    self.initial_balls.append((x, y, color, self.color_rewards[color]))
+        print("initial balls:", self.initial_balls)
+        print("lava cells:", self.lava_cells)
+        
+                    
     def _gen_grid(self, width, height, **kwargs):
         self.mission = "" #self._gen_mission()
 
@@ -445,6 +471,10 @@ class CustomEnv(MiniGridEnv):
         # Generate the surrounding walls
         self.grid.wall_rect(0, 0, width, height)
 
+        if self.set_env: # create a random unique env
+            self.unique_env = random.randint(1, 8)
+
+                
         if self.unique_env > 0:
             return self._gen_unique_grid(width, height)
         if self.difficult_grid and width >= 8 and height >= 8:
@@ -476,19 +506,17 @@ class CustomEnv(MiniGridEnv):
             self.initial_balls.append((width-2, 1, 'red', self.color_rewards['red']))
             self.put_obj(Lava(), width-3, 2)
             self.put_obj(Lava(), width-3, 1)
-            self.put_obj(Lava(), width-2, 2)
+            # self.put_obj(Lava(), width-2, 2)
             self.put_obj(Ball('blue'), width-4, 3)
             self.initial_balls.append((width-4, 3, 'blue', self.color_rewards['blue']))
 
         if self.unique_env == 2:
-            self.put_obj(Ball('blue'), width-2, 1)
-            self.initial_balls.append((width-2, 1, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 1, height-2)
-            self.initial_balls.append((1, height-2, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 2, height-2)
-            self.initial_balls.append((2, height-2, 'green',  self.color_rewards['green']))
-            self.put_obj(Ball('green'), 3, height-2)
-            self.initial_balls.append((3, height-2, 'green', self.color_rewards['green']))
+            self.put_obj(Ball('blue'), width-3, 2)
+            self.initial_balls.append((width-3, 2, 'blue', self.color_rewards['blue']))
+            self.put_obj(Ball('green'), 1, 4)
+            self.initial_balls.append((1, 4, 'green', self.color_rewards['green']))
+            self.put_obj(Ball('green'), 1, 6)
+            self.initial_balls.append((1, 6, 'green', self.color_rewards['green']))
 
         if self.unique_env == 3:
             self.put_obj(Lava(), 1, 2)
@@ -510,7 +538,55 @@ class CustomEnv(MiniGridEnv):
             self.initial_balls.append((1, 4,'red', self.color_rewards['red']))
             self.put_obj(Ball('blue'), 6, 2)
             self.initial_balls.append((6, 2,'blue', self.color_rewards['blue']))
+            self.put_obj(Ball('green'), 5, 5)
+            self.initial_balls.append((5, 5,'green', self.color_rewards['green']))
+        
+        if self.unique_env == 5:
+            self.put_obj(Lava(), 6, 1)
+            self.put_obj(Lava(), 5, 2)
+            self.put_obj(Ball('blue'), 1, 3)
+            self.initial_balls.append((1, 3,'blue', self.color_rewards['blue']))
+            self.put_obj(Ball('blue'), 6, 2)
+            self.initial_balls.append((6, 2,'blue', self.color_rewards['blue']))
+            self.put_obj(Ball('green'), 5, 4)
+            self.initial_balls.append((1, 4,'green', self.color_rewards['green']))
+            self.put_obj(Ball('green'), 6, 5)
+            self.initial_balls.append((6, 5,'green', self.color_rewards['green']))
+        
 
+        if self.unique_env == 6:
+            self.put_obj(Lava(), 3, 3)
+            self.put_obj(Lava(), 1, 3)
+            self.put_obj(Ball('red'), 4, 3)
+            self.initial_balls.append((4, 3,'red', self.color_rewards['red']))
+            self.put_obj(Ball('red'), 5, 2)
+            self.initial_balls.append((5, 2,'red', self.color_rewards['red']))
+            self.put_obj(Ball('red'), 2, 6)
+            self.initial_balls.append((2, 6,'red', self.color_rewards['red']))
+            self.put_obj(Ball('red'), 3, 6)
+            self.initial_balls.append((3, 6,'red', self.color_rewards['red']))
+            self.put_obj(Ball('green'), 1, 4)
+            self.initial_balls.append((1, 4,'green', self.color_rewards['green']))
+            
+
+        if self.unique_env == 7:
+            self.put_obj(Ball('blue'), 4, 4)
+            self.initial_balls.append((4, 4, 'blue',self.color_rewards['blue']))
+            self.put_obj(Ball('green'), 6, 2)
+            self.initial_balls.append((6, 2, 'green',self.color_rewards['green']))
+            for i in range(3,6):
+                for j in range(3, 6):
+                    if (i == 4 and j == 4) or (i == 5 and j == 4):
+                        continue
+                    self.put_obj(Lava(), i,j)
+        
+        if self.unique_env == 8:
+            red_ball_positions = [(3, 2), (5, 6), (4, 3), (4, 6), (5, 1)]
+            for pos in red_ball_positions:
+                self.put_obj(Ball('red'), pos[0], pos[1])
+                self.initial_balls.append((pos[0], pos[1], 'red', self.color_rewards['red']))
+
+            
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
 
@@ -625,10 +701,17 @@ class CustomEnv(MiniGridEnv):
 
         # if self.train_env and terminated: # reached the goal
             # reward += 10
+
+        # prefered to turn right than left
+        # if action == self.actions.left or action == self.actions.right:
+        #     if action == self.actions.left:
+        #         reward -= 0.1
+        #     else:
+        #         reward += 0.1
         
         # got to the right bottom corner - the goal
         if self.agent_pos == (self.grid.width - 2, self.grid.height - 2) :#and self.train_env:
-            reward += 3
+            reward += 4
 
         # hit a lava cell
         if self.agent_pos in self.lava_cells: 
@@ -641,10 +724,11 @@ class CustomEnv(MiniGridEnv):
             if self.train_env:
                 reward -= 5
 
-        # reward -= self.step_cost # each step cost the agent some reward, in order to minimize the number of steps
+        # each step cost the agent some reward, in order to minimize the number of steps
+        # reward -= self.step_cost 
 
         dis_from_goal = np.abs(self.agent_pos[0] - (self.grid.width - 2)) + np.abs(self.agent_pos[1] - (self.grid.height - 2))
-        reward -= dis_from_goal * 0.01 # the aproximation of number of steps to the goal
+        reward -=  self.step_cost # * dis_from_goal #the aproximation of number of steps to the goal
         # if terminated:
         #     print(f"terminated, reward={reward}")
         return obs, reward, terminated, truncated, info

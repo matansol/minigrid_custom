@@ -19,6 +19,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
         .active {
             display: flex; /* Show active page */
@@ -223,6 +224,14 @@
             font-size: 18px;
             margin-top: 10px;
         }
+
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -240,9 +249,10 @@
         <h2>Welcome to the Game</h2>
         <p>In the next experiment you will play a custom game controlling a triangle-shaped player. <br>
             The game is a sequence of episodes where in each episode the player earns points by collecting balls that are scattered in the arena.  
-            Each ball gives 2 points and each action cost 0.1 points.<br>
-            You can control the player using the keyboard arrows and the '1' key to pick up balls, or you can use a pre trained agent to play the game for you. <br>
-            Notice that the agent is suboptimal and you can improve it by providing feedback on its actions in the overview page that will appear once the episode is over.<br>
+            Each ball gives points and each action cost 0.1 points. Red ball reward=2, Blue ball reward=2, Green ball reward=2<br>
+            In the first part you will control the player using the keyboard arrows and the '1' key to pick up balls. <br>
+            In the second part a pre trained agent will play the game for you. <br>
+            Notice that the pre traned agent is suboptimal and you can improve it by providing feedback on its actions in the overview page that will appear once the episode is over.<br>
             After the feedback you could watch the agent's updated policy compared to the previous one on some examples.</p>
         <input type="text" id="player-name" placeholder="Enter your name">
         <button id="welcome-continue-button">Continue</button>
@@ -271,7 +281,7 @@
     <!-- Phase1 - Know The Game Page -->
     <div id="ph1-game-page" class="page">
         <p>
-            Get to know the game by collecting balls and avoiding the lava cells, every step count so think before you act <br>
+            Get to know the game by collecting balls and avoiding the lava cells, every step counts so think before you act <br>
         </p>
         <div id="game-container">
             <!-- Game content with image and instructions -->
@@ -288,6 +298,10 @@
                         font-size: 16px;
                         z-index: 10;">
                         Step Count: <span id="step-count-ph1">0</span>
+                    </div>
+                    <!-- Spinner element for Phase‑1 -->
+                    <div id="ph1-spinner" class="loading-spinner" style="display: none;">
+                      <img src="/static/spinner.gif" alt="Loading…" />
                     </div>
                     <i class="fas fa-spinner fa-spin placeholder-icon"></i> <!-- Placeholder icon -->
                     <img id="game-image-ph1" src="" alt="Game Image">
@@ -313,6 +327,20 @@
         </div>
     </div>
 
+        <!-- Part 2 Explanations Page -->
+    <div id="part2-explanations-page" class="page" style="display: none; flex-direction: column; align-items: center; padding: 20px;">
+      <h2>Part 2: Agent Assistance</h2>
+      <p>
+        In the second part, a pre-trained AI agent will play the game for you.<br>
+        This agent is not perfect — it sometimes makes mistakes or chooses suboptimal actions.<br>
+        At the end of each episode, you’ll see a summary of the agent’s decisions.<br>
+        You’ll have the chance to give feedback by suggesting better actions for specific steps. If you want, you can tell the agent where his mistakes are and make him improve by clicking the ‘Update Agent’ button, or continue to the next episode.<br>
+        Your feedback will be used to change the agent’s behavior, hopefully for the better. After that, you’ll get to compare how the updated agent performs versus the previous version.
+      </p>
+      <button id="continue-button">Continue</button>
+    </div>
+
+
     <!-- Phase2 - Agent Play Page -->
     <div id="ph2-game-page" class="page">
         <p>Let the smart agent play for you, and see where it makes mistakes. When the episode is over, you will get the chance to give feedback.</p>
@@ -336,6 +364,10 @@
                         z-index: 10;">
                         Step Count: <span id="step-count-ph2">0</span>
                     </div>
+                    <!-- Spinner element for Phase‑2 -->
+                    <div id="ph2-spinner" class="loading-spinner" style="display: none;">
+                      <img src="/static/spinner.gif" alt="Loading…" />
+                    </div>
                     <img id="game-image-ph2" src="" alt="Game Image">
                 </div>
                 <div id="key-instructions">
@@ -357,36 +389,15 @@
     </div>
 
 <!-- Overview Page -->
-<!-- <div id="overview-page" class="page" style="display: none;">
-    <h2>Episode Overview</h2>
-    <p>The feedback is given by selecting a new action from the dropdown, if desired.</p>
-
-    <div id="overview-container" style="display: flex; align-items: flex-start; flex-direction: column; position: relative;">
-        <div id="current-action-container" style="display: flex; align-items: center; margin-bottom: 10px;">
-            <span>Current Action:</span>
-            <h3 id="current-action" style="margin: 0 10px; cursor: pointer;">ActionName</h3>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <button id="prev-action-button">Back Action</button>
-            <button id="next-action-button">Next Action</button>
-        </div>
-
-        <div id="game-image-container">
-            <img id="overview-game-image" src="" alt="Game Image">
-        </div>
-
-
-        <button id="next-episode-button">Next Episode</button>
-        <button id="compare-agents-button">Compare Agents</button>
-    </div> -->
-
-<!-- Overview Page -->
 <div id="overview-page" class="page" style="display: none;">
     <h2>Episode Overview</h2>
     <p>The feedback is given by selecting a new action from the dropdown, if desired.</p>
   
     <div id="left-panel" style="display: flex; flex-direction: column; align-items: flex-start; position: relative;">
+        <!-- Spinner element for Overview -->
+        <div id="overview-spinner" class="loading-spinner" style="display: none;">
+          <img src="/static/spinner.gif" alt="Loading…" />
+        </div>
 
         <!-- Action controls above the image -->
         <div id="action-controls" style="display: flex; align-items: center; margin-bottom: 10px;">
@@ -407,7 +418,7 @@
              bottom: 10px; 
              left: 10px;">
           <button id="next-episode-button">Next Episode</button>
-          <button id="compare-agents-button" style="margin-left: 10px;">Compare Agents</button>
+          <button id="compare-agents-button" style="margin-left: 10px;">Update Agent</button>
         </div>
       </div>
   </div>
@@ -427,17 +438,32 @@
         <h2>Compare Agent Update</h2>
         <div id="compare-container" style="display: flex; justify-content: space-around;">
             <div>
-                <h3>Previous Agent</h3>
-                <img id="previous-agent-image" src="" alt="Previous Agent Image">
+                <h3>Old Agent</h3>
+                <!-- Spinner for previous agent image -->
+                <div id="compare-prev-spinner" class="loading-spinner" style="display: none;">
+                  <img src="/static/spinner.gif" alt="Loading…" />
+                </div>
+                <!-- <img id="previous-agent-image" src="" alt="Previous Agent Image"> -->
+                <canvas id="previous-agent-canvas"></canvas>
             </div>
             <div>
                 <h3>Updated Agent</h3>
-                <img id="updated-agent-image" src="" alt="Updated Agent Image">
+                <!-- Spinner for updated agent image -->
+                <div id="compare-upd-spinner" class="loading-spinner" style="display: none;">
+                  <img src="/static/spinner.gif" alt="Loading…" />
+                </div>
+                <!-- <img id="updated-agent-image" src="" alt="Updated Agent Image"> -->
+                <canvas id="updated-agent-canvas"></canvas>
             </div>
         </div>
-        <button id="another-example-button">Another Example</button>
-        <button id="next-episode-compare-button">Next Episode</button>
-        <button id="finish-game-button">Finish Game</button>
+        <!-- Other buttons -->
+        <!-- <button id="another-example-button">Another Example</button>  -->
+        <div id="compare-buttons-container" style="display: flex; justify-content: space-around; margin-top: 20px;">
+            <button id="use-old-agent-button">Use Old Agent</button>
+            <button id="next-episode-compare-button">Use Updated Agent</button>
+        </div>
+
+
     </div>
 
     <!-- Summary Page -->

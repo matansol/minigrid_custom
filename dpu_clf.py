@@ -114,6 +114,19 @@ def get_objects_from_image(image, number_of_cells=5):
     around_objects.append(image[mid-1][-2])
     return list(map(tuple, around_objects))
 
+def get_infront_object(obs):
+    """get the first object in front of the agent - in the main row"""
+    image = obs['image']
+    mid = 3 # env.width //2
+    i = 0
+    for obj in image[mid][::-1]:
+        # print(f"(get_infront_object) index:{i} obj: {obj}")
+        if IDX_TO_OBJECT[obj[0]] == 'ball' or IDX_TO_OBJECT[obj[0]] == 'lava':
+            return tuple(obj)
+        i += 1
+    return tuple(image[mid][0])
+
+
 @timeit
 def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves, number of illegal moves, total reward, list of legal actions
     illigal_moves = 0
@@ -540,9 +553,9 @@ def state_distance(objects1, objects2):
 
 # run the agent and evaluate his prefermances
 # return the average reward and the average number of illegal moves
-def evaluate_agent(env, agent, num_episodes=100) -> (float, float, float):
+def evaluate_agent(env, agent, num_episodes=100) -> (float, float, float, int):
     """
-    Evaluate the agent on the given environment, return the average reward, the average number of illegal moves, and the average number of moves
+    Evaluate the agent on the given environment, return the average reward, the average number of illegal moves, and the average number of moves, numer of reached max steps.
     """
     total_reward = 0
     total_illegal_moves = 0

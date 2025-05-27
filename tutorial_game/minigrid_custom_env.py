@@ -8,30 +8,23 @@ from minigrid.minigrid_env import MiniGridEnv
 
 from minigrid.core.actions import Actions
 from minigrid.core.constants import COLOR_NAMES, DIR_TO_VEC, TILE_PIXELS, IDX_TO_COLOR, IDX_TO_OBJECT, OBJECT_TO_IDX, COLOR_TO_IDX
-from minigrid.core.world_object import Point, WorldObj
 
 
 import gymnasium as gym
 from gymnasium.spaces import Box, Dict
 from gymnasium.core import ObservationWrapper
 from gymnasium import spaces
-import torch as th
-import torch.nn as nn
+# import torch as th
+# import torch.nn as nn
 
 
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-
-
-# import matplotlib.pyplot as plt
 import random
-# import pygame
-import time
 import numpy as np
 
 basic_color_rewards  = {
-                'red': 2,
-                'green': 2,
-                'blue': 2,
+                'red': 2.1,
+                'green': 0,
+                'blue': 2.1,
             }
 
 MAX_STEPS = 1000
@@ -73,68 +66,68 @@ class ObjObsWrapper(ObservationWrapper):
         return wrapped_obs
 
 
-class ObjEnvExtractor(BaseFeaturesExtractor):
-    def __init__(self, observation_space: Dict):
-        # We do not know features-dim here before going over all the items,
-        # so put something dummy for now. PyTorch requires calling
-        # nn.Module.__init__ before adding modules
-        super().__init__(observation_space, features_dim=1)
+# class ObjEnvExtractor(BaseFeaturesExtractor):
+#     def __init__(self, observation_space: Dict):
+#         # We do not know features-dim here before going over all the items,
+#         # so put something dummy for now. PyTorch requires calling
+#         # nn.Module.__init__ before adding modules
+#         super().__init__(observation_space, features_dim=1)
 
-        extractors = {}
-        total_concat_size = 0
+#         extractors = {}
+#         total_concat_size = 0
 
-        print("Observation space:", observation_space)
-        # We need to know size of the output of this extractor,
-        # so go over all the spaces and compute output feature sizes
-        for key, subspace in observation_space.spaces.items():
-            if key == "image":
-                # We will just downsample one channel of the image by 4x4 and flatten.
-                # Assume the image is single-channel (subspace.shape[0] == 0)
-                cnn = nn.Sequential(
-                    nn.Conv2d(3, 16, (2, 2)),
-                    nn.ReLU(),
-                    nn.Conv2d(16, 32, (2, 2)),
-                    nn.ReLU(),
-                    nn.Conv2d(32, 64, (2, 2)),
-                    nn.ReLU(),
-                    nn.Flatten(),
-                )
+#         print("Observation space:", observation_space)
+#         # We need to know size of the output of this extractor,
+#         # so go over all the spaces and compute output feature sizes
+#         for key, subspace in observation_space.spaces.items():
+#             if key == "image":
+#                 # We will just downsample one channel of the image by 4x4 and flatten.
+#                 # Assume the image is single-channel (subspace.shape[0] == 0)
+#                 cnn = nn.Sequential(
+#                     nn.Conv2d(3, 16, (2, 2)),
+#                     nn.ReLU(),
+#                     nn.Conv2d(16, 32, (2, 2)),
+#                     nn.ReLU(),
+#                     nn.Conv2d(32, 64, (2, 2)),
+#                     nn.ReLU(),
+#                     nn.Flatten(),
+#                 )
 
-                # Compute shape by doing one forward pass
-                with th.no_grad():
-                    n_flatten = cnn(
-                        th.as_tensor(subspace.sample()[None]).float()
-                    ).shape[1]
+#                 # Compute shape by doing one forward pass
+#                 with th.no_grad():
+#                     n_flatten = cnn(
+#                         th.as_tensor(subspace.sample()[None]).float()
+#                     ).shape[1]
 
-                linear = nn.Sequential(nn.Linear(n_flatten, 64), nn.ReLU())
-                extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
-                total_concat_size += 64
+#                 linear = nn.Sequential(nn.Linear(n_flatten, 64), nn.ReLU())
+#                 extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
+#                 total_concat_size += 64
 
-            elif key == "mission":
-                extractors["mission"] = nn.Linear(subspace.shape[0], 32)
-                total_concat_size += 32
-            elif key == "step_count": 
-                # Add a linear layer to process the scalar `step_count`
-                extractors["step_count"] = nn.Sequential(
-                    nn.Linear(subspace.shape[0], 16),  # Convert 1D input to 16 features
-                    nn.ReLU(),
-                    )
-                total_concat_size += 16  # Update the total feature size
+#             elif key == "mission":
+#                 extractors["mission"] = nn.Linear(subspace.shape[0], 32)
+#                 total_concat_size += 32
+#             elif key == "step_count": 
+#                 # Add a linear layer to process the scalar `step_count`
+#                 extractors["step_count"] = nn.Sequential(
+#                     nn.Linear(subspace.shape[0], 16),  # Convert 1D input to 16 features
+#                     nn.ReLU(),
+#                     )
+#                 total_concat_size += 16  # Update the total feature size
 
-        self.extractors = nn.ModuleDict(extractors)
+#         self.extractors = nn.ModuleDict(extractors)
 
-        # Update the features dim manually
-        self._features_dim = total_concat_size
+#         # Update the features dim manually
+#         self._features_dim = total_concat_size
 
-    def forward(self, observations) -> th.Tensor:
-        encoded_tensor_list = []
+#     def forward(self, observations) -> th.Tensor:
+#         encoded_tensor_list = []
 
-        # self.extractors contain nn.Modules that do all the processing.
-        for key, extractor in self.extractors.items():
-            encoded_tensor_list.append(extractor(observations[key]))
+#         # self.extractors contain nn.Modules that do all the processing.
+#         for key, extractor in self.extractors.items():
+#             encoded_tensor_list.append(extractor(observations[key]))
 
-        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
-        return th.cat(encoded_tensor_list, dim=1)
+#         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
+#         return th.cat(encoded_tensor_list, dim=1)
     
 
 class CustomEnv(MiniGridEnv):
@@ -154,19 +147,19 @@ class CustomEnv(MiniGridEnv):
         image_full_view: bool = False,
         width: int | None = None,
         height: int | None = None,
-        see_through_walls: bool = True,
+        see_through_walls: bool = False,
         agent_view_size: int = 7,
         render_mode: str | None = None,
         screen_size: int | None = 640,
-        highlight: bool = True,
+        highlight: bool = False,
         tile_size: int = TILE_PIXELS,
         agent_pov: bool = False,
         color_rewards: dict = basic_color_rewards, # all colors have the same reward = 2
         partial_obs: bool = False,
         step_count_observation: bool = False,
-        lava_panishment: float = -3,
+        lava_panishment: int = -3,
         small_actions_space: bool = False,
-        # from_unique_env: bool = False, # is the env should be one of the unique envs
+        # set_env: bool = False, # is the env should be one of the unique envs
         simillarity_level: int = 0,
         simillar_env_from_near_objects: bool = True,
         # lava_reward: int = 0,
@@ -183,7 +176,7 @@ class CustomEnv(MiniGridEnv):
         self.step_count_observation = step_count_observation
         self.step_cost = step_cost
         self.lava_panishment = lava_panishment  
-        self.from_unique_env = True  
+        self.set_env = False  
         if not highlight:
             self.highlight = not image_full_view
 
@@ -292,29 +285,23 @@ class CustomEnv(MiniGridEnv):
         
 
     def reset(self, **kwargs):
-        self.ep_score = 0
         if 'simillarity_level' in kwargs:
             simillarity_level = kwargs['simillarity_level']
         else:
             simillarity_level = 5
-        if 'from_unique_env' in kwargs:
-            self.from_unique_env = kwargs['from_unique_env']
+        if 'set_env' in kwargs:
+            self.set_env = kwargs['set_env']
         self.on_baord_objects = 0
         self.step_count = 0
         self.took_key = False
         self.current_state = {}
         self.initial_balls = []
         self.lava_cells = []
-        if 'infront_objects' in kwargs: # Change for different user group in the experiment 
-            infront_objects = kwargs['infront_objects'][1]
-            infront_base_objects = kwargs['infront_objects'][0]
-            infront_feedback_objects = kwargs['infront_objects'][2]
-
-            self._place_infront_objects(infront_objects+infront_base_objects+infront_feedback_objects, 3)
+        if 'infront_objects' in kwargs:
+            self._place_infront_objects(kwargs['infront_objects'], 5)
         else:
             self._place_initial_objects(simillarity_level, kwargs)
-        # print("reset new env with balls:", self.initial_balls)
-        # print("lava cells:", self.lava_cells)
+
         state , info = super().reset()
         if self.image_full_view:
             state['image'] = self.grid.encode()
@@ -326,8 +313,8 @@ class CustomEnv(MiniGridEnv):
         
         return state, info
     
-    def update_from_unique_env(self, from_unique_env: bool):
-        self.from_unique_env = from_unique_env
+    def update_set_env(self, set_env: bool):
+        self.set_env = set_env
 
     @staticmethod
     def _gen_mission():
@@ -349,6 +336,7 @@ class CustomEnv(MiniGridEnv):
 
 
     def _place_initial_objects(self, simillarity_level, kwargs):
+    
         """
         Create the initial balls list based on the simillarity level and the other initial_balls passed in the kwargs.
         simillarity_level: 0  - all balls and lava in the same locations
@@ -357,9 +345,7 @@ class CustomEnv(MiniGridEnv):
         simillarity_level: 3 - same colors but different balls locations, lava same location 
         simillarity_level: 4+ - random balls with random colors
         """
-        # print("place initial objects")
-        # print("simillarity level:", simillarity_level)
-        # print("kwargs:", kwargs)
+
         added_lava = False
         if simillarity_level == 0 and "initial_balls" in kwargs and isinstance(kwargs["initial_balls"], list):
             if "other_lava_cells" in kwargs: 
@@ -416,6 +402,7 @@ class CustomEnv(MiniGridEnv):
                     continue
                 self.initial_balls.append((x, y, color, self.color_rewards[color]))
 
+
         else: # random balls with random colors
             for i in range(self.num_objects):
                 color = random.choice(list(self.color_rewards.keys()))
@@ -433,16 +420,13 @@ class CustomEnv(MiniGridEnv):
                     continue
                 self.lava_cells.append((x,y))
 
-        # print("initial balls:", self.initial_balls)
-        # print("lava cells:", self.lava_cells)
+
 
     def _place_infront_objects(self, infront_objects, number_of_objects=5):
         """
         Make an env with the same objects as the ones in the infront_objects list
         """
-        infront_objects = list(set(infront_objects)) # remove duplicates
         for obj in infront_objects:
-            # print("obj:", obj)
             for i in range(number_of_objects):
                 x = random.randint(1, self.width - 2)
                 y = random.randint(1, self.height - 2)
@@ -454,8 +438,7 @@ class CustomEnv(MiniGridEnv):
                 elif IDX_TO_OBJECT[obj[0]] == 'ball':
                     color = IDX_TO_COLOR[obj[1]]
                     self.initial_balls.append((x, y, color, self.color_rewards[color]))
-        # print("initial balls:", self.initial_balls)
-        # print("lava cells:", self.lava_cells)
+
         
                     
     def _gen_grid(self, width, height, **kwargs):
@@ -472,16 +455,15 @@ class CustomEnv(MiniGridEnv):
         # Generate the surrounding walls
         self.grid.wall_rect(0, 0, width, height)
 
-        if self.from_unique_env: # create a random unique env
-            self.unique_env = random.randint(1, 9)
-            return self._gen_unique_grid(width, height)
-            # print(f"generate unique env number-{self.unique_env}")
+        if self.set_env: # create a random unique env
+            self.unique_env = random.randint(1, 8)
 
-        # if self.unique_env > 0:
-        #     return self._gen_unique_grid(width, height)
-        # if self.difficult_grid and width >= 8 and height >= 8:
-        #     self._gen_difficult_grid(width, height)
-        #     return
+                
+        if self.unique_env > 0:
+            return self._gen_unique_grid(width, height)
+        if self.difficult_grid and width >= 8 and height >= 8:
+            self._gen_difficult_grid(width, height)
+            return
         
         # place lava cells
         for l_cell in self.lava_cells:
@@ -513,18 +495,12 @@ class CustomEnv(MiniGridEnv):
             self.initial_balls.append((width-4, 3, 'blue', self.color_rewards['blue']))
 
         if self.unique_env == 2:
-            self.put_obj(Ball('red'), width-2, 1)
-            self.initial_balls.append((width-2, 1, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('green'), 1, 5)
-            self.initial_balls.append((1, 5, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 2, 6)
-            self.initial_balls.append((2, 6, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 2, 5)
-            self.initial_balls.append((2, 5, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('blue'), 3, 4)
-            self.initial_balls.append((3, 4, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('blue'), 4, 3)
-            self.initial_balls.append((4, 3, 'blue', self.color_rewards['blue']))
+            self.put_obj(Ball('blue'), width-3, 2)
+            self.initial_balls.append((width-3, 2, 'blue', self.color_rewards['blue']))
+            self.put_obj(Ball('green'), 1, 4)
+            self.initial_balls.append((1, 4, 'green', self.color_rewards['green']))
+            self.put_obj(Ball('green'), 1, 6)
+            self.initial_balls.append((1, 6, 'green', self.color_rewards['green']))
 
         if self.unique_env == 3:
             self.put_obj(Lava(), 1, 2)
@@ -589,39 +565,12 @@ class CustomEnv(MiniGridEnv):
                     self.put_obj(Lava(), i,j)
         
         if self.unique_env == 8:
-            self.put_obj(Ball('red'), 5, 5)
-            self.initial_balls.append((5, 5, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('blue'), 1, 6)
-            self.initial_balls.append((1, 6, 'blue', self.color_rewards['red']))
+            red_ball_positions = [(3, 2), (5, 6), (4, 3), (4, 6), (5, 1)]
+            for pos in red_ball_positions:
+                self.put_obj(Ball('red'), pos[0], pos[1])
+                self.initial_balls.append((pos[0], pos[1], 'red', self.color_rewards['red']))
 
-        if self.unique_env == 9:
-            self.put_obj(Ball('red'), 6, 1)
-            self.initial_balls.append((6, 1, 'red', self.color_rewards['red']))
-            self.put_obj(Lava(), 5, 1)
-            self.put_obj(Lava(), 4, 1)
-            self.put_obj(Ball('green'), 1, 4)
-            self.initial_balls.append((1, 4, 'green', self.color_rewards['green']))
-
-            self.lava_cells.append((4, 1))
-            self.lava_cells.append((5, 1))
-        
-        if self.unique_env == 10:
-            self.put_obj(Ball('blue'), 6, 1)
-            self.initial_balls.append((6, 1, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 4, 3)
-            self.initial_balls.append((4, 3, 'green', self.color_rewards['green']))
-            self.grid.horz_wall(2, 2, 3)
-            self.grid.vert_wall(5, 2, 4)
-        
-        if self.unique_env == 11:
-            self.put_obj(Ball('blue'), 6, 1)
-            self.initial_balls.append((6, 1, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 4, 3)
-            self.initial_balls.append((4, 3, 'green', self.color_rewards['green']))
-            self.grid.horz_wall(2, 2, 3)
-            self.grid.vert_wall(5, 2, 4)
-            self.grid.vert_wall(2, 3, 1)
-
+            
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
 
@@ -708,15 +657,41 @@ class CustomEnv(MiniGridEnv):
             obs['image'] = self.grid.encode() # get the full grid image
             self.put_agent_in_obs(obs)
         self.current_state = obs
+        
+        # if self.train_env and action == self.actions.pickup and self.carrying and self.carrying.type == "key" and not self.took_key:
+        #     self.took_key = True
+        #     reward += 10
+
+        # if action == self.actions.toggle:
+        #     # You can handle the toggle logic here, such as unlocking doors
+        #     fwd_pos = self.front_pos  # Position in front of the agent
+        #     fwd_cell = self.grid.get(*fwd_pos)
+
+        #     # If the agent is in front of a door, check if it's locked and use the key
+        #     if fwd_cell is not None and fwd_cell.type == "door" and self.carrying and self.carrying.type == "key":
+        #         fwd_cell.is_locked = False  # Unlock the door
+        #         self.carrying = None  # Drop the key after using it
+        #         if self.train_env: # we want to train the agent to use the key to open the door
+        #             reward += 10
                 
         # Check if the agent picked up a ball
         if self.carrying:
             hold_obj = self.carrying
             if hold_obj.type == "ball":
                 ball_color = self.carrying.color
-                reward += self.color_rewards.get(ball_color, 0) + self.step_cost
+                reward += self.color_rewards.get(ball_color, 0) 
                 self.carrying = None
                 self.on_baord_objects -= 1
+
+        # if self.train_env and terminated: # reached the goal
+            # reward += 10
+
+        # prefered to turn right than left
+        # if action == self.actions.left or action == self.actions.right:
+        #     if action == self.actions.left:
+        #         reward -= 0.1
+        #     else:
+        #         reward += 0.1
         
         # got to the right bottom corner - the goal
         if self.agent_pos == (self.grid.width - 2, self.grid.height - 2) and self.train_env:
@@ -725,7 +700,7 @@ class CustomEnv(MiniGridEnv):
         # hit a lava cell
         if self.agent_pos in self.lava_cells: 
             terminated = False
-            reward += self.lava_panishment + self.step_cost
+            reward += self.lava_panishment
 
         if truncated:
             terminated = True
@@ -735,9 +710,6 @@ class CustomEnv(MiniGridEnv):
 
         # each step cost the agent some reward, in order to minimize the number of steps
         # reward -= self.step_cost 
-        self.ep_score += reward
-        # if terminated or truncated:
-        #     print(f"episode done, score={self.ep_score}, step count={self.step_count}")
 
         dis_from_goal = np.abs(self.agent_pos[0] - (self.grid.width - 2)) + np.abs(self.agent_pos[1] - (self.grid.height - 2))
         reward -=  self.step_cost # * dis_from_goal #the aproximation of number of steps to the goal
@@ -837,6 +809,7 @@ class CustomEnv(MiniGridEnv):
                     xmin = i * tile_size
                     xmax = (i + 1) * tile_size
                     img[ymin:ymax, xmin:xmax, :] = tile_img
+        
         return img
 
     def get_full_image(self):

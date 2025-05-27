@@ -18,8 +18,8 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
 # from gym.wrappers import TimeLimit
-from gymnasium import spaces
-from torch import optim
+# from gymnasium import spaces
+# from torch import optim
 from typing import Dict
 
 
@@ -275,7 +275,7 @@ class UpgradedObjEnvExtractor(BaseFeaturesExtractor):
         return th.cat(outputs, dim=1)
 
 
-def create_env(grid_size, agent_view_size, max_steps, highlight, step_cost, num_objects, lava_cells, train_env=True, image_full_view=False, color_rewards=None, step_count_observation=False):
+def create_env(grid_size, agent_view_size, max_steps, highlight, step_cost, num_objects, lava_cells, color_rewards, train_env=True, image_full_view=False, step_count_observation=False):
     env = CustomEnv(
         grid_size=grid_size,
         render_mode='rgb_array',
@@ -295,7 +295,10 @@ def create_env(grid_size, agent_view_size, max_steps, highlight, step_cost, num_
     env = Monitor(env)  # Add Monitor for logging
     return env
 
+import os
 def main(**kwargs):
+    os.makedirs("./logs/eval_logs", exist_ok=True)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action="store_true", help="train the model")
     parser.add_argument(
@@ -316,18 +319,31 @@ def main(**kwargs):
     #         return progress_remaining * initial_value
     #     return schedule
 
+    if args.load_model:
+        print(f"Loading model from {args.load_model}")
+        model_name = args.load_model
+        env_info = model_name.split('/')[1].split('S')[0].split(',')
+        lava_cost = float(env_info[3])
+        step_cost = float(env_info[4])
+        step_cost = 0.05
+        colors_rewards = {'red':float(env_info[0]), 'green': float(env_info[1]), 'blue': float(env_info[2])}
+        step_count_observation = True if 'Step_Count' in model_name else False
+    
+    else:
+        lava_cost = 0
+        step_cost = 0.1
+        colors_rewards = {'red': 2, 'green': 2, 'blue': 2}
+        step_count_observation = False
+    lava_cost = -3
+
     # Create time stamp of experiment
     stamp = datetime.fromtimestamp(time()).strftime("%Y%m%d")
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    max_steps = 100
-    colors_rewards = {'red': -0.1, 'green': 4, 'blue': -0.1}
-    step_count_observation = False
-    lava_cost = 1
+    max_steps = 50
     grid_size = 8
     agent_view_size = 7
-    step_cost = 0.1
     num_lava_cell = 4
     num_balls = 6
 
@@ -349,7 +365,7 @@ def main(**kwargs):
             step_count_observation=step_count_observation, # Add step count to observation
             lava_panishment=lava_cost,
         )
-    # train_env = NoDeath(ObjObsWrapper(train_env), no_death_types=('lava',), death_cost=lava_cost)
+    train_env = NoDeath(ObjObsWrapper(train_env), no_death_types=('lava',), death_cost=lava_cost)
     train_env = Monitor(train_env)  # Add Monitor for logging
 
     # Wrap training env
@@ -405,7 +421,7 @@ def main(**kwargs):
             step_count_observation=step_count_observation, # Add step count to observation
             lava_panishment=lava_cost,
         )
-    # eval_env = NoDeath(ObjObsWrapper(eval_env), no_death_types=('lava',), death_cost=lava_cost)
+    eval_env = NoDeath(ObjObsWrapper(eval_env), no_death_types=('lava',), death_cost=lava_cost)
 
     # eval_env = VecTransposeImage(eval_env)
     eval_callback = EvalCallback(
@@ -452,7 +468,7 @@ def main(**kwargs):
             ent_coef=1e-3,
             n_steps=128,
             batch_size=32,
-            gamma=0.9,
+            gamma=0.95,
             gae_lambda=0.95,
             n_epochs=6,
             device=device
@@ -463,7 +479,7 @@ def main(**kwargs):
     # Start training
     print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
     model.learn(
-        5e5,
+        3e5,
         tb_log_name=f"{stamp}",
         callback=[eval_callback]#, wandb_eval_callback]
     )

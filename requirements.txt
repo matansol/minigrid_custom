@@ -6,7 +6,7 @@ gymnasium==0.29.1
 matplotlib==3.9.2
 minigrid==2.3.1
 numpy==1.24.4
-# Pillow==11.0.0
+Pillow==11.0.0
 pygame==2.5.2
 PyMySQL==1.1.1
 SQLAlchemy==2.0.32
@@ -15,6 +15,9 @@ gevent==22.10.2
 # uwsgi==2.0.22
 stable_baselines3==2.3.2
 torch==2.3.1
-python-dotenv
-fastapi
-uvicorn
+fastapi==0.104.1
+uvicorn==0.24.0
+python-socketio==5.10.0
+python-multipart==0.0.6
+jinja2==3.1.2
+python-dotenv==1.0.0

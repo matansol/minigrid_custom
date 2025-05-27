@@ -3,6 +3,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import time
 import copy
+from datetime import datetime
 import random  # needed for random.choice in update_agent
 
 from fastapi import FastAPI, Request
@@ -48,20 +49,19 @@ SessionLocal = sessionmaker(bind=engine)
 
 Base = declarative_base()
 # Global variable to control database saving
-save_to_db = False
-
+save_to_db = True
 
 class Action(Base):
     __tablename__ = "actions"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String(20))
-    action_type = Column(String(50))
+    user_id = Column(String(30))
+    action_type = Column(String(20))
     agent_action = Column(Boolean)
     score = Column(Float)
     reward = Column(Float)
     done = Column(Boolean)
     episode = Column(Integer)
-    timestamp = Column(Float)
+    timestamp = Column(String(30))
     agent_index = Column(Integer)
     env_state = Column(String(1000))
 
@@ -69,25 +69,33 @@ class Action(Base):
 class FeedbackAction(Base):
     __tablename__ = "feedback_actions"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String(20))
+    user_id = Column(String(30))
     env_state = Column(String(1000))
-    agent_action = Column(String(50))
-    feedback_action = Column(String(50))
+    agent_action = Column(String(20))
+    feedback_action = Column(String(20))
+    feedback_explanation = Column(String(500), nullable=True)
     action_index = Column(Integer)
-    timestamp = Column(Float)
+    timestamp = Column(String(30))
     episode_index = Column(Integer)
+    agent_path = Column(String(50))
 
-class UserChoice(Base):
+class UserChoice(Base): 
     __tablename__ = "user_choices"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String(20))
-    old_agent = Column(String(50))
-    new_agent = Column(String(50))
-    timestamp = Column(Float)
+    user_id = Column(String(30))
+    old_agent_path = Column(String(50)) 
+    new_agent_path = Column(String(50))
+    timestamp = Column(String(30))
     episode_index = Column(Integer)
     choice_to_update = Column(Boolean)
+    choice_explanation = Column(String(500), nullable=True)
     simillarity_level = Column(Integer)
 
+def clear_database():
+    """Clears the database tables."""
+    print("Clearing database tables...")
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
 def create_database():
     """Creates the database tables if they do not already exist."""
@@ -97,7 +105,7 @@ def create_database():
 
 SIMMILARITY_CONST = 500
 class GameControl:
-    def __init__(self, env, models_paths, models_distance=None, simillar_level_env=0):
+    def __init__(self, env, models_paths, models_distance, simillar_level_env=0):
         self.env = env
         # self.saved_env = None
         self.agent_index = next(iter(models_paths.keys()))
@@ -127,12 +135,14 @@ class GameControl:
         
     @timeit
     def reset(self):
-        obs, _ = self.env.unwrapped.reset()
+        obs, _ = self.env.reset()
         if 'direction' in obs:
             obs = {'image': obs['image']}
         self.episode_obs = [obs]
         self.episode_agent_locations = [(self.env.get_wrapper_attr('agent_pos'), self.env.get_wrapper_attr('agent_dir'))]
         self.infront_objects = []
+        self.infront_base_objects = []
+        self.infront_feedback_objects = []
         self.saved_env = copy.deepcopy(self.env)
         self.saved_env_info = {
             'initial_balls': self.env.initial_balls,
@@ -231,7 +241,7 @@ class GameControl:
                 'agent_index': self.agent_index,
                 # 'direction': self.env.get_wrapper_attr('agent_pos'),
                 }
-
+    
     def agent_action(self):
         obs = {'image': self.current_obs['image']}
         action, _ = self.ppo_agent.predict(obs, deterministic=True)
@@ -266,6 +276,12 @@ class GameControl:
         if self.user_feedback is None or len(self.user_feedback) == 0:
             print("No user feedback, return")
             return None
+        
+        # Remove duplicate feedbacks by index, keeping only the last feedback for each index
+        unique_feedback = {}
+        for feedback in self.user_feedback:
+            unique_feedback[feedback['index']] = feedback
+        self.user_feedback = list(unique_feedback.values())
 
         # DB code (only if save_to_db is enabled)
         if save_to_db and sid:
@@ -276,21 +292,23 @@ class GameControl:
                     action_index = action_feedback['index']
                     if action_index >= len(self.episode_obs):
                         print(f"action_index {action_index} is out of range for episode_obs")
-                        img = None
+                        obs_str = "No observation available"
                     else:
                         obs = self.episode_obs[action_feedback['index']]
                         img = obs['image']
-                        
+                        obs_str = json.dumps(img.tolist())  # Convert image to string for storage
                     agent_action = data['actions'][action_feedback['index']]['action']
                     print(f"____________________ save to DB action_feedback: {actions_dict[action_feedback['feedback_action']]}, agent_action: {actions_dict[agent_action]}")
                     feedback_action = FeedbackAction(
                         user_id=self.user_id,
-                        env_state=img,  # TODO: Ensure env_state is passed correctly
-                        agent_action = actions_dict[agent_action],
-                        feedback_action = actions_dict[action_feedback['feedback_action']],
-                        action_index = action_feedback['index'],
-                        episode_index = self.episode_num,
-                        timestamp = time.time(),
+                        env_state=obs_str,  # TODO: Ensure env_state is passed correctly
+                        agent_action=actions_dict[agent_action],
+                        feedback_action=actions_dict[action_feedback['feedback_action']],
+                        feedback_explanation=action_feedback.get('feedback_explanation', ''),
+                        action_index=action_feedback['index'],
+                        episode_index=self.episode_num,
+                        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        agent_path=self.current_agent_path,
                     )
                     session.add(feedback_action)
                     session.commit()
@@ -322,13 +340,17 @@ class GameControl:
                 agent_action = actions_dict[agent_action[0].item()]
                 print(f"feedback_action: {actions_dict[action_feedback['feedback_action']]}, agent_predict_action: {agent_action}")
 
-                # infront_objects = get_objects_from_image(saved_obs['image'])
+                # we take the first object in front of the agent before the action, after the action and after the user feedback action
                 tmp_env, tmp_obs = self.update_env_to_action(action_feedback['index'])
-                infront_objects = interesting_objects(tmp_env, tmp_obs, agent_action, actions_dict[action_feedback['feedback_action']])
-                self.infront_objects += list(infront_objects)
-                self.infront_objects = list(set(self.infront_objects))
+                base_face_object = get_infront_object(saved_obs)
+                agent_face_object = get_infront_object(self.episode_obs[action_feedback['index'] + 1])
+                feedback_face_object = get_infront_object(tmp_obs)
 
-                print(f"agent pos ={agent_pos}, agent dir = {agent_dir} infront_objects: {[(IDX_TO_OBJECT[obj[0]], IDX_TO_COLOR[obj[1]]) for obj in infront_objects]}")
+                self.infront_objects.append(agent_face_object)
+                self.infront_base_objects.append(base_face_object)
+                self.infront_feedback_objects.append(feedback_face_object)
+
+                print(f"agent pos ={agent_pos}, agent dir = {agent_dir} base_face_object: {(IDX_TO_OBJECT[base_face_object[0]], IDX_TO_COLOR[base_face_object[1]])}, feedback_face_object: {(IDX_TO_OBJECT[feedback_face_object[0]], IDX_TO_COLOR[feedback_face_object[1]])}, agent_face_object: {(IDX_TO_OBJECT[agent_face_object[0]], IDX_TO_COLOR[agent_face_object[1]])}")
                 if agent_action == actions_dict[action_feedback['feedback_action']]:
                     print("agent is correct")
                     agent_correctness += 1
@@ -421,10 +443,12 @@ class GameControl:
         initial_kwargs = {
             'initial_balls': self.saved_env_info['initial_balls'],
             'other_lava_cells': self.saved_env_info['other_lava_cells'],
-            'infront_objects': self.infront_objects,
-            "simillarity_level": simillarity_level}
+            'infront_objects': [self.infront_base_objects, self.infront_objects, self.infront_feedback_objects],
+            "simillarity_level": simillarity_level,
+            "from_unique_env": False,
+            }
 
-        # random_env = random.randint(1, 10)
+        # random_env = random.randint(1, 11)
         sim_env = CustomEnv(grid_size=8,
                             render_mode="rgb_array",
                             image_full_view=False,
@@ -432,12 +456,11 @@ class GameControl:
                             max_steps=self.saved_env_info['max_steps'],
                             num_lava_cells=self.saved_env_info['num_lava_cells'],
                             partial_obs=True,
-                            # unique_env=random_env,
                             simillarity_level=simillarity_level,
                             )
         env_instance = NoDeath(ObjObsWrapper(sim_env), no_death_types=("lava",), death_cost=self.lava_penalty)
         env_instance.unwrapped.reset(**initial_kwargs) 
-
+        
         
         # j = 0
         # while True:
@@ -465,7 +488,6 @@ sid_to_user: Dict[str, str] = {}
 # Pre-create a "template" for the environment and the model paths.
 # (These will be used to create a new instance for each user.)
 def create_new_env(lava_penalty) -> CustomEnv:
-    set_env = True
     env_instance = CustomEnv(grid_szie=8, 
                              render_mode="rgb_array", 
                              image_full_view=False,
@@ -474,7 +496,6 @@ def create_new_env(lava_penalty) -> CustomEnv:
                              num_objects=5, 
                              lava_cells=4, 
                              partial_obs=True,
-                            #  set_env=set_env,
     )
     env_instance = NoDeath(ObjObsWrapper(env_instance), no_death_types=("lava",), death_cost=lava_penalty)
     # env_instance.unwrapped.reset()
@@ -483,12 +504,13 @@ def create_new_env(lava_penalty) -> CustomEnv:
 
 new_models_dict = {
     # 1: {"path": "models/3,3,3,0,0.02Steps200Grid8_20250421", "name": "AllColorsLL_0421", "vector":(3,3,3,0,0.02)},
-    1: {"path": "models/2,2,2,0,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLL_0422", "vector":(2,2,2,0,0.2)},
-    2: {"path": "models/2,2,2,0,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLL_0422", "vector":(2,2,2,0,0.2)},
+    1: {"path": "models/2,2,2,0,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLL_0422", "vector":(2,2,2,0,0.02)},
+    2: {"path": "models/3,-0.1,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyRedLL_0429", "vector":(3,-0.1,-0.1,0,0.01)},
     3: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector":(2,2,2,-4,0.02)},
     4: {"path": "models/-0.1,-0.1,4,-4,0.1Steps100Grid8_20250507/best_model.zip", "name": "OnlyBlueLH_0427", "vector":(-0.1,-0.1,4,-4,0.1)},
     5: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector":(-0.1,3,-0.1,0,0.01)},
-    6: {"path": "models/3,-0.1,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyRedLL_0429", "vector":(3,-0.1,-0.1,0,0.01)},
+    # 6: {"path": "models/3,-0.1,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyRedLL_0429", "vector":(3,-0.1,-0.1,0,0.01)},
+    6: {"path": "models/3.0,-0.1,-0.1,0.0,0.1Steps100Grid8_20250526/best_model.zip", "name": "OnlyRedLL_0526", "vector":(3.0,-0.1,-0.1,0.0,0.1)},
     7: {"path": "models/3,3,-1,-2,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLH_0422", "vector":(3,3,-1,-2,0.1)},
     8: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0422", "vector":(3,3,-1,0,0.1)},
     
@@ -508,14 +530,14 @@ new_models_dict = {
 # }
 
 new_models_distance = {
-    1: [(8, 'AllColorsLL_0421'), (2, 'AllColorsLL_0422'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')],
+    1: [(8, 'AllColorsLL_0421'), (2, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')],
     2: [(1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422')],
-    3: [(4, 'OnlyBlueLH_0427'), (7, 'NoBlueLH_0422'), (2, 'AllColorsLL_0422'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-    4: [(3, 'AllColorsLH_0422'), (2, 'AllColorsLL_0422'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429')],
-    5: [(2, 'AllColorsLL_0422'), (7, 'NoBlueLH_0422'), (6, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-    6: [(2, 'AllColorsLL_0422'), (7, 'NoBlueLH_0422'), (5, 'OnlyGreenLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-    7: [(5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (2, 'AllColorsLL_0422'), (1, 'AllColorsLL_0421')],
-    8: [(1, 'AllColorsLL_0421'), (2, 'AllColorsLL_0422'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')]
+    3: [(4, 'OnlyBlueLH_0427'), (7, 'NoBlueLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+    4: [(3, 'AllColorsLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429')],
+    5: [(2, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422'), (6, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+    6: [(2, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422'), (5, 'OnlyGreenLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+    7: [(5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421')],
+    8: [(1, 'AllColorsLL_0421'), (2, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')]
 }
 
 model_paths = [
@@ -641,7 +663,7 @@ async def start_game(sid, data, callback=None):
     if data.get("updateAgent", False):
         new_game.update_agent(data, sid)
     if data.get("setEnv", False):
-        new_game.env.update_set_env(data.get("setEnv"))
+        new_game.env.update_from_unique_env(data.get("setEnv"))
     response = new_game.get_initial_observation()
     response['action'] = None
     await sio.emit("game_update", response, to=sid)
@@ -672,9 +694,9 @@ async def handle_send_action(sid, action):
                 reward=response["reward"],
                 done=response["done"],
                 user_id=user_game.user_id,
-                timestamp=time.time(),
+                timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 episode=response["episode"],
-                env_state="some state", # user_game.current_obs['image'],  # TODO: Ensure env_state is passed correctly
+                env_state= json.dumps(user_game.current_obs['image'].tolist()) if user_game.current_obs['image'] else "no avaliable obs"  # TODO: Ensure env_state is passed correctly
             )
             session.add(new_action)
             session.commit()
@@ -765,7 +787,7 @@ async def start_cover_page(sid):
     await sio.emit("go_to_welcome_page", {}, to=sid)
 
 @sio.on("use_old_agent")
-async def use_old_agent(sid, data=None):
+async def use_old_agent(sid, data):
     """
     Update the agent to the old one.
     """
@@ -782,17 +804,18 @@ async def use_old_agent(sid, data=None):
         await sio.emit("agent_updated", {"status": "error", "message": "No previous agent available"}, to=sid)
     else:
         # Save the user choice in the DB.
-        # print(f"save to database user choice: user_id: {user_id}, old_agent: {user_game.prev_agent}, new_agent: {user_game.ppo_agent}, episode_index: {user_game.episode_num}, choice_to_updated: {not data['use_old_agent']}")
+        # print(f"save to database user choice: user_id: {user_id}, old_agent: {user_game.prev_agent}, new_agent: {user_game.ppo_agent}, episode_index: {user_game.episode_num}, choice_to_update: {not data['use_old_agent']}")
         if save_to_db:
             session = SessionLocal()
             try:
                 user_choice = UserChoice(
                     user_id=user_game.user_id,
-                    old_agent=str(user_game.prev_agent),  # adjust as needed
-                    new_agent=str(user_game.ppo_agent),     # after switching, still same objects
-                    timestamp=time.time(),
+                    old_agent_path=str(user_game.prev_agent_path),  # adjust as needed
+                    new_agent_path=str(user_game.current_agent_path),     # after switching, still same objects
+                    timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     episode_index=user_game.episode_num,
-                    choice_to_updated=data['use_old_agent'],
+                    choice_to_update=data['use_old_agent'],
+                    choice_explanation=data.get('choiceExplanation', ''),
                     simillarity_level=user_game.simillar_level_env,
                 )
                 session.add(user_choice)
@@ -811,9 +834,9 @@ async def use_old_agent(sid, data=None):
 
 # ---------------------- RUNNING THE APP -------------------------
 if __name__ == "__main__":
-    # global save_to_db
-    save_to_db = False
+    save_to_db = True
     if save_to_db:
+        clear_database()
         create_database()
 
     import uvicorn

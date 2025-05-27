@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     const coverStartButton = document.getElementById('cover-start-button');
     const welcomeContinueButton = document.getElementById('welcome-continue-button');
-    const startButton = document.getElementById('start-button'); // Existing Start button
+    // const startButton = document.getElementById('start-button'); // Existing Start button
     const playerNameInput = document.getElementById('player-name');
 
     // Elements for Phase‑1
@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const compareUpdSpinner = document.getElementById('compare-upd-spinner');
     const previousAgentImage = document.getElementById('previous-agent-image');
     const updatedAgentImage = document.getElementById('updated-agent-image');
+    const compareExplanationInput = document.getElementById('compare-explanation-input');
+    const feedbackExplanationInput = document.getElementById('feedback-explanation');
 
     // Show the cover page initially
     function showCoverPage() {
@@ -51,7 +53,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
             console.log('Server acknowledged start_game:', response);
         });
 
-        showPage('ph1-game-page');
+        // showPage('ph1-game-page');
+        showPage('ph2-game-page');
     });
 
     function showPage(pageId) {
@@ -81,13 +84,26 @@ document.addEventListener('DOMContentLoaded', (event) => {
         //     overviewSpinner.style.display = 'block';
         //     overviewGameImage.style.visibility = 'hidden';
         // }
-        // if (pageId === 'compare-agent-update-page') {
-        //     console.log('Entering compare-agent-update-page, should show spinner');
-        //     comparePrevSpinner.style.display = 'block';
-        //     previousAgentImage.style.visibility = 'hidden';
-        //     compareUpdSpinner.style.display = 'block';
-        //     updatedAgentImage.style.visibility = 'hidden';
-        // }
+        if (pageId === 'compare-agent-update-page') {
+            console.log('Entering compare-agent-update-page, should show single spinner');
+            // Use only one spinner (comparePrevSpinner) for both images
+            if (comparePrevSpinner) {
+                comparePrevSpinner.style.display = 'block';
+                comparePrevSpinner.innerText = 'Updating...';
+            }
+            if (previousAgentImage) previousAgentImage.style.visibility = 'hidden';
+            if (updatedAgentImage) updatedAgentImage.style.visibility = 'hidden';
+
+            // Hide spinner and show images after 2 seconds
+            setTimeout(() => {
+                if (comparePrevSpinner) {
+                    comparePrevSpinner.style.display = 'none';
+                    comparePrevSpinner.innerText = '';
+                }
+                if (previousAgentImage) previousAgentImage.style.visibility = 'visible';
+                if (updatedAgentImage) updatedAgentImage.style.visibility = 'visible';
+            }, 2000);
+        }
       
         const page = document.getElementById(pageId);
         if (!page) {
@@ -160,39 +176,31 @@ document.addEventListener('DOMContentLoaded', (event) => {
         loadingOverlay.style.display = 'none';
     }
 
-    function updateGotoPhase2ButtonVisibility() { // in case we want to force the user to play the toturial first
-        if (phase1_counter > 0) { 
-            gotoPhase2Button.style.display = 'block';
-        } else {
-            gotoPhase2Button.style.display = 'none';
-        }
-    }
-    updateGotoPhase2ButtonVisibility();
+    // toturial is not needed anymore
+    // function updateGotoPhase2ButtonVisibility() { // in case we want to force the user to play the toturial first
+    //     if (phase1_counter > 0) { 
+    //         gotoPhase2Button.style.display = 'block';
+    //     } else {
+    //         gotoPhase2Button.style.display = 'none';
+    //     }
+    // }
+    // updateGotoPhase2ButtonVisibility();
 
-    // Start button: Phase 1
-    startButton.addEventListener('click', () => {
-        const playerName = playerNameInput.value;
-        if (!playerName) {
-            alert("Please enter your name.");
-            return;
-        }
+    // // Start button: Phase 2
+    // startButton.addEventListener('click', () => {
+    //     const playerName = playerNameInput.value;
+    //     if (!playerName) {
+    //         alert("Please enter your name.");
+    //         return;
+    //     }
 
-        console.log('Emitting start_game event');
-        socket.emit('start_game', { playerName: playerName, updateAgent: false }, (response) => {
-            console.log('Server acknowledged start_game:', response);
-        });
+    //     console.log('Emitting start_game event');
+    //     socket.emit('start_game', { playerName: playerName, updateAgent: false, setEnv: true }, (response) => {
+    //         console.log('Server acknowledged start_game:', response);
+    //     });
 
-        showPage('ph1-game-page');
-    });
-
-    if (gotoPhase2Button) {
-        gotoPhase2Button.addEventListener('click', () => {
-            console.log('Going to phase 2');
-            socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: false, setEnv: true });
-            // socket.emit('play_entire_episode');
-            showPage('ph2-game-page');
-        });
-    }
+    //     showPage('ph2-game-page');
+    // });
 
     // Start Agent button for Phase 2
     const startAgentButton = document.getElementById('start-agent-button');
@@ -240,7 +248,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
     nextEpisodeButton.addEventListener('click', () => {
         console.log('Next Episode button clicked');
         simillarity_level = 0; // Reset simillarity_level for the next comparison
-        console.log('update simillarity_level=', simillarity_level);
+        const feedbackExplanation = feedbackInput ? feedbackInput.value : "";
+        socket.emit('user_feedback_explanation', { 
+            playerName: playerNameInput.value, 
+            explanation: feedbackExplanation, 
+            action: 'next_round' 
+        });
         socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: true, userFeedback: userFeedback, actions: actions });
         // socket.emit('play_entire_episode');
         showPage('ph2-game-page');
@@ -250,28 +263,30 @@ document.addEventListener('DOMContentLoaded', (event) => {
     if (nextEpisodeButtonCompare) {
         nextEpisodeButtonCompare.addEventListener('click', () => {
             console.log('Next Episode button clicked (Compare Agent Page)');
-            // simillarity_level = 0; // Reset simillarity_level for the next comparison
-            // console.log('update simillarity_level=', simillarity_level);
-            
-            // save to database
+            const compareExplanation = compareExplanationInput ? compareExplanationInput.value : "";
+            if (compareExplanationInput) {
+                compareExplanationInput.value = '';
+            }
             socket.emit('use_old_agent', {use_old_agent: false}, (response) => {
                 console.log('update to database we use the updated agent---------------');
                 console.log('Server response:', response);
             });
-            socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: false});
+            socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: false, compareExplanationText: compareExplanation});
             // socket.emit('play_entire_episode');
             showPage('ph2-game-page');
         });
     }
 
      const useOldAgentButton = document.getElementById('use-old-agent-button');
-
     if (useOldAgentButton) {
         useOldAgentButton.addEventListener('click', () => {
             console.log('Use Old Agent button clicked');
-
+            const compareExplanation = compareExplanationInput ? compareExplanationInput.value : "";
+            if (compareExplanationInput) {
+                compareExplanationInput.value = '';
+            }
             // Emit an event to the server to update the agent to the old one
-            socket.emit('use_old_agent', {use_old_agent: true}, (response) => {
+            socket.emit('use_old_agent', {use_old_agent: true, compareExplanationText: compareExplanation}, (response) => {
                 console.log('Server response:', response);
                 console.log('update to database we use the old agent---------------------------');
 
@@ -302,12 +317,17 @@ document.addEventListener('DOMContentLoaded', (event) => {
     // });
     
     compareAgentsButton.addEventListener('click', () => {
+        const feedbackExplanation = feedbackExplanationInput ? feedbackExplanationInput.value : "";
+        if (feedbackExplanationInput) {
+            feedbackExplanationInput.value = '';
+        }
         socket.emit('compare_agents', { 
             playerName: playerNameInput.value, 
             updateAgent: true, 
             userFeedback: userFeedback, 
             actions: actions, 
-            simillarity_level: simillarity_level 
+            simillarity_level: simillarity_level,
+            feedbackExplanationText: feedbackExplanation
         });
         showLoadingOverlay();
         showPage('compare-agent-update-page');
@@ -731,44 +751,6 @@ function drawArrow(ctx, x, y, dx, dy, headSize, color) {
     ctx.lineTo(x + dx, y + dy);
     ctx.fill();
 }
-
-// function createLedge() {
-//     console.log('Creating ledge for Compare Agents page');
-//     // Create container for the Ledge image
-//     const ledgeContainer = document.createElement('div');
-//     ledgeContainer.id = 'ledge-container';
-//     Object.assign(ledgeContainer.style, {
-//         position: 'fixed',
-//         top: '10px',
-//         right: '10px',
-//         zIndex: '9999'
-//     });
-
-//     // Create and configure the Ledge image
-//     const ledgeImage = document.createElement('img');
-//     // Adjust the path to match your static folder structure
-//     ledgeImage.src = '/static/images/Ledge.png';
-//     ledgeImage.alt = 'Ledge';
-//     ledgeImage.style.maxWidth = '100px';
-//     ledgeImage.style.height = 'auto';
-
-//     ledgeContainer.appendChild(ledgeImage);
-//     document.body.appendChild(ledgeContainer);
-// }
-
-// function updateLegendIfNeeded() {
-//     // Check if the active page is the Compare Agents page only.
-//     const comparePage = document.getElementById('compare-agent-update-page');
-//     // Remove any existing ledge
-//     const existingLedge = document.getElementById('ledge-container');
-//     if (existingLedge) {
-//         existingLedge.remove();
-//     }
-//     if (comparePage && comparePage.classList.contains('active')) {
-//         createLedge();
-//     }
-// }
-
 
 
 // function createLegend() {

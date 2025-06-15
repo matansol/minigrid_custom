@@ -22,9 +22,9 @@ import random
 import numpy as np
 
 basic_color_rewards  = {
-                'red': 2.1,
-                'green': 0,
-                'blue': 2.1,
+                'red': -0.5,
+                'green': 2,
+                'blue': 4,
             }
 
 MAX_STEPS = 1000
@@ -65,70 +65,6 @@ class ObjObsWrapper(ObservationWrapper):
 
         return wrapped_obs
 
-
-# class ObjEnvExtractor(BaseFeaturesExtractor):
-#     def __init__(self, observation_space: Dict):
-#         # We do not know features-dim here before going over all the items,
-#         # so put something dummy for now. PyTorch requires calling
-#         # nn.Module.__init__ before adding modules
-#         super().__init__(observation_space, features_dim=1)
-
-#         extractors = {}
-#         total_concat_size = 0
-
-#         print("Observation space:", observation_space)
-#         # We need to know size of the output of this extractor,
-#         # so go over all the spaces and compute output feature sizes
-#         for key, subspace in observation_space.spaces.items():
-#             if key == "image":
-#                 # We will just downsample one channel of the image by 4x4 and flatten.
-#                 # Assume the image is single-channel (subspace.shape[0] == 0)
-#                 cnn = nn.Sequential(
-#                     nn.Conv2d(3, 16, (2, 2)),
-#                     nn.ReLU(),
-#                     nn.Conv2d(16, 32, (2, 2)),
-#                     nn.ReLU(),
-#                     nn.Conv2d(32, 64, (2, 2)),
-#                     nn.ReLU(),
-#                     nn.Flatten(),
-#                 )
-
-#                 # Compute shape by doing one forward pass
-#                 with th.no_grad():
-#                     n_flatten = cnn(
-#                         th.as_tensor(subspace.sample()[None]).float()
-#                     ).shape[1]
-
-#                 linear = nn.Sequential(nn.Linear(n_flatten, 64), nn.ReLU())
-#                 extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
-#                 total_concat_size += 64
-
-#             elif key == "mission":
-#                 extractors["mission"] = nn.Linear(subspace.shape[0], 32)
-#                 total_concat_size += 32
-#             elif key == "step_count": 
-#                 # Add a linear layer to process the scalar `step_count`
-#                 extractors["step_count"] = nn.Sequential(
-#                     nn.Linear(subspace.shape[0], 16),  # Convert 1D input to 16 features
-#                     nn.ReLU(),
-#                     )
-#                 total_concat_size += 16  # Update the total feature size
-
-#         self.extractors = nn.ModuleDict(extractors)
-
-#         # Update the features dim manually
-#         self._features_dim = total_concat_size
-
-#     def forward(self, observations) -> th.Tensor:
-#         encoded_tensor_list = []
-
-#         # self.extractors contain nn.Modules that do all the processing.
-#         for key, extractor in self.extractors.items():
-#             encoded_tensor_list.append(extractor(observations[key]))
-
-#         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
-#         return th.cat(encoded_tensor_list, dim=1)
-    
 
 class CustomEnv(MiniGridEnv):
     def __init__(
@@ -574,51 +510,6 @@ class CustomEnv(MiniGridEnv):
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
 
-    def _gen_difficult_grid(self, width, height):    
-        # place lava cells
-        for i in range(self.num_lava_cells):
-            x_loc = self._rand_int(1, width - 2)
-            y_loc = self._rand_int(1, height - 2)
-            if (x_loc == width - 2 and y_loc == height - 2) or x_loc == 1 and y_loc == 1:
-                continue
-            self.put_obj(Lava(), x_loc, y_loc)
-            
-        #put a wall in the middle of the grid
-        splitIdx = self._rand_int(2, width - 2)
-        self.grid.vert_wall(splitIdx, 0)
-        
-        # Place a door in the wall
-        doorIdx = self._rand_int(1, height - 2)
-        self.put_obj(Door("yellow", is_locked=True), splitIdx, doorIdx)
-
-        # Ensure a yellow key is placed on the left side
-        while True:
-            (x_loc, y_loc) = self.place_obj(obj=Key("yellow"), top=(0, 0), size=(splitIdx, height))
-            placed_obj = self.grid.get(x_loc, y_loc)
-
-            if placed_obj is not None and placed_obj.type == "key":
-                break
-  
-            
-        # Place a ball in some cells
-        # for _ in range(self.num_objects):
-        #     x_loc = self._rand_int(1, width - 2)
-        #     y_loc = self._rand_int(1, height - 2)
-        #     if (x_loc, y_loc) == (width - 2, height - 2) or (x_loc, y_loc) == (1, 1):
-        #         continue
-        #     if x_loc == splitIdx or self.grid.get(x_loc, y_loc) is not None:
-        #         continue
-        #     color = random.choice(list(self.color_rewards.keys()))
-        #     self.put_obj(Ball(color), x_loc, y_loc)
-        #     self.initial_balls.append((x_loc, y_loc, color, self.color_rewards[color]))
-        for ball_info in self.initial_balls:
-            x_loc = ball_info[0]
-            y_loc = ball_info[1]
-            color = ball_info[2]
-            self.put_obj(Ball(color), x_loc, y_loc)
-        
-        # Place a goal square in the bottom-right corner
-        self.put_obj(Goal(), width - 2, height - 2)
             
     def grid_objects(self):
         grid = self.grid
@@ -658,22 +549,6 @@ class CustomEnv(MiniGridEnv):
             self.put_agent_in_obs(obs)
         self.current_state = obs
         
-        # if self.train_env and action == self.actions.pickup and self.carrying and self.carrying.type == "key" and not self.took_key:
-        #     self.took_key = True
-        #     reward += 10
-
-        # if action == self.actions.toggle:
-        #     # You can handle the toggle logic here, such as unlocking doors
-        #     fwd_pos = self.front_pos  # Position in front of the agent
-        #     fwd_cell = self.grid.get(*fwd_pos)
-
-        #     # If the agent is in front of a door, check if it's locked and use the key
-        #     if fwd_cell is not None and fwd_cell.type == "door" and self.carrying and self.carrying.type == "key":
-        #         fwd_cell.is_locked = False  # Unlock the door
-        #         self.carrying = None  # Drop the key after using it
-        #         if self.train_env: # we want to train the agent to use the key to open the door
-        #             reward += 10
-                
         # Check if the agent picked up a ball
         if self.carrying:
             hold_obj = self.carrying
@@ -682,35 +557,22 @@ class CustomEnv(MiniGridEnv):
                 reward += self.color_rewards.get(ball_color, 0) 
                 self.carrying = None
                 self.on_baord_objects -= 1
-
-        # if self.train_env and terminated: # reached the goal
-            # reward += 10
-
-        # prefered to turn right than left
-        # if action == self.actions.left or action == self.actions.right:
-        #     if action == self.actions.left:
-        #         reward -= 0.1
-        #     else:
-        #         reward += 0.1
         
         # got to the right bottom corner - the goal
         if self.agent_pos == (self.grid.width - 2, self.grid.height - 2) and self.train_env:
             reward += 4
 
-        # hit a lava cell
-        if self.agent_pos in self.lava_cells: 
-            terminated = False
-            reward += self.lava_panishment
+        # # hit a lava cell
+        # if self.agent_pos in self.lava_cells: 
+        #     terminated = False    
+        #     reward += self.lava_panishment
 
         if truncated:
             terminated = True
             print(f"reached max steps={self.max_steps}")
-            if self.train_env:
-                reward -= 5
+            reward -= 5
 
         # each step cost the agent some reward, in order to minimize the number of steps
-        # reward -= self.step_cost 
-
         dis_from_goal = np.abs(self.agent_pos[0] - (self.grid.width - 2)) + np.abs(self.agent_pos[1] - (self.grid.height - 2))
         reward -=  self.step_cost # * dis_from_goal #the aproximation of number of steps to the goal
         # if terminated:

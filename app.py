@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 import socketio
+import asyncio
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean
@@ -77,14 +78,14 @@ class FeedbackAction(Base):
     action_index = Column(Integer)
     timestamp = Column(String(30))
     episode_index = Column(Integer)
-    agent_path = Column(String(50))
+    agent_path = Column(String(100))
 
 class UserChoice(Base): 
     __tablename__ = "user_choices"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String(30))
-    old_agent_path = Column(String(50)) 
-    new_agent_path = Column(String(50))
+    old_agent_path = Column(String(100)) 
+    new_agent_path = Column(String(100))
     timestamp = Column(String(30))
     episode_index = Column(Integer)
     choice_to_update = Column(Boolean)
@@ -103,9 +104,15 @@ def create_database():
     Base.metadata.create_all(bind=engine)
 
 
+# Helper
+async def in_thread(func, *args, **kw):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, lambda: func(*args, **kw))
+
+
 SIMMILARITY_CONST = 500
 class GameControl:
-    def __init__(self, env, models_paths, models_distance, simillar_level_env=0):
+    def __init__(self, env, models_paths, models_distance, user_id, simillar_level_env=0):
         self.env = env
         # self.saved_env = None
         self.agent_index = next(iter(models_paths.keys()))
@@ -115,13 +122,14 @@ class GameControl:
         self.scores_lst = []
         self.last_obs = None
         self.episode_actions = []
+        self.episode_cumulative_rewards = []
         self.agent_last_pos = None
         self.episode_images = []
         self.episode_obs = []
         self.episode_agent_locations = []
         self.invalid_moves = 0
         self.user_feedback = None
-        self.user_id = None
+        self.user_id = user_id
         self.current_session = None
         self.lava_penalty = -3.0
         self.last_score = 0
@@ -130,8 +138,9 @@ class GameControl:
         self.saved_env_info = {}
         self.ppo_agent = None
         self.prev_agent = None
-        self.current_agent_path = None  # NEW: path string for the current agent
-        self.prev_agent_path = None     # NEW: path string for the previous agent
+        self.current_agent_path = ""  
+        self.prev_agent_path = ""
+        self.current_obs = {}
         
     @timeit
     def reset(self):
@@ -171,25 +180,43 @@ class GameControl:
                 move_sequence.append((agent_dir, 'forward'))
             elif action == 3:  # pickup
                 move_sequence.append(('pickup ' + agent_dir, 'pickup'))
+            else:
+                move_sequence.append(("invalide move", "invalide move"))
         return move_sequence
 
     # @timeit
     def step(self, action, agent_action=False):
         observation, reward, terminated, truncated, info = self.env.step(action)
         done = terminated or truncated
-        if not is_illegal_move(action, self.current_obs, observation, self.agent_last_pos, self.env.get_wrapper_attr('agent_pos')):
+        illegal_action = is_illegal_move(action, self.current_obs, observation, self.agent_last_pos, self.env.get_wrapper_attr('agent_pos'))
+        if not illegal_action:
             self.episode_actions.append(action)
+            if self.episode_cumulative_rewards:
+                self.episode_cumulative_rewards.append(self.episode_cumulative_rewards[-1] + reward)
+            else:
+                self.episode_cumulative_rewards.append(reward)
             self.episode_images.append(self.env.get_full_image())  # store the grid image for feedback page
             self.episode_obs.append(observation)
             self.episode_agent_locations.append((self.env.get_wrapper_attr('agent_pos'), self.env.get_wrapper_attr('agent_dir')))
-        else:
-            self.invalid_moves += 1
+        
+            # pass
+            # self.episode_actions.append(action)
+            # self.episode_images.append(self.env.get_full_image())  # store the grid image for feedback page
+            # self.episode_obs.append(observation)
+            # self.episode_agent_locations.append((self.env.get_wrapper_attr('agent_pos'), self.env.get_wrapper_attr('agent_dir')))
+        
+        
 
         self.score += reward
         self.score = round(self.score, 2)
         if done:
             self.scores_lst.append(self.score)
             self.last_score = self.score
+        
+        if illegal_action:
+            self.invalid_moves += 1
+            return {'illegal_action': True,}
+            
         img = self.env.render()
         image_base64 = image_to_base64(img)  # Convert to base64
         self.current_obs = observation
@@ -223,6 +250,7 @@ class GameControl:
         self.episode_images = [self.env.get_full_image()]  # for the overview image
         self.agent_last_pos = self.env.get_wrapper_attr('agent_pos')
         self.episode_actions = []
+        self.episode_cumulative_rewards = []
         img = self.env.render()
         if img is None:
             raise Exception("initial observation rendering failed")
@@ -246,7 +274,15 @@ class GameControl:
         obs = {'image': self.current_obs['image']}
         action, _ = self.ppo_agent.predict(obs, deterministic=True)
         action = action.item()
-        return action, self.step(action, True)
+        while True:
+            result = self.step(action, True)
+            if result.get('illegal_action', False):
+                print(f"Illegal action {action}, trying again")
+                action = random.choice([0, 1, 2, 3]) # Actions.left, Actions.right, Actions.forward, Actions.pickup
+            else:
+                break
+
+        return action, result
 
     def update_env_to_action(self, action_index):
         tmp_env = copy.deepcopy(self.saved_env)
@@ -257,7 +293,6 @@ class GameControl:
 
     @timeit
     def update_agent(self, data, sid):
-        print("update_agent - ", self.ppo_agent)
         # When loading the first agent
         if self.ppo_agent is None:
             self.ppo_agent = load_agent(self.env, self.models_paths[self.agent_index]['path'])
@@ -272,7 +307,7 @@ class GameControl:
         if data.get('updateAgent', False) == False:
             print("No need for update, return")
             return None
-        self.user_feedback = data.get('userFeedback') # [{ index: index, feedback_action: newAction }, ...]
+        self.user_feedback = data.get('userFeedback') # [{ index: index, feedback_action: newAction }, ...]user_feedback_explanation
         if self.user_feedback is None or len(self.user_feedback) == 0:
             print("No user feedback, return")
             return None
@@ -297,7 +332,7 @@ class GameControl:
                         obs = self.episode_obs[action_feedback['index']]
                         img = obs['image']
                         obs_str = json.dumps(img.tolist())  # Convert image to string for storage
-                    agent_action = data['actions'][action_feedback['index']]['action']
+                    agent_action = action_feedback['agent_action']
                     print(f"____________________ save to DB action_feedback: {actions_dict[action_feedback['feedback_action']]}, agent_action: {actions_dict[agent_action]}")
                     feedback_action = FeedbackAction(
                         user_id=self.user_id,
@@ -320,46 +355,55 @@ class GameControl:
                     session.close()
 
         optimal_agents = []
+        first_model_chacked = True
         target_models_indexes = self.models_distance[self.agent_index][:self.agent_switch_distance]
         for model_i, model_name in target_models_indexes:
             agent_data = self.models_paths[model_i]
             path = agent_data['path']
             agent = load_agent(self.env, path)
             print(f'checking model: {agent_data}, model_name: {model_name}')
-            
+
             agent_correctness = 0
             for action_feedback in self.user_feedback:
                 if action_feedback['index'] >= len(self.episode_obs):
                     return
                 saved_obs = self.episode_obs[action_feedback['index']]
-                agent_action = agent.predict(saved_obs, deterministic=True)
-                agent_pos, agent_dir = self.episode_agent_locations[action_feedback['index']]
-                # print(f'user feedback: index={action_feedback["index"]},    action={action_feedback} ,  saved_obs: {saved_obs}   agent_pos={agent_pos},  agent_dir={agent_dir}')
+                agent_predict_action = agent.predict(saved_obs, deterministic=True)
+                agent_predict_action = actions_dict[agent_predict_action[0].item()]
+                # agent_pos, agent_dir = self.episode_agent_locations[action_feedback['index']]
 
-                print(f"agent_action[0].item()={agent_action[0].item()},  action_feedback['action']={action_feedback['feedback_action']}")
-                agent_action = actions_dict[agent_action[0].item()]
-                print(f"feedback_action: {actions_dict[action_feedback['feedback_action']]}, agent_predict_action: {agent_action}")
-
-                # we take the first object in front of the agent before the action, after the action and after the user feedback action
-                tmp_env, tmp_obs = self.update_env_to_action(action_feedback['index'])
-                base_face_object = get_infront_object(saved_obs)
-                agent_face_object = get_infront_object(self.episode_obs[action_feedback['index'] + 1])
-                feedback_face_object = get_infront_object(tmp_obs)
-
-                self.infront_objects.append(agent_face_object)
-                self.infront_base_objects.append(base_face_object)
-                self.infront_feedback_objects.append(feedback_face_object)
-
-                print(f"agent pos ={agent_pos}, agent dir = {agent_dir} base_face_object: {(IDX_TO_OBJECT[base_face_object[0]], IDX_TO_COLOR[base_face_object[1]])}, feedback_face_object: {(IDX_TO_OBJECT[feedback_face_object[0]], IDX_TO_COLOR[feedback_face_object[1]])}, agent_face_object: {(IDX_TO_OBJECT[agent_face_object[0]], IDX_TO_COLOR[agent_face_object[1]])}")
-                if agent_action == actions_dict[action_feedback['feedback_action']]:
+                
+                base_agent_action = action_feedback['agent_action']
+                if agent_predict_action == actions_dict[action_feedback['feedback_action']]:
                     print("agent is correct")
                     agent_correctness += 1
+
+
+                ''' TO MAKE A SIMILAR ENV - we take the first object in front of the agent before the action, 
+                after the action and after the user feedback action'''
+                
+                if first_model_chacked:
+                    base_face_object = get_infront_object(saved_obs)
+                    self.infront_base_objects.append(base_face_object)
+                    # print("get normal face object:")
+                    if  action_feedback['index'] + 1 <= len(self.episode_obs):
+                        agent_face_object = get_infront_object(self.episode_obs[action_feedback['index'] + 1])
+                        self.infront_objects.append(agent_face_object)
+                    # print("get feedback face object:")            
+                    tmp_env, _ = self.update_env_to_action(action_feedback['index'])
+                    tmp_obs, _, _, _, _= tmp_env.step(actions_dict[action_feedback['feedback_action']])
+                    feedback_face_object = get_infront_object(tmp_obs)
+                    self.infront_feedback_objects.append(feedback_face_object)
+                
+
+                
 
             if len(self.user_feedback)==0 or agent_correctness > 0:  # minimum correctness
                 # optional_agents.append({"agent":agent, "path": path[2], "correctness": agent_correctness})
                 optimal_agents.append({"agent":agent, "path": path, "correctness": agent_correctness, "model_index": model_i})
+            
+            first_model_chacked = False
 
-        print(f'optional_models: {optimal_agents}')
         if len(optimal_agents) == 0:
             optimal_agents.append({"agent":agent, "path": path, "correctness": agent_correctness, "model_index": model_i})
         new_agent_dict = reduce(lambda a, b: a if a["correctness"] >= b["correctness"] else b, optimal_agents) # get the agent with the most correctness
@@ -368,9 +412,10 @@ class GameControl:
         self.ppo_agent = new_agent_dict["agent"]
         self.agent_index = new_agent_dict["model_index"]
         self.current_agent_path = self.models_paths[self.agent_index]['path']  # New current agent path
-        print(f'load new model: {new_agent_dict["path"]}')
+        print(f'load new model: {new_agent_dict["path"]}')#, self.models_paths[new_agent_dict['index']]["name"]}')
         if self.prev_agent is None:
             self.prev_agent = self.ppo_agent
+        return True
 
     @timeit
     def agents_different_routs(self, simillarity_level=5, count=0):
@@ -382,7 +427,12 @@ class GameControl:
                 self.prev_agent = self.ppo_agent
         # self.saved_env.reset()
         print("(agents_different_routs)  simillarity_level: ", simillarity_level)
-        env = self.find_simillar_env(simillarity_level)
+        if int(self.simillar_level_env) == 0:
+            env = self.saved_env
+            print("simillarity level is 0 so we take the base env")
+        else: # simillarity level = 1
+            env = self.find_simillar_env(simillarity_level)
+            print(f"simillarity level is {self.simillar_level_env} so we create a simillar env based on the feedback")
         copy_env = copy.deepcopy(env)
         img = copy_env.get_full_image()
         updated_move_sequence, _, _, agent_actions = capture_agent_path(copy_env, self.ppo_agent)
@@ -418,7 +468,7 @@ class GameControl:
             path_img_base64, actions_locations, images_buf_list = plot_move_sequence_by_parts(
                 self.episode_images,
                 self.actions_to_moves_sequence(self.episode_actions),
-                self.episode_actions
+                self.episode_actions,
             )
         else:
             # path_img_base64, actions_locations, images_buf_list = plot_move_sequence_by_parts(
@@ -431,7 +481,8 @@ class GameControl:
             images_buf_list = None
 
         return {'path_image': path_img_base64,
-                'actions': actions_locations,
+                'actions': actions_locations, # actions :[{'action', 'x', 'y', 'width', 'height'},..]
+                # 'cumulative_rewards': self.episode_cumulative_rewards,
                 'invalid_moves': self.invalid_moves,
                 'score': self.last_score,
                 'feedback_images': images_buf_list}
@@ -458,24 +509,47 @@ class GameControl:
                             partial_obs=True,
                             simillarity_level=simillarity_level,
                             )
-        env_instance = NoDeath(ObjObsWrapper(sim_env), no_death_types=("lava",), death_cost=self.lava_penalty)
-        env_instance.unwrapped.reset(**initial_kwargs) 
+        sim_env = NoDeath(ObjObsWrapper(sim_env), no_death_types=("lava",), death_cost=self.lava_penalty)
+        sim_env.unwrapped.reset(**initial_kwargs) 
         
-        
-        # j = 0
-        # while True:
-        #     sim_env.reset()
-        #     if not deploy:  # for testing we do not care what the new env is
-        #         return sim_env
-        #     env_objects = env.grid_objects()
-        #     sim_objects = sim_env.grid_objects()
-        #     if state_distance(env_objects, sim_objects) < SIMMILARITY_CONST or j > 10:
-        #         if j > 10:
-        #             print("No simillar env found")
-        #         break
-        #     j += 1
-        return env_instance
+        return sim_env
 
+    def save_no_user_feedback(self, data, sid):
+        user_explanation = data.get('userExplanation')
+        # DB code (only if save_to_db is enabled)
+        if save_to_db and sid:
+            try:
+                session = SessionLocal()
+                # _, obs = self.update_env_to_action(action_index=action_feedback['index'])
+                action_index = 0
+                if action_index >= len(self.episode_obs):
+                    print(f"action_index {action_index} is out of range for episode_obs")
+                    obs_str = "No observation available"
+                else:
+                    obs = self.episode_obs[action_index]
+                    img = obs['image']
+                    obs_str = json.dumps(img.tolist())  # Convert image to string for storage
+                agent_action = -1
+                print(f"____________________ save to DB NO update agent")
+                feedback_action = FeedbackAction(
+                    user_id=self.user_id,
+                    env_state=obs_str,  # TODO: Ensure env_state is passed correctly
+                    agent_action=actions_dict[agent_action],
+                    feedback_action=-1,
+                    feedback_explanation=user_explanation,
+                    action_index=-1,
+                    episode_index=self.episode_num,
+                    timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    agent_path=self.current_agent_path,
+                )
+                session.add(feedback_action)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                print(f"Database operation failed: {e}")
+                sio.emit("error", {"error": "Database operation failed"}, to=sid)
+            finally:
+                session.close()
 # ---------------- Global Variables for Multi-user Support ----------------
 
 # Instead of a single global game_control instance, we maintain a dictionary mapping
@@ -501,71 +575,65 @@ def create_new_env(lava_penalty) -> CustomEnv:
     # env_instance.unwrapped.reset()
     return env_instance
 
+''' Models that need to be:
+AllColors LL - 2,2,2,0,0.1    -   models/2,2,2,0,0.1Steps100Grid8_20250526/best_model.zip   /   models/3,3,4,0.2,0.05Steps50Grid8_20250604/best_model.zip  /  models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip
+AllColors LH - 2,2,2,-4,0.1    -  models/2,2,4,-3,0.1Steps50Grid8_20250611/best_model.zip   /  models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip  
+OnlyBlue LH - -0.5,-0.5,4,-3,0.1  -    models/-0.5,-0.5,4,-3,0.1Steps50Grid8_20250612/best_model.zip
+OnlyBlue LL - 0, 0, 4, 0, 0,1
+NoRed LL - 0, 3, 3, 0, 0.1  -  models/-0.1,3,3,0,0.1Steps50Grid8_20250604/best_model.zip
+NoRed LH - 0, 3,3, -3, 0.1  -  models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip   /    models/-0.5,2,4,-2,0.1Steps50Grid8_20250612/best_model.zip
+NoGreen LL - 3,0,3,0, 0.1  -   
+NoGreen LH - 3, 0, 3, -3, 0.1  -   
+OnlyGreen LL - -0.1, 3, -0.1, 0, 0.01  -   models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip
 
+'''
 new_models_dict = {
-    # 1: {"path": "models/3,3,3,0,0.02Steps200Grid8_20250421", "name": "AllColorsLL_0421", "vector":(3,3,3,0,0.02)},
-    1: {"path": "models/2,2,2,0,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLL_0422", "vector":(2,2,2,0,0.02)},
-    2: {"path": "models/3,-0.1,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyRedLL_0429", "vector":(3,-0.1,-0.1,0,0.01)},
-    3: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector":(2,2,2,-4,0.02)},
-    4: {"path": "models/-0.1,-0.1,4,-4,0.1Steps100Grid8_20250507/best_model.zip", "name": "OnlyBlueLH_0427", "vector":(-0.1,-0.1,4,-4,0.1)},
-    5: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector":(-0.1,3,-0.1,0,0.01)},
-    # 6: {"path": "models/3,-0.1,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyRedLL_0429", "vector":(3,-0.1,-0.1,0,0.01)},
-    6: {"path": "models/3.0,-0.1,-0.1,0.0,0.1Steps100Grid8_20250526/best_model.zip", "name": "OnlyRedLL_0526", "vector":(3.0,-0.1,-0.1,0.0,0.1)},
-    7: {"path": "models/3,3,-1,-2,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLH_0422", "vector":(3,3,-1,-2,0.1)},
-    8: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0422", "vector":(3,3,-1,0,0.1)},
-    
+    1: {"path": "models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip", "name": "AllColorsLL_0526", "vector": (3, 3, 3, 0.1, 0.1)},
+    2: {"path": "models/3,3,4,0.2,0.05Steps50Grid8_20250604/best_model.zip", "name": "AllColorsLL_0604", "vector": (3, 3, 4, 0.2, 0.05)},
+    3: {"path": "models/2,2,4,-3,0.1Steps50Grid8_20250611/best_model.zip", "name": "AllColorsLH_0611", "vector": (2, 2, 4, -3, 0.1)},
+    4: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector": (2, 2, 2, -4, 0.02)},
+    5: {"path": "models/-0.5,-0.5,4,-3,0.1Steps50Grid8_20250612/best_model.zip", "name": "OnlyBlueLH_0507", "vector": (-0.5, -0.5, 4, -3, 0.1)},
+    6: {"path": "models/-0.1,3,3,0,0.1Steps50Grid8_20250604/best_model.zip", "name": "NoRedLL_0604", "vector": (-0.1, 3, 3, 0, 0.1)},
+    7: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector": (-0.1, 3, -0.1, 0, 0.01)},
+    8: {"path": "models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip", "name": "NoRedLH_G_0612", "vector": (-0.5, 2, 4, -3, 0.1)},
+    9: {"path": "models/-0.5,2,4,-2,0.1Steps50Grid8_20250612/best_model.zip", "name": "NoRedLH_W_0612", "vector": (-0.5, 2, 4, -2, 0.1)},
 }
-
-#     1: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector":(2,2,2,-4,0.02)},
-#     2: {"path": "models/2,2,2,-4,0.2Steps100Grid8_20250427/best_model.zip", "name": "AllColorsLH_0427", "vector":(2,2,2,-4,0.2)},
-#     3: {"path": "models/2,2,2,0,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLL_0422", "vector":(2,2,2,0,0.2)},
-#     4: {"path": "models/2,2,2,0,0.3Steps100Grid8_20250427/best_model.zip", "name": "AllColorsLL_0427", "vector":(2,2,2,0,0.3)},
-#     5: {"path": "models/-0.1,-0.1,4,-4,0.1Steps100Grid8_20250507/best_model.zip", "name": "OnlyBlueLH_0427", "vector":(-0.1,-0.1,4,-4,0.1)},
-#     6: {"path": "models/3,3,-1,-2,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLH_0422", "vector":(3,3,-1,-2,0.1)},
-#     7: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0422", "vector":(3,3,-1,0,0.1)},
-#     8: {"path": "models/3,3,3,-2,0.1Steps100Grid8_20250421/best_model.zip", "name": "AllColorsLH_0421", "vector":(3,3,3,-2,0.1)},
-#     9: {"path": "models/3,3,3,0,0.02Steps200Grid8_20250421/best_model.zip", "name": "AllColorsLL_0421", "vector":(3,3,3,0,0.02)},
-#     10: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector":(-0.1,3,-0.1,0,0.01)},
-#     11: {"path": "models/3,-0.1,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyRedLL_0429", "vector":(3,-0.1,-0.1,0,0.01)},
-# }
 
 new_models_distance = {
-    1: [(8, 'AllColorsLL_0421'), (2, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')],
-    2: [(1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422')],
-    3: [(4, 'OnlyBlueLH_0427'), (7, 'NoBlueLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-    4: [(3, 'AllColorsLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429')],
-    5: [(2, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422'), (6, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-    6: [(2, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422'), (5, 'OnlyGreenLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-    7: [(5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421')],
-    8: [(1, 'AllColorsLL_0421'), (2, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')]
+    1: [(2, 'AllColorsLL_0604'), (6, 'NoRedLL_0604'), (3, 'AllColorsLH_0611'), (7, 'OnlyGreenLL_0429')],
+    2: [(1, 'AllColorsLL_0526'), (6, 'NoRedLL_0604'), (3, 'AllColorsLH_0611')],
+    3: [(4, 'AllColorsLH_0422'), (9, 'NoRedLH_W_0612'), (2, 'AllColorsLL_0604'), (5, 'OnlyBlueLH_0507')],
+    4: [(3, 'AllColorsLH_0611'), (8, 'NoRedLH_G_0612'), (9, 'NoRedLH_W_0612'), (5, 'OnlyBlueLH_0507'), (1, 'AllColorsLL_0526')],
+    5: [(8, 'NoRedLH_G_0612'), (9, 'NoRedLH_W_0612'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0422'), (6, 'NoRedLL_0604')],
+    6: [(9, 'NoRedLH_W_0612'), (7, 'OnlyGreenLL_0429'), (1, 'AllColorsLL_0526'), (2, 'AllColorsLL_0604'), (8, 'NoRedLH_G_0612')],
+    7: [(6, 'NoRedLL_0604'), (1, 'AllColorsLL_0526'), (9, 'NoRedLH_W_0612'), (4, 'AllColorsLH_0422'), (2, 'AllColorsLL_0604')],
+    8: [(9, 'NoRedLH_W_0612'), (3, 'AllColorsLH_0611'), (5, 'OnlyBlueLH_0507'), (6, 'NoRedLL_0604'), (4, 'AllColorsLH_0422')],
+    9: [(8, 'NoRedLH_G_0612'), (6, 'NoRedLL_0604'), (3, 'AllColorsLH_0611'), (5, 'OnlyBlueLH_0507'), (4, 'AllColorsLH_0422')]
 }
 
-model_paths = [
-    ("models/LavaLaver8_20241112/iter_500000_steps.zip", (2, 2, 2, 0, -0.1), "LavaLaver8_20241112"),
-    ("models/LavaHate8_20241112/iter_500000_steps.zip", (2, 2, 2, -3, -0.1), "LavaHate8_20241112"),
-    ("models/2,2,2,-4,0.2Steps100Grid8_20250427/best_model.zip", (2, 2, 2, -4, -0.2), "LavaHate8New_20241227"),
-    ("models/0,5,0,-3,0.2Steps100Grid8_20241231/best_model.zip", (0, 5, 0, -3, -0.2), "GreenOnly8_20241231"),
-    ("models/2,2,2,0,0.1Steps250Grid8_20241225/best_model.zip", (2, 2, 2, 0, -0.1), "LavaLaver8New_20241225"),
-    # ("models/4,-0.1,-0.1,-4,0.2Steps300Grid8_20250129/best_model.zip", (4, -0.1, -0.1, -4, -0.2), "RedOnly8New_20250129"),
-]
+# new_models_dict = {
+#     1: {"path": "models/2,2,2,0,0.1Steps100Grid8_20250526/best_model.zip", "name": "AllColorsLL_0526", "vector":(2,2,2,0,0.1)},
+#     2: {"path": "models/3,-1,3,0.1,0.05Steps50Grid8_20250601/best_model.zip", "name": "NoGreenLL_0601", "vector":(3,-1,3,0.1,0.05)},
+#     3: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector":(2,2,2,-4,0.02)},
+#     4: {"path": "models/-0.1,-0.1,4,-4,0.1Steps100Grid8_20250507/best_model.zip", "name": "OnlyBlueLH_0427", "vector":(-0.1,-0.1,4,-4,0.1)},
+#     5: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector":(-0.1,3,-0.1,0,0.01)},
+#     6: {"path": "models/-1,3,3,0.1,0.05Steps50Grid8_20250601/best_model.zip", "name": "NoRedLL_0601", "vector":(-1,3,3,0.1,0.05)},
+#     7: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0421", "vector":(3,3,-1,-2,0.1)},
+#     8: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0422", "vector":(3,3,-1,0,0.1)},
+    
+# }
 
 
-models_dict = {
-    1: {"name": "LavaLaver8_20241112", "vector":(2, 2, 2, 0, -0.1), "path":"models/LavaLaver8_20241112/iter_500000_steps.zip"},
-    2: {"name": "LavaHate8_20241112", "vector":(2, 2, 2, -3, -0.1), "path":"models/LavaHate8_20241112/iter_500000_steps.zip"},
-    3: {"name": "LavaHate8New_20241229", "vector":(2, 2, 2, -3, -0.2), "path":"models/2,2,2,-3,0.2Steps100Grid8_20241230/best_model.zip"},
-    4: {"name": "LavaLaver8New_20241225", "vector":(2, 2, 2, 0, -0.1), "path":"models/2,2,2,0,0.1Steps250Grid8_20241225/best_model.zip"},
-    5: {"name": "GreenOnly8_20241231", "vector":(0, 5, 0, -3, -0.2), "path":"models/0,5,0,-3,0.2Steps100Grid8_20241231/best_model.zip"},
-    6: {"name": "RedOnly8New_20250129", "vector":(4, -0.1, -0.1, -4, -0.2), "path":"models/4,-0.1,-0.1,-4,0.2Steps300Grid8_20250129/best_model.zip"},
-}
-
-models_distances = {1: [4, 2, 3, 5, 6], 
-                    2: [3, 1, 4, 5, 6],
-                    3: [2, 1, 4, 5, 6],
-                    4: [1, 2, 3, 5, 6],
-                    5: [6, 2, 3, 4, 1],
-                    6: [5, 2, 3, 1, 4],
-                    }
+# new_models_distance = {
+#     1: [(8, 'AllColorsLL_0421'), (2, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')],
+#     2: [(1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422')],
+#     3: [(4, 'OnlyBlueLH_0427'), (7, 'NoBlueLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+#     4: [(3, 'AllColorsLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429')],
+#     5: [(2, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422'), (6, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+#     6: [(2, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422'), (5, 'OnlyGreenLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
+#     7: [(5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421')],
+#     8: [(1, 'AllColorsLL_0421'), (2, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')]
+# }
 
 
 actions_dict = {
@@ -579,6 +647,7 @@ actions_dict = {
     "turn left": Actions.left,
     "turn right": Actions.right,
     "forward": Actions.forward,
+    "move forward": Actions.forward,
     "pickup": Actions.pickup
 }
 
@@ -647,23 +716,27 @@ async def start_game(sid, data, callback=None):
     """
     print("starting the game")
     user_id = data["playerName"]
+    
     sid_to_user[sid] = user_id
     if user_id not in game_controls:
+        simillarity_level = data.get("group", 0)
         # Create a new environment and GameControl instance for the user.
         env_instance = create_new_env(lava_penalty=-3)
         # new_game = GameControl(env_instance, model_paths, simillar_level_env=0)
-        simillarity_level = random.randint(0, 5)
-        new_game = GameControl(env_instance, new_models_dict, new_models_distance, simillar_level_env=1)
-        new_game.user_id = user_id
+        # simillarity_level = random.randint(0, 5)
+        new_game = GameControl(env_instance, new_models_dict, new_models_distance, user_id, simillar_level_env=simillarity_level)
         game_controls[user_id] = new_game
-        # print(f"Created new game control for user {user_id} with simillarity level {simillarity_level}")
+        print(f"Created new game control for user {user_id} with simillarity level {simillarity_level}")
     else:
         new_game = game_controls[user_id]
         print(f"Reusing existing game control for user {user_id}")
     if data.get("updateAgent", False):
         new_game.update_agent(data, sid)
+    if data.get("userNoFeedback", False):
+        new_game.save_no_user_feedback(data, sid)
     if data.get("setEnv", False):
         new_game.env.update_from_unique_env(data.get("setEnv"))
+    
     response = new_game.get_initial_observation()
     response['action'] = None
     await sio.emit("game_update", response, to=sid)
@@ -677,11 +750,10 @@ async def handle_send_action(sid, action):
     if not user_id or user_id not in game_controls:
         await sio.emit("error", {"error": "User not found"}, to=sid)
         return
+        
     user_game = game_controls[user_id]
     response = user_game.handle_action(action)
-    print(f"response action before dict: {action}")
     response["action"] = action_dir[action]
-    print(f"response action after dict: {response['action']}\n")
 
     if save_to_db:
         print(f"try to save action to db: {action}")
@@ -741,11 +813,11 @@ async def play_entire_episode(sid):
     while True:
         action, response = user_game.agent_action()
         response["action"] = action_dir[action]
-        time.sleep(0.4)
+        await asyncio.sleep(0.3)
         await finish_turn(response, user_game, sid)
         if response["done"]:
             print("Agent Episode finished")
-            time.sleep(0.3)
+            await asyncio.sleep(0.1)
             break
 
 @sio.on("compare_agents")
@@ -755,7 +827,13 @@ async def compare_agents(sid, data): # data={ playerName: playerNameInput.value,
         await sio.emit("error", {"error": "User not found"}, to=sid)
         return
     user_game = game_controls[user_id]
-    user_game.update_agent(data, sid)
+    res = user_game.update_agent(data, sid)
+    if res is None:
+        await next_episode(sid)
+        return
+    if user_game.simillar_level_env == 2:
+        # just showing a simple text : "the agent has been updated"
+        return
     res = user_game.agents_different_routs(user_game.simillar_level_env)#data['simillarity_level'])
     await sio.emit("compare_agents", res, to=sid)
 
@@ -804,7 +882,6 @@ async def use_old_agent(sid, data):
         await sio.emit("agent_updated", {"status": "error", "message": "No previous agent available"}, to=sid)
     else:
         # Save the user choice in the DB.
-        # print(f"save to database user choice: user_id: {user_id}, old_agent: {user_game.prev_agent}, new_agent: {user_game.ppo_agent}, episode_index: {user_game.episode_num}, choice_to_update: {not data['use_old_agent']}")
         if save_to_db:
             session = SessionLocal()
             try:
@@ -836,7 +913,7 @@ async def use_old_agent(sid, data):
 if __name__ == "__main__":
     save_to_db = True
     if save_to_db:
-        clear_database()
+        # clear_database()
         create_database()
 
     import uvicorn

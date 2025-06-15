@@ -52,8 +52,8 @@ def load_agent(env, model_path, update=False) -> PPO:
     # Load the model
     ppo = PPO.load(f"{model_path}", custom_objects=custom_objects, env=env)
     # Print environment observation and PPO model observation
-    print("Environment Observation Space:", env.observation_space)
-    print("PPO Model Observation Space:", ppo.observation_space)
+    # print("Environment Observation Space:", env.observation_space)
+    # print("PPO Model Observation Space:", ppo.observation_space)
     return ppo
 
 def add_path_to_csv(model_path, preference_vector, name, eval_reward):
@@ -79,12 +79,14 @@ def is_illegal_move(action, last_obs, obs, agent_pos_befor, agent_pos):
     if action <= 1: # turn is always legal
         return False
     if action == 2 and agent_pos_befor == agent_pos:
+        # print("illigal_move ", action)
         return True
     if action > 2 and np.array_equal(obs['image'], last_obs['image']):
+        # print("illigal_move ", action)
         return True
     return False
 
-actions_translation = {0: 'turn left', 1: 'turn right', 2: 'move forward', 3: 'pickup'}
+
 # resert the environment and run the agent on that environment to find his path
 
 def interesting_objects(env, obs, agent_action, feedback_action):
@@ -114,13 +116,16 @@ def get_objects_from_image(image, number_of_cells=5):
     around_objects.append(image[mid-1][-2])
     return list(map(tuple, around_objects))
 
-def get_infront_object(obs):
+def get_infront_object(obs, to_print=False):
     """get the first object in front of the agent - in the main row"""
     image = obs['image']
+    if to_print:
+        print(f"(get_infront_object) image:\n {image}")
     mid = 3 # env.width //2
     i = 0
     for obj in image[mid][::-1]:
-        # print(f"(get_infront_object) index:{i} obj: {obj}")
+        if to_print:
+            print(f"(get_infront_object) index:{i} obj: {obj}, {IDX_TO_OBJECT[obj[0]]}")
         if IDX_TO_OBJECT[obj[0]] == 'ball' or IDX_TO_OBJECT[obj[0]] == 'lava':
             return tuple(obj)
         i += 1
@@ -128,7 +133,7 @@ def get_infront_object(obs):
 
 
 @timeit
-def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves, number of illegal moves, total reward, list of legal actions
+def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves, number of illegal moves, total reward, list of all actions
     illigal_moves = 0
     last_obs = copy_env.get_wrapper_attr('current_state')
     
@@ -342,6 +347,7 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
 
 # each move with its own image
 @timeit
+# return -> buffer with the last image, actions :[{'action', 'x', 'y', 'width', 'height'},..], imgs_action_list: list of base64 encoded images
 def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
     imgs_action_list = []
     feedback_action_color = 'cyan'
@@ -370,12 +376,10 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
     # mark_sizes = {'move_vertical': (30, 30), 'move_horizontal': (30, 30), 'turn': (30, 30), 'pickup': (30, 30)}
 
     # mark_move_sizes = {'move_vertical': 20, 'move_horizontal': 20}
-    
-    
     current_point = start_point
 
     i= 0
-    print(f'plot move sequence len: {len(move_sequence)}, imgs len: {len(imgs)}')
+    print(f'len agent_true_actions: {len(agent_true_actions)} move_sequence len: {len(move_sequence)}, imgs len: {len(imgs)}')
     for action_dir, actual_action in move_sequence:
         fig , ax = plt.subplots()
         ax.imshow(imgs[i])
@@ -463,6 +467,15 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
             action_loc['y'] = mark_y + 15 * pickup_position[1]
             action_loc['width'] = mark_sizes['pickup'][0]
             action_loc['height'] = mark_sizes['pickup'][1]
+        
+        #invalide move  #TODO:make the image with an invalide mode
+        else:
+            action_loc['x'] = mark_x
+            action_loc['y'] = mark_y
+            action_loc['width'] = 0
+            action_loc['height'] = 0
+            buf = ax_to_feedback_image(ax)
+
         actions_with_location.append(action_loc)
         imgs_action_list.append(buf)
         plt.close(fig)

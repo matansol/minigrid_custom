@@ -319,22 +319,57 @@ def main(**kwargs):
     #         return progress_remaining * initial_value
     #     return schedule
 
-    if args.load_model:
-        print(f"Loading model from {args.load_model}")
-        model_name = args.load_model
-        env_info = model_name.split('/')[1].split('S')[0].split(',')
-        lava_cost = float(env_info[3])
-        step_cost = float(env_info[4])
-        step_cost = 0.05
-        colors_rewards = {'red':float(env_info[0]), 'green': float(env_info[1]), 'blue': float(env_info[2])}
-        step_count_observation = True if 'Step_Count' in model_name else False
+    # if args.load_model:
+    #     print(f"Loading model from {args.load_model}")
+    #     model_name = args.load_model
+    #     env_info = model_name.split('/')[1].split('S')[0].split(',')
+    #     lava_cost = -3 #float(env_info[3])
+    #     step_cost = float(env_info[4])
+    #     step_cost = 0.1 
+    #     colors_rewards = {'red':float(env_info[0]), 'green': float(env_info[1]), 'blue': float(env_info[2])}
+
+    # Models that need to be:
+    # AllColors LL - 2,2,4,0.2,0.1
+    # AllColors LH - 2,2,4,-4,0.1
+    # OnlyBlue LH - -0.5, -0.5,4,-4,0.1
+    # OnlyBlue LL - -0.5, -0.5,4, 0.2, 0.1
+    # NoRed LL - -0.5, 3, 4, -0.5, 0.1
+    # NoRed LH - -0.5, 3,4, -3, 0.1
+    # NoGreen LL - 3,-0.5,4,0, 0.1
+    # NoGreen LH - 3, -0.5, 4, -3, 0.1
     
-    else:
-        lava_cost = 0
-        step_cost = 0.1
-        colors_rewards = {'red': 2, 'green': 2, 'blue': 2}
-        step_count_observation = False
-    lava_cost = -3
+    colors_options = [
+        # AllColors LL  - 0
+        {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': 0.2, 'step': 0.2},
+        # AllColors LH  - 1
+        {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': -4, 'step': 0.1},
+        # OnlyBlue LH  - 2
+        {'balls': {'red': -0.5, 'green': -0.5, 'blue': 4}, 'lava': -4, 'step': 0.1},
+        # OnlyBlue LL  - 3
+        {'balls': {'red': -0.5, 'green': -0.5, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
+        # NoRed LL  - 4
+        {'balls': {'red': -0.5, 'green': 3, 'blue': 4}, 'lava': -0.5, 'step': 0.1},
+        # NoRed LH  - 5
+        {'balls': {'red': -0.5, 'green': 3, 'blue': 4}, 'lava': -3, 'step': 0.1},
+        # NoGreen LL  - 6   
+        {'balls': {'red': 2, 'green': -0.5, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
+        # NoGreen LH - 7
+        {'balls': {'red': 3, 'green': -0.5, 'blue': 4}, 'lava': -3, 'step': 0.1},
+        # OnlyGreen LH - 8
+        {'balls': {'red': -0.5, 'green': 4, 'blue': -0.5}, 'lava': -3, 'step': 0.1},
+        # OnlyGreen LL - 9
+        {'balls': {'red': -0.5, 'green': 4, 'blue': -0.5}, 'lava': 0.2, 'step': 0.1},
+    ] # size = 10
+                        
+
+    option = 7
+    # else:
+    lava_cost = colors_options[option]['lava']  
+    step_cost = colors_options[option]['step']
+    colors_rewards = colors_options[option]['balls']
+
+    step_count_observation = False
+    # lava_cost = -3 # override to make the agents avoid lava -------------------------------------
 
     # Create time stamp of experiment
     stamp = datetime.fromtimestamp(time()).strftime("%Y%m%d")
@@ -369,19 +404,7 @@ def main(**kwargs):
     train_env = Monitor(train_env)  # Add Monitor for logging
 
     # Wrap training env
-    # train_env = DummyVecEnv([lambda: create_env(grid_size=grid_size,
-    #                  agent_view_size=agent_view_size,
-    #                  max_steps=max_steps,
-    #                  highlight=True,
-    #                  step_cost=step_cost,
-    #                  num_objects=num_balls,
-    #                  lava_cells=num_lava_cell,
-    #                  train_env=True,
-    #                  image_full_view=False,
-    #                  color_rewards=colors_rewards,
-    #                  step_count_observation=step_count_observation, # add step count to observation
-    #                  )])
-    # train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False, clip_obs=10.0)
+    train_env = DummyVecEnv([lambda: train_env])
 
     # Access attributes from the underlying environment
     preference_vector = [colors_rewards['red'], colors_rewards['green'], colors_rewards['blue'], lava_cost, step_cost]
@@ -390,6 +413,8 @@ def main(**kwargs):
 
     if step_count_observation:
         save_name = save_name[:-9] + "_Step_Count" + save_name[-9:]
+
+    print("start training model with name:", save_name)
 
 
     # Set up callbacks
@@ -427,7 +452,7 @@ def main(**kwargs):
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=f'./models/{save_name}/',
-        log_path='./logs/eval_logs/',
+        log_path=None,  # Do not write evaluation logs
         eval_freq=10000,
         n_eval_episodes=5,
         deterministic=True,
@@ -455,22 +480,41 @@ def main(**kwargs):
     # )
 
     if args.load_model:
-        print(f"Loading model from {args.load_model}")
-        model = PPO.load(args.load_model, env=train_env, device=device)
+        # Load the old model to get the parameters
+        old_model = PPO.load(args.load_model, env=train_env, device=device)
+        # Create a new model with the new n_steps
+        model = PPO(
+            "MultiInputPolicy",
+            train_env,
+            policy_kwargs=policy_kwargs,
+            verbose=0,
+            learning_rate=1e-4,
+            ent_coef=1e-2,
+            n_steps=64,
+            batch_size=32,
+            gamma=0.98,
+            # gae_lambda=0.95,
+            n_epochs=10,
+            clip_range=0.2,
+            device=device
+        )
+        # Copy parameters from the old model
+        model.policy.load_state_dict(old_model.policy.state_dict())
     else:
         print("No model specified, creating a new PPO agent")
         model = PPO(
             "MultiInputPolicy",
             train_env,
             policy_kwargs=policy_kwargs,
-            verbose=2,
-            learning_rate=1e-3,
-            ent_coef=1e-3,
-            n_steps=128,
-            batch_size=32,
-            gamma=0.95,
-            gae_lambda=0.95,
-            n_epochs=6,
+            verbose=1,
+            learning_rate=3e-4,      # Lower for stability with multiple objectives
+            ent_coef=0.01,           # Increase to encourage exploration
+            n_steps=64,              # Increase to capture fuller episode contexts
+            batch_size=32,           # Increase for better gradient estimates
+            gamma=0.98,              # Higher to value future rewards more
+            gae_lambda=0.95,         # Keep as is, good for advantage estimation
+            n_epochs=10,             # More epochs for better learning
+            clip_range=0.2,          # Add clipping to prevent too large updates
             device=device
         )
 
@@ -479,10 +523,12 @@ def main(**kwargs):
     # Start training
     print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
     model.learn(
-        3e5,
+        2e5,
         tb_log_name=f"{stamp}",
         callback=[eval_callback]#, wandb_eval_callback]
     )
+
+    print(f"finished training, saving the model to {save_name}")
     train_env.close()
     eval_env.close()
 

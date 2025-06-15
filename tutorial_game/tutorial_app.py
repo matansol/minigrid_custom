@@ -48,13 +48,13 @@ class Tutorial_Action(Base):
     __tablename__ = "tutorial_actions"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String(20))
-    action_type = Column(String(50))
+    action = Column(String(50))
     score = Column(Float)
     reward = Column(Float)
     done = Column(Boolean)
     episode = Column(Integer)
     timestamp = Column(Float)
-    env_state = Column(String(1000))
+    # env_state = Column(String(1000))
 
 def create_database():
     """Creates the database tables if they do not already exist."""
@@ -202,14 +202,14 @@ async def handle_send_action(sid, action):
         session = SessionLocal()
         try:
             new_action = Tutorial_Action(
-                action_type=action,
+                action=action,
                 score=response["score"],
                 reward=response["reward"],
                 done=response["done"],
                 user_id=user_id,
                 timestamp=time.time(),
                 episode=response["episode"],
-                env_state=str(response.get("image", "")),  # Store the game state image
+                # env_state=str(response.get("image", "")),  # Store the game state image
             )
             session.add(new_action)
             session.commit()
@@ -236,7 +236,7 @@ async def next_episode(sid):
     await sio.emit("game_update", response, to=sid)
 
 if __name__ == "__main__":
-    save_to_db = False  # Set to True to enable database saving
+    save_to_db = True  # Set to True to enable database saving
     if save_to_db:
         create_database()
 

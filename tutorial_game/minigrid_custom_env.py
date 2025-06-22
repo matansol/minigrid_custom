@@ -22,7 +22,7 @@ import random
 import numpy as np
 
 basic_color_rewards  = {
-                'red': -0.5,
+                'red': 0.1,
                 'green': 2,
                 'blue': 4,
             }

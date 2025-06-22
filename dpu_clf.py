@@ -373,14 +373,12 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
 
     mark_x, mark_y = start_point[0] + 80, start_point[1] + 40 # 300, 160
     mark_sizes = {'move_vertical': (25, 70), 'move_horizontal': (80, 20), 'turn': (20, 20), 'pickup': (20, 20)}
-    # mark_sizes = {'move_vertical': (30, 30), 'move_horizontal': (30, 30), 'turn': (30, 30), 'pickup': (30, 30)}
-
-    # mark_move_sizes = {'move_vertical': 20, 'move_horizontal': 20}
     current_point = start_point
 
     i= 0
     print(f'len agent_true_actions: {len(agent_true_actions)} move_sequence len: {len(move_sequence)}, imgs len: {len(imgs)}')
     for action_dir, actual_action in move_sequence:
+        # print(f"plot move sequence by parts: action_dir: {action_dir}, actual_action: {actual_action}, i: {i}")
         fig , ax = plt.subplots()
         ax.imshow(imgs[i])
         if i == converge_action_location:
@@ -389,16 +387,13 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
         i += 1
         full_action = action_dir.split(' ')
         action = full_action[0]
-        action_loc = {'action': actual_action}
+        action_loc = {'action': actual_action, 'action_dir': action_dir}
         # moving action
         if action_dir in move_arrow_sizes.keys(): # a big arrow that represents a move
-            # add the action arrow to the feedback arrow and save the image
             ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=feedback_action_color, ec=feedback_action_color)
-            # imgs_action_list.append(ax_to_feedback_image(ax))
             buf = ax_to_feedback_image(ax)
 
             # overide the feedback arrow with the real action
-            # ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=move_color, ec=move_color)
             current_point = (current_point[0] + move_arrow_sizes[action_dir][2], current_point[1] + move_arrow_sizes[action_dir][3])
             mark_size = mark_sizes['move_vertical'] if action_dir == 'up' or action_dir == 'down' else mark_sizes['move_horizontal']
             
@@ -406,12 +401,10 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
                 mark_y -= 25 + all_arrow_size
             elif action_dir == 'left': # move left
                 mark_x += - 43 - all_arrow_size
-            action_loc['x'] = mark_x #current_point[0] + mark_x
-            action_loc['y'] = mark_y #current_point[1] + mark_y
+            action_loc['x'] = mark_x 
+            action_loc['y'] = mark_y 
             action_loc['width'] = mark_size[0]
             action_loc['height'] = mark_size[1]
-            # action_loc['width'] = max(move_arrow_sizes[action_name][2], min_width) * inlarge_factor
-            # action_loc['height'] = max(move_arrow_sizes[action_name][3], min_hieght) * inlarge_factor
             
             if action_dir == 'down':
                 mark_y += 25 + all_arrow_size
@@ -423,11 +416,7 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
         elif action_dir in turn_arrow_sizes.keys(): # a small arrow that represents a turn or a pickup
             # add the action arrow to the feedback arrow and save the image
             ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=feedback_action_color, ec=feedback_action_color)
-            # imgs_action_list.append(ax_to_feedback_image(ax))
             buf = ax_to_feedback_image(ax)
-        
-            # overide the feedback arrow with the real action
-            # ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=turn_color, ec=turn_color)
             shift_size = 17
             turnning_mark_shifts = {'turn up': (0, -shift_size), 'turn down': (0, shift_size), 'turn right': (shift_size, 0), 'turn left': (-shift_size, 0)}
             x_shift, y_shift = turnning_mark_shifts[action_dir]
@@ -435,16 +424,12 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
             
             if action_dir == 'turn up':
                 mark_x -= 2
-                # mark_y += -10
             elif action_dir == 'turn down':
                 mark_x -= 2
-                # mark_y += -5
             elif action_dir == 'turn right':
                 mark_x -= 2
-                # mark_y += -10
             else: # turn left
                 mark_x += 5
-                # mark_y += -10
 
             action_loc['x'] = mark_x + x_shift
             action_loc['y'] = mark_y + y_shift
@@ -457,12 +442,8 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
             pickup_position = pickup_direction[full_action[1]]
 
             action_sign = ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=feedback_action_color)
-            # imgs_action_list.append(ax_to_feedback_image(ax))
             buf = ax_to_feedback_image(ax)
-
-            # overide the feedback arrow with the real action
-            # ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=pickup_color)
-            
+   
             action_loc['x'] = mark_x + 25 * pickup_position[0]
             action_loc['y'] = mark_y + 15 * pickup_position[1]
             action_loc['width'] = mark_sizes['pickup'][0]
@@ -479,11 +460,6 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
         actions_with_location.append(action_loc)
         imgs_action_list.append(buf)
         plt.close(fig)
-        # Capture the current state of the plot
-        # Add a yellow half-transparent rectangle for the last action
-        
-
-    
     return buf, actions_with_location, imgs_action_list
 
 
@@ -566,7 +542,7 @@ def state_distance(objects1, objects2):
 
 # run the agent and evaluate his prefermances
 # return the average reward and the average number of illegal moves
-def evaluate_agent(env, agent, num_episodes=100) -> (float, float, float, int):
+def evaluate_agent(env, agent, num_episodes=100, from_unique_env=False) -> (float, float, float, int):
     """
     Evaluate the agent on the given environment, return the average reward, the average number of illegal moves, and the average number of moves, numer of reached max steps.
     """
@@ -575,8 +551,8 @@ def evaluate_agent(env, agent, num_episodes=100) -> (float, float, float, int):
     total_moves = 0
     reached_max_steps = 0
     for i in range(num_episodes):
-        # kwargs = {'simillarity_level': 3}
-        state = env.unwrapped.reset()
+        kwargs = {'from_unique_env': 3}
+        state = env.unwrapped.reset(**kwargs)
         state = state[0]
         state = {'image': state['image']}
         done = False

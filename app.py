@@ -3,6 +3,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import time
 import copy
+import numpy
 from datetime import datetime
 import random  # needed for random.choice in update_agent
 
@@ -112,7 +113,7 @@ async def in_thread(func, *args, **kw):
 
 SIMMILARITY_CONST = 500
 class GameControl:
-    def __init__(self, env, models_paths, models_distance, user_id, simillar_level_env=0):
+    def __init__(self, env, models_paths, models_distance, user_id, simillar_level_env=0, feedback_partial_view=False):
         self.env = env
         # self.saved_env = None
         self.agent_index = next(iter(models_paths.keys()))
@@ -133,14 +134,15 @@ class GameControl:
         self.current_session = None
         self.lava_penalty = -3.0
         self.last_score = 0
-        self.agent_switch_distance = 3
-        self.simillar_level_env = simillar_level_env
+        self.agent_switch_distance: int = 3
+        self.simillar_level_env: int = int(simillar_level_env)
         self.saved_env_info = {}
         self.ppo_agent = None
         self.prev_agent = None
         self.current_agent_path = ""  
         self.prev_agent_path = ""
         self.current_obs = {}
+        self.feedback_partial_view = feedback_partial_view
         
     @timeit
     def reset(self):
@@ -153,9 +155,10 @@ class GameControl:
         self.infront_base_objects = []
         self.infront_feedback_objects = []
         self.saved_env = copy.deepcopy(self.env)
+        grid_objects = self.env.grid_objects() #{"balls": [], "wall": (False, None, None), "key" : (False, None), "lava": []}
         self.saved_env_info = {
-            'initial_balls': self.env.initial_balls,
-            'other_lava_cells': self.env.lava_cells,
+            'initial_balls': grid_objects['balls'],
+            'other_lava_cells': grid_objects['lava'],
             'num_lava_cells': self.env.num_lava_cells,
             'max_steps': self.env.max_steps,
         }
@@ -195,7 +198,8 @@ class GameControl:
                 self.episode_cumulative_rewards.append(self.episode_cumulative_rewards[-1] + reward)
             else:
                 self.episode_cumulative_rewards.append(reward)
-            self.episode_images.append(self.env.get_full_image())  # store the grid image for feedback page
+            # print(f"add new image of the episode, self.simillar_level={self.simillar_level_env}, env.partial_env={self.env.partial_obs}")
+            # print(f"full render == render: {np.array_equal(self.env.get_full_image(), self.env.render())}")            
             self.episode_obs.append(observation)
             self.episode_agent_locations.append((self.env.get_wrapper_attr('agent_pos'), self.env.get_wrapper_attr('agent_dir')))
         
@@ -204,9 +208,7 @@ class GameControl:
             # self.episode_images.append(self.env.get_full_image())  # store the grid image for feedback page
             # self.episode_obs.append(observation)
             # self.episode_agent_locations.append((self.env.get_wrapper_attr('agent_pos'), self.env.get_wrapper_attr('agent_dir')))
-        
-        
-
+        reward = round(reward, 1)
         self.score += reward
         self.score = round(self.score, 2)
         if done:
@@ -219,6 +221,8 @@ class GameControl:
             
         img = self.env.render()
         image_base64 = image_to_base64(img)  # Convert to base64
+        self.episode_images.append(img if self.feedback_partial_view else self.env.get_full_image())  # store the grid image for feedback page
+
         self.current_obs = observation
         self.agent_last_pos = self.env.get_wrapper_attr('agent_pos')
         return {'image': image_base64, 
@@ -247,7 +251,6 @@ class GameControl:
     @timeit
     def get_initial_observation(self):
         self.current_obs = self.reset()
-        self.episode_images = [self.env.get_full_image()]  # for the overview image
         self.agent_last_pos = self.env.get_wrapper_attr('agent_pos')
         self.episode_actions = []
         self.episode_cumulative_rewards = []
@@ -255,6 +258,8 @@ class GameControl:
         if img is None:
             raise Exception("initial observation rendering failed")
         image_base64 = image_to_base64(img)
+        ep_img = img if self.feedback_partial_view else self.env.get_full_image()
+        self.episode_images = [ep_img]  # for the overview image
         self.episode_num += 1
         print(f"Episode {self.episode_num} started ________________________________________________________________________________________")
         return {'image': image_base64, 
@@ -425,14 +430,10 @@ class GameControl:
                 self.ppo_agent = self.prev_agent
             else:
                 self.prev_agent = self.ppo_agent
-        # self.saved_env.reset()
-        print("(agents_different_routs)  simillarity_level: ", simillarity_level)
         if int(self.simillar_level_env) == 0:
             env = self.saved_env
-            print("simillarity level is 0 so we take the base env")
-        else: # simillarity level = 1
+        else: # simillarity level > 0
             env = self.find_simillar_env(simillarity_level)
-            print(f"simillarity level is {self.simillar_level_env} so we create a simillar env based on the feedback")
         copy_env = copy.deepcopy(env)
         img = copy_env.get_full_image()
         updated_move_sequence, _, _, agent_actions = capture_agent_path(copy_env, self.ppo_agent)
@@ -481,7 +482,7 @@ class GameControl:
             images_buf_list = None
 
         return {'path_image': path_img_base64,
-                'actions': actions_locations, # actions :[{'action', 'x', 'y', 'width', 'height'},..]
+                'actions': actions_locations, # actions :[{'action', 'action_dir', 'x', 'y', 'width', 'height'},..]
                 # 'cumulative_rewards': self.episode_cumulative_rewards,
                 'invalid_moves': self.invalid_moves,
                 'score': self.last_score,
@@ -494,8 +495,8 @@ class GameControl:
         initial_kwargs = {
             'initial_balls': self.saved_env_info['initial_balls'],
             'other_lava_cells': self.saved_env_info['other_lava_cells'],
-            'infront_objects': [self.infront_base_objects, self.infront_objects, self.infront_feedback_objects],
-            "simillarity_level": simillarity_level,
+            # 'infront_objects': [self.infront_base_objects, self.infront_objects, self.infront_feedback_objects],
+            "simillarity_level": self.simillar_level_env,
             "from_unique_env": False,
             }
 
@@ -507,7 +508,7 @@ class GameControl:
                             max_steps=self.saved_env_info['max_steps'],
                             num_lava_cells=self.saved_env_info['num_lava_cells'],
                             partial_obs=True,
-                            simillarity_level=simillarity_level,
+                            simillarity_level=self.simillar_level_env,
                             )
         sim_env = NoDeath(ObjObsWrapper(sim_env), no_death_types=("lava",), death_cost=self.lava_penalty)
         sim_env.unwrapped.reset(**initial_kwargs) 
@@ -576,64 +577,43 @@ def create_new_env(lava_penalty) -> CustomEnv:
     return env_instance
 
 ''' Models that need to be:
-AllColors LL - 2,2,2,0,0.1    -   models/2,2,2,0,0.1Steps100Grid8_20250526/best_model.zip   /   models/3,3,4,0.2,0.05Steps50Grid8_20250604/best_model.zip  /  models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip
-AllColors LH - 2,2,2,-4,0.1    -  models/2,2,4,-3,0.1Steps50Grid8_20250611/best_model.zip   /  models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip  
-OnlyBlue LH - -0.5,-0.5,4,-3,0.1  -    models/-0.5,-0.5,4,-3,0.1Steps50Grid8_20250612/best_model.zip
+AllColors LL - 2,2,2,0,0.1    -   models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip   /   models/3,3,4,0.2,0.05Steps50Grid8_20250604/best_model.zip
+AllColors LH - 2,2,2,-4,0.1    -  models/2,2,4,-4,0.1Steps50Grid8_20250617/best_model.zip   /  models/2,2,4,-3,0.1Steps50Grid8_20250611/best_model.zip  
+OnlyBlue LH - -0.5,-0.5,4,-3,0.1  -    
 OnlyBlue LL - 0, 0, 4, 0, 0,1
-NoRed LL - 0, 3, 3, 0, 0.1  -  models/-0.1,3,3,0,0.1Steps50Grid8_20250604/best_model.zip
-NoRed LH - 0, 3,3, -3, 0.1  -  models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip   /    models/-0.5,2,4,-2,0.1Steps50Grid8_20250612/best_model.zip
-NoGreen LL - 3,0,3,0, 0.1  -   
+NoRed LL - 0, 3, 3, 0, 0.1  -  models/-0.5,3,4,0.2,0.1Steps50Grid8_20250616/best_model.zip   /   models/-1,3,4,0.2,0.2Steps50Grid8_20250617/best_model.zip
+NoRed LH - 0, 3, 3, -3, 0.1  -  models/-1,3,4,-3,0.1Steps60Grid8_20250618/best_model.zip   /   models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip   /   
+                                models/-0.5,3,4,-3,0.1Steps50Grid8_20250616/best_model.zip 
+NoGreen LL - 3, 0, 3, 0, 0.1  -   
 NoGreen LH - 3, 0, 3, -3, 0.1  -   
-OnlyGreen LL - -0.1, 3, -0.1, 0, 0.01  -   models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip
+OnlyGreen LL - -0.1, 3, -0.1, 0, 0.01  -   models/-1,4,-1,0.2,0.1Steps60Grid8_20250618/best_model
 
 '''
 new_models_dict = {
-    1: {"path": "models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip", "name": "AllColorsLL_0526", "vector": (3, 3, 3, 0.1, 0.1)},
-    2: {"path": "models/3,3,4,0.2,0.05Steps50Grid8_20250604/best_model.zip", "name": "AllColorsLL_0604", "vector": (3, 3, 4, 0.2, 0.05)},
-    3: {"path": "models/2,2,4,-3,0.1Steps50Grid8_20250611/best_model.zip", "name": "AllColorsLH_0611", "vector": (2, 2, 4, -3, 0.1)},
-    4: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector": (2, 2, 2, -4, 0.02)},
-    5: {"path": "models/-0.5,-0.5,4,-3,0.1Steps50Grid8_20250612/best_model.zip", "name": "OnlyBlueLH_0507", "vector": (-0.5, -0.5, 4, -3, 0.1)},
-    6: {"path": "models/-0.1,3,3,0,0.1Steps50Grid8_20250604/best_model.zip", "name": "NoRedLL_0604", "vector": (-0.1, 3, 3, 0, 0.1)},
-    7: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector": (-0.1, 3, -0.1, 0, 0.01)},
-    8: {"path": "models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip", "name": "NoRedLH_G_0612", "vector": (-0.5, 2, 4, -3, 0.1)},
-    9: {"path": "models/-0.5,2,4,-2,0.1Steps50Grid8_20250612/best_model.zip", "name": "NoRedLH_W_0612", "vector": (-0.5, 2, 4, -2, 0.1)},
+    1: {"path": "models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip", "name": "AllColorsLL1_0526", "vector": (3, 3, 3, 0.1, 0.1)},
+    2: {"path": "models/3,3,4,0.2,0.05Steps50Grid8_20250604/best_model.zip", "name": "AllColorsLL2_0604", "vector": (3, 3, 4, 0.2, 0.05)},
+    3: {"path": "models/2,2,4,-4,0.1Steps50Grid8_20250617/best_model.zip", "name": "AllColorsLH_0617", "vector": (2, 2, 4, -3, 0.1)},
+    4: {"path": "models/2,2,4,-4,0.1Steps50Grid8_20250617/best_model.zip", "name": "AllColorsLH_0617", "vector": (2,2,4,-3,0.1)}, # same as 3
+    5: {"path": "models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip", "name": "NoRedLH1_0612", "vector": (-0.5,2,4,-3,0.1)},
+    6: {"path": "models/-0.5,3,4,0.2,0.1Steps50Grid8_20250616/best_model.zip", "name": "NoRedLL_0616", "vector": (-0.5, 3, 4, 0.2, 0.1)},
+    7: {"path": "models/-1,4,-1,0.2,0.1Steps60Grid8_20250618/best_model", "name": "OnlyGreenLL_0429", "vector": (-0.1, 3, -0.1, 0, 0.01)},
+    8: {"path": "models/-1,3,4,-3,0.1Steps60Grid8_20250618/best_model.zip", "name": "NoRedLH2_0618", "vector": (-1, 3, 4, -3, 0.1)},
+    9: {"path": "models/-0.5,3,4,-3,0.1Steps50Grid8_20250616/best_model.zip", "name": "NoRedLH3_0612", "vector": (-0.5, 3, 4, -3, 0.1)},
+    10:{"path": "models/-1,3,4,0.2,0.2Steps50Grid8_20250617/best_model.zip", "name": "NoRedLL_G_0617", "vector": (-1, 3, 4, 0.2, 0.2)},
 }
 
 new_models_distance = {
-    1: [(2, 'AllColorsLL_0604'), (6, 'NoRedLL_0604'), (3, 'AllColorsLH_0611'), (7, 'OnlyGreenLL_0429')],
-    2: [(1, 'AllColorsLL_0526'), (6, 'NoRedLL_0604'), (3, 'AllColorsLH_0611')],
-    3: [(4, 'AllColorsLH_0422'), (9, 'NoRedLH_W_0612'), (2, 'AllColorsLL_0604'), (5, 'OnlyBlueLH_0507')],
-    4: [(3, 'AllColorsLH_0611'), (8, 'NoRedLH_G_0612'), (9, 'NoRedLH_W_0612'), (5, 'OnlyBlueLH_0507'), (1, 'AllColorsLL_0526')],
-    5: [(8, 'NoRedLH_G_0612'), (9, 'NoRedLH_W_0612'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0422'), (6, 'NoRedLL_0604')],
-    6: [(9, 'NoRedLH_W_0612'), (7, 'OnlyGreenLL_0429'), (1, 'AllColorsLL_0526'), (2, 'AllColorsLL_0604'), (8, 'NoRedLH_G_0612')],
-    7: [(6, 'NoRedLL_0604'), (1, 'AllColorsLL_0526'), (9, 'NoRedLH_W_0612'), (4, 'AllColorsLH_0422'), (2, 'AllColorsLL_0604')],
-    8: [(9, 'NoRedLH_W_0612'), (3, 'AllColorsLH_0611'), (5, 'OnlyBlueLH_0507'), (6, 'NoRedLL_0604'), (4, 'AllColorsLH_0422')],
-    9: [(8, 'NoRedLH_G_0612'), (6, 'NoRedLL_0604'), (3, 'AllColorsLH_0611'), (5, 'OnlyBlueLH_0507'), (4, 'AllColorsLH_0422')]
+  1: [(2, 'AllColorsLL2_0604'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0411'), (6, 'NoRedLL_0616')],
+  2: [(1, 'AllColorsLL1_0526'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0411'), (7, 'OnlyGreenLL_0429')],
+  3: [(4, 'AllColorsLH_0411'), (6, 'NoRedLL_0616'), (9, 'NoRedLH3_0612'), (2, 'AllColorsLL2_0604')],
+  4: [(3, 'AllColorsLH_0611'), (5, 'NoRedLH1_0612'), (9, 'NoRedLH3_0612'), (2, 'AllColorsLL2_0604')],
+  5: [(9, 'NoRedLH3_0612'), (8, 'NoRedLH2_0618'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0411')],
+  6: [(10, 'NoRedLL_G_0617'), (8, 'NoRedLH2_0618'), (5, 'NoRedLH1_0612'), (9, 'NoRedLH3_0612')],
+  7: [(6, 'NoRedLL_0616'), (10, 'NoRedLL_G_0617'), (8, 'NoRedLH2_0618'), (9, 'NoRedLH3_0612')],
+  8: [(9, 'NoRedLH3_0612'), (5, 'NoRedLH1_0612'), (10, 'NoRedLL_G_0617'), (3, 'AllColorsLH_0611')],
+  9: [(8, 'NoRedLH2_0618'), (5, 'NoRedLH1_0612'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0411')],
+  10: [(6, 'NoRedLL_0616'), (8, 'NoRedLH2_0618'), (9, 'NoRedLH3_0612'), (5, 'NoRedLH1_0612'), (3, 'AllColorsLH_0611')]
 }
-
-# new_models_dict = {
-#     1: {"path": "models/2,2,2,0,0.1Steps100Grid8_20250526/best_model.zip", "name": "AllColorsLL_0526", "vector":(2,2,2,0,0.1)},
-#     2: {"path": "models/3,-1,3,0.1,0.05Steps50Grid8_20250601/best_model.zip", "name": "NoGreenLL_0601", "vector":(3,-1,3,0.1,0.05)},
-#     3: {"path": "models/2,2,2,-4,0.02Steps100Grid8_20250422/best_model.zip", "name": "AllColorsLH_0422", "vector":(2,2,2,-4,0.02)},
-#     4: {"path": "models/-0.1,-0.1,4,-4,0.1Steps100Grid8_20250507/best_model.zip", "name": "OnlyBlueLH_0427", "vector":(-0.1,-0.1,4,-4,0.1)},
-#     5: {"path": "models/-0.1,3,-0.1,0,0.01Steps100Grid8_20250429/best_model.zip", "name": "OnlyGreenLL_0429", "vector":(-0.1,3,-0.1,0,0.01)},
-#     6: {"path": "models/-1,3,3,0.1,0.05Steps50Grid8_20250601/best_model.zip", "name": "NoRedLL_0601", "vector":(-1,3,3,0.1,0.05)},
-#     7: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0421", "vector":(3,3,-1,-2,0.1)},
-#     8: {"path": "models/3,3,-1,0,0.1Steps100Grid8_20250422/best_model.zip", "name": "NoBlueLL_0422", "vector":(3,3,-1,0,0.1)},
-    
-# }
-
-
-# new_models_distance = {
-#     1: [(8, 'AllColorsLL_0421'), (2, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')],
-#     2: [(1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422')],
-#     3: [(4, 'OnlyBlueLH_0427'), (7, 'NoBlueLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-#     4: [(3, 'AllColorsLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421'), (5, 'OnlyGreenLL_0429')],
-#     5: [(2, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422'), (6, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-#     6: [(2, 'OnlyRedLL_0429'), (7, 'NoBlueLH_0422'), (5, 'OnlyGreenLL_0429'), (1, 'AllColorsLL_0421'), (8, 'AllColorsLL_0421')],
-#     7: [(5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (2, 'OnlyRedLL_0429'), (1, 'AllColorsLL_0421')],
-#     8: [(1, 'AllColorsLL_0421'), (2, 'OnlyRedLL_0429'), (3, 'AllColorsLH_0422'), (5, 'OnlyGreenLL_0429'), (6, 'OnlyRedLL_0429')]
-# }
 
 
 actions_dict = {
@@ -719,12 +699,12 @@ async def start_game(sid, data, callback=None):
     
     sid_to_user[sid] = user_id
     if user_id not in game_controls:
-        simillarity_level = data.get("group", 0)
+        simillarity_level = int(data.get("group", 1))
         # Create a new environment and GameControl instance for the user.
         env_instance = create_new_env(lava_penalty=-3)
         # new_game = GameControl(env_instance, model_paths, simillar_level_env=0)
         # simillarity_level = random.randint(0, 5)
-        new_game = GameControl(env_instance, new_models_dict, new_models_distance, user_id, simillar_level_env=simillarity_level)
+        new_game = GameControl(env_instance, new_models_dict, new_models_distance, user_id, simillar_level_env=simillarity_level, feedback_partial_view=True)
         game_controls[user_id] = new_game
         print(f"Created new game control for user {user_id} with simillarity level {simillarity_level}")
     else:
@@ -816,7 +796,6 @@ async def play_entire_episode(sid):
         await asyncio.sleep(0.3)
         await finish_turn(response, user_game, sid)
         if response["done"]:
-            print("Agent Episode finished")
             await asyncio.sleep(0.1)
             break
 
@@ -831,7 +810,7 @@ async def compare_agents(sid, data): # data={ playerName: playerNameInput.value,
     if res is None:
         await next_episode(sid)
         return
-    if user_game.simillar_level_env == 2:
+    if user_game.simillar_level_env == 0:
         # just showing a simple text : "the agent has been updated"
         return
     res = user_game.agents_different_routs(user_game.simillar_level_env)#data['simillarity_level'])

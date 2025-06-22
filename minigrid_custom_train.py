@@ -37,7 +37,7 @@ def set_random_seed(seed):
     if th.cuda.is_available():
         th.cuda.manual_seed(seed)
         th.cuda.manual_seed_all(seed)
-    pass
+
 
 # class ObjObsWrapper(ObservationWrapper):
     def __init__(self, env):
@@ -304,6 +304,7 @@ def main(**kwargs):
     parser.add_argument(
         "--load_model", type=str, default=None, help="load a trained model"
     )
+    parser.add_argument("--option", type=int, default=-1, help="the option for the env rewards")
 
     args = parser.parse_args()
     # parser.add_argument("--render", action="store_true", help="render trained models")
@@ -312,7 +313,7 @@ def main(**kwargs):
     # args = parser.parse_args()
 
     policy_kwargs = dict(features_extractor_class=ObjEnvExtractor,) # )UpgradedObjEnvExtractor
-    # set_random_seed(args.seed)
+    # set_random_seed(seed=42)
 
     # def linear_schedule(initial_value):
     #     def schedule(progress_remaining):
@@ -340,29 +341,30 @@ def main(**kwargs):
     
     colors_options = [
         # AllColors LL  - 0
-        {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': 0.2, 'step': 0.2},
+        {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
         # AllColors LH  - 1
         {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': -4, 'step': 0.1},
         # OnlyBlue LH  - 2
         {'balls': {'red': -0.5, 'green': -0.5, 'blue': 4}, 'lava': -4, 'step': 0.1},
         # OnlyBlue LL  - 3
-        {'balls': {'red': -0.5, 'green': -0.5, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
+        {'balls': {'red': -0.1, 'green': -0.1, 'blue': 4}, 'lava': 0.1, 'step': 0.1},
         # NoRed LL  - 4
-        {'balls': {'red': -0.5, 'green': 3, 'blue': 4}, 'lava': -0.5, 'step': 0.1},
+        {'balls': {'red': -1, 'green': 3, 'blue': 4}, 'lava': 0.2, 'step': 0.2},
         # NoRed LH  - 5
-        {'balls': {'red': -0.5, 'green': 3, 'blue': 4}, 'lava': -3, 'step': 0.1},
+        {'balls': {'red': -1, 'green': 3, 'blue': 4}, 'lava': -3, 'step': 0.1},
         # NoGreen LL  - 6   
-        {'balls': {'red': 2, 'green': -0.5, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
+        {'balls': {'red': 2, 'green': -1, 'blue': 4}, 'lava': 0.2, 'step': 0.2},
         # NoGreen LH - 7
         {'balls': {'red': 3, 'green': -0.5, 'blue': 4}, 'lava': -3, 'step': 0.1},
         # OnlyGreen LH - 8
         {'balls': {'red': -0.5, 'green': 4, 'blue': -0.5}, 'lava': -3, 'step': 0.1},
         # OnlyGreen LL - 9
-        {'balls': {'red': -0.5, 'green': 4, 'blue': -0.5}, 'lava': 0.2, 'step': 0.1},
-    ] # size = 10
-                        
+        {'balls': {'red': -1, 'green': 4, 'blue': -1}, 'lava': 0.2, 'step': 0.1},
+    ]  # size = 10
 
-    option = 7
+    option = args.option
+    if option < 0 or option >= len(colors_options):
+        option = 3
     # else:
     lava_cost = colors_options[option]['lava']  
     step_cost = colors_options[option]['step']
@@ -384,6 +386,7 @@ def main(**kwargs):
 
     # if args.train:
     device = "cuda" if th.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
 
     train_env = CustomEnv(
             grid_size=grid_size,
@@ -411,8 +414,8 @@ def main(**kwargs):
     pref_str = ",".join([str(i) for i in preference_vector])
     save_name = pref_str + f"Steps{max_steps}Grid{grid_size}_{stamp}"
 
-    if step_count_observation:
-        save_name = save_name[:-9] + "_Step_Count" + save_name[-9:]
+    # if step_count_observation:
+    #     save_name = save_name[:-9] + "_Step_Count" + save_name[-9:]
 
     print("start training model with name:", save_name)
 
@@ -487,15 +490,15 @@ def main(**kwargs):
             "MultiInputPolicy",
             train_env,
             policy_kwargs=policy_kwargs,
-            verbose=0,
+            verbose=1,
             learning_rate=1e-4,
             ent_coef=1e-2,
-            n_steps=64,
-            batch_size=32,
+            n_steps=32,
+            batch_size=16,
             gamma=0.98,
-            # gae_lambda=0.95,
+            gae_lambda=0.95,
             n_epochs=10,
-            clip_range=0.2,
+            clip_range=0.3,
             device=device
         )
         # Copy parameters from the old model
@@ -521,9 +524,10 @@ def main(**kwargs):
     print(f"observation state: {train_env.observation_space}")
 
     # Start training
+    model.policy.to("cuda")  # Force policy to CUDA
     print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
     model.learn(
-        2e5,
+        4e5,
         tb_log_name=f"{stamp}",
         callback=[eval_callback]#, wandb_eval_callback]
     )

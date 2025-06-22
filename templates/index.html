@@ -288,11 +288,13 @@
 
     <!-- Welcome Page -->
     <div id="welcome-page" class="page" style="display: none;">
-        <h2>Welcome to the Game</h2>
-        <p>In this part, a pre-trained AI agent will be controlling the player in the game. <br>
-            This agent is not perfect — it sometimes makes mistakes or chooses suboptimal actions. Your mission is to help train this agent to 
-            become the best it can, the better the agent you can get to the more prize you will get. <br>
-        <input type="text" id="player-name" placeholder="Enter your name">
+        <h2 style="font-size: 2.5em; margin-bottom: 20px;">Welcome to the Game</h2>
+        <p style="font-size: 1.2em; line-height: 1.4;">
+            In this part, a pre-trained AI agent will be controlling the player in the game. <br>
+            This agent is not perfect — it sometimes makes mistakes or chooses suboptimal actions. <br>
+            Your mission is to help train this agent to become the best it can, the better the agent you can get to the more prize you will get. <br>
+        </p>
+        <input type="text" id="player-name" placeholder="Enter your Prolific ID">
         <button id="welcome-continue-button">Continue</button>
     </div>
 
@@ -355,7 +357,8 @@
 
     <!-- Phase2 - Agent Play Page -->
     <div id="ph2-game-page" class="page">
-        <p>Let the smart agent play for you, and see where it makes mistakes. When the round is over, you will get the chance to give feedback.</p>
+        <p style="font-size: 1.2em;">
+            Let the smart agent play for you, and see where it makes mistakes. When the round is over, you will get the chance to give feedback.</p>
         <!-- Start Agent Button -->
         <div id="button-container-ph2" style="margin-top: 5px; text-align: center;">
             <button id="start-agent-button" style="display: block;">Start Agent</button>
@@ -400,7 +403,7 @@
 <!-- Overview Page -->
 <div id="overview-page" class="page" style="display: none;">
     <h2>Round Overview</h2>
-    <p>Nevigate between actions with Back/Next buttons. <br>
+    <p style="font-size: 1.2em;">Nevigate between actions with Back/Next buttons. <br>
         The feedback is given by selecting a new action from the dropdown. <br>
         If more than one correction is made on the same action, only the last one will count.</p>
   
@@ -475,7 +478,7 @@
 
     <!-- Summary Page -->
     <div id="summary-page" class="page">
-        <h2>Game Ended</h2>
+        <h2>Game Ended - Well Done</h2>
         <div style="font-size: 1.2em; color: #333; margin-bottom: 10px;">confirmation code - APPL</div>
         <div id="score-list-container">
             <ul id="score-list"></ul>

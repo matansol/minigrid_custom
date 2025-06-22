@@ -360,9 +360,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
         // After 2 seconds, hide loader and show the correct page based on group
         setTimeout(() => {
             hideLoader();
-            if (parseInt(group) === 2) {
+            if (parseInt(group) === 0) {
                 showPage('simple-update-page');
-            } else if (parseInt(group) < 2) {
+            } else {
                 showPage('compare-agent-update-page');
             }
         }, 2000);
@@ -515,6 +515,39 @@ function handleActionSelection(index, newAction) {
     showCurrentAction();
 }
 
+
+// const scale =  2;    // enlarge image (default: 2x)
+// const margin =  10; // margin around image (default: 10px)
+
+// // Constants similar to your Python code
+// const startPoint = { x: 50, y: 50 };
+// const arrowSize = 20;
+// const arrowHeadSize = 12;
+// const smallShift = 9;
+// const allArrowSize = arrowSize + arrowHeadSize;
+
+// // Settings for drawing arrows for move actions (will also be scaled)
+// const moveArrowSizes = {
+//     'up':    { dx: 0,  dy: -20, offsetX: 0,  offsetY: -allArrowSize },
+//     'down':  { dx: 0,  dy: 20,  offsetX: 0,  offsetY:  allArrowSize },
+//     'right': { dx: 20, dy: 0,   offsetX: allArrowSize, offsetY: 0 },
+//     'left':  { dx: -20,dy: 0,   offsetX: -allArrowSize, offsetY: 0 }
+// };
+
+// const turnArrowSizes = {
+//     'turn up':    { dx: 0,  dy: -5 },
+//     'turn down':  { dx: 0,  dy: 5 },
+//     'turn right': { dx: 5,  dy: 0 },
+//     'turn left':  { dx: -5, dy: 0 }
+// };
+
+// const pickupDirection = {
+//     'up':    { dx: 0,  dy: -1 },
+//     'down':  { dx: 0,  dy: 1 },
+//     'left':  { dx: -1, dy: 0 },
+//     'right': { dx: 1,  dy: 0 }
+// };
+
 function showCurrentAction() {
     if (actions.length === 0) return;
     const currentAction = actions[currentActionIndex];
@@ -528,16 +561,17 @@ function showCurrentAction() {
     if (parent && window.getComputedStyle(parent).position === 'static') {
         parent.style.position = 'relative';
     }
-    overviewGameImage.onload = function() {
-        // Draw feedback symbol if feedback action exists for this index
-        if (feedbackActionMap[currentActionIndex]) {
-            const { x, y, width, height } = actions[currentActionIndex];
-            if (typeof x === 'number' && typeof y === 'number') {
-                const gridSize = actions[currentActionIndex].grid_size || width || 8;
-                drawFeedbackSymbolOnImageAtPos(overviewGameImage, feedbackActionMap[currentActionIndex], x, y, gridSize);
-            }
-        }
-    };
+    // overviewGameImage.onload = function() {
+    //     // Draw feedback symbol if feedback action exists for this index
+    //     if (feedbackActionMap[currentActionIndex]) {
+    //         const {actionDir, x, y, width, height } = actions[currentActionIndex];
+    //         console.log("(showCurrentAction)  action_dir:", actionDir, "x:", x, "y:", y);
+    //         if (typeof x === 'number' && typeof y === 'number') {
+    //             const gridSize = actions[currentActionIndex].grid_size || width || 8;
+    //             drawFeedbackSymbolOnImageAtPos(overviewGameImage, feedbackActionMap[currentActionIndex], actionDir, x, y, gridSize);
+    //         }
+    //     }
+    // };
     overviewGameImage.src = 'data:image/png;base64,' + feedbackImages[currentActionIndex];
     currentActionElement.textContent = currentAction.action;
 
@@ -555,21 +589,9 @@ function showCurrentAction() {
     } else {
         nextActionButton.style.display = 'inline-block';
     }
-
-    console.log('showCurrentAction feedbackActionMap:', feedbackActionMap);
-    // Draw feedback symbol if feedback action exists for this index
-    setTimeout(() => {
-        if (feedbackActionMap[currentActionIndex]) {
-            const { x, y, width, height } = actions[currentActionIndex];
-            if (typeof x === 'number' && typeof y === 'number') {
-                const gridSize = actions[currentActionIndex].grid_size || width || 8;
-                drawFeedbackSymbolOnImageAtPos(overviewGameImage, feedbackActionMap[currentActionIndex], x, y, gridSize);
-            }
-        }
-    }, 100); // Wait for image to load
 }
 
-function drawFeedbackSymbolOnImageAtPos(imgElement, actionName, gridX, gridY, gridSize = 8) {
+function drawFeedbackSymbolOnImageAtPos(imgElement, actionName, actionDir, gridX, gridY, gridSize = 8) {
     if (imgElement.width === 0 || imgElement.height === 0) {
         console.warn('Image not loaded or has zero size');
         return;
@@ -591,6 +613,31 @@ function drawFeedbackSymbolOnImageAtPos(imgElement, actionName, gridX, gridY, gr
 
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+    if (moveArrowSizes.hasOwnProperty(actionDir)) {
+        // Draw feedback arrow (scale distances)
+        drawArrow(ctx, gridX, gridY,
+                    moveArrowSizes[actionDir].dx * scale, moveArrowSizes[actionDir].dy * scale,
+                    10 * scale, 'cyan');
+        // Draw the actual arrow
+        const moveColor = config.moveColor || 'orange';
+        drawArrow(ctx, gridX, gridY,
+                    moveArrowSizes[actionDir].dx * scale, moveArrowSizes[actionDir].dy * scale,
+                    10 * scale, moveColor);
+
+        
+    }
+    else if (turnArrowSizes.hasOwnProperty(actionDir)) {
+        // Draw turn arrow (feedback then actual) with scaling
+        drawArrow(ctx, gridX, gridY,
+                    turnArrowSizes[actionDir].dx * scale, turnArrowSizes[actionDir].dy * scale,
+                    7 * scale, 'cyan');
+        const turnColor = config.turnColor || 'orange';
+        drawArrow(ctx, gridX, gridY,
+                    turnArrowSizes[actionDir].dx * scale, turnArrowSizes[actionDir].dy * scale,
+                    10 * scale, turnColor);
+    }
 
     // Calculate sizes based on grid
     const cellW = canvas.width / gridSize;
@@ -766,18 +813,6 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
         'right': { dx: 1,  dy: 0 }
     };
 
-    // // Marker sizes for overlay (used as is; you can scale these too if needed)
-    // const markSizes = {
-    //     'move_vertical': { width: 25, height: 70 },
-    //     'move_horizontal': { width: 80, height: 20 },
-    //     'turn': { width: 20, height: 20 },
-    //     'pickup': { width: 20, height: 20 }
-    // };
-
-    // Marker offsets (we will also scale these)
-    // let markX = (startPoint.x + 80) * scale + margin;
-    // let markY = (startPoint.y + 40) * scale + margin;
-
     // Obtain canvas and its context
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
@@ -805,6 +840,7 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
 
         moveSequence.forEach((item, i) => {
             const actionDir = item[0];
+            console.log("(drawPathOnCanvas)  x=", currentPoint.x, "y=", currentPoint.y)
 
             // Optional: Draw a convergence mark if configured
             if (config.convergeActionLocation !== undefined && i === config.convergeActionLocation) {
@@ -828,17 +864,6 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
                 currentPoint.x += moveArrowSizes[actionDir].offsetX * scale;
                 currentPoint.y += moveArrowSizes[actionDir].offsetY * scale;
                 
-                // // Adjust marker coordinates as in your Python logic (scaled)
-                // if (actionDir === 'up') {
-                //     markY -= (25 + allArrowSize) * scale;
-                // } else if (actionDir === 'left') {
-                //     markX -= (43 + allArrowSize) * scale;
-                // }
-                // if (actionDir === 'down') {
-                //     markY += (25 + allArrowSize) * scale;
-                // } else if (actionDir === 'right') {
-                //     markX += (43 + allArrowSize) * scale;
-                // }
             }
             else if (turnArrowSizes.hasOwnProperty(actionDir)) {
                 // Draw turn arrow (feedback then actual) with scaling
@@ -849,17 +874,6 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
                 drawArrow(ctx, currentPoint.x, currentPoint.y,
                           turnArrowSizes[actionDir].dx * scale, turnArrowSizes[actionDir].dy * scale,
                           10 * scale, turnColor);
-                // Adjust marker coordinates for turn (scaled)
-                // const shiftSize = 17 * scale;
-                // const turnShifts = {
-                //     'turn up': { x: 0, y: -shiftSize },
-                //     'turn down': { x: 0, y: shiftSize },
-                //     'turn right': { x: shiftSize, y: 0 },
-                //     'turn left': { x: -shiftSize, y: 0 }
-                // };
-                // const shift = turnShifts[actionDir];
-                // markX += shift.x;
-                // markY += shift.y;
             }
             else if (actionDir.startsWith('pickup')) {
                 // Draw a pickup marker (e.g., a star), scaling offset as well

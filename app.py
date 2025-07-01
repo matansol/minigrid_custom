@@ -51,7 +51,6 @@ SessionLocal = sessionmaker(bind=engine)
 
 Base = declarative_base()
 # Global variable to control database saving
-save_to_db = True
 
 class Action(Base):
     __tablename__ = "actions"
@@ -175,14 +174,14 @@ class GameControl:
         for action in episode_actions:
             if action == 0:  # turn left
                 agent_dir = turn_agent(agent_dir, "left")
-                move_sequence.append((small_arrow + agent_dir, 'turn left'))
+                move_sequence.append((agent_dir, 'turn left'))
             elif action == 1:  # turn right
                 agent_dir = turn_agent(agent_dir, "right")
-                move_sequence.append((small_arrow + agent_dir, 'turn right'))
+                move_sequence.append((agent_dir, 'turn right'))
             elif action == 2:  # move forward
                 move_sequence.append((agent_dir, 'forward'))
             elif action == 3:  # pickup
-                move_sequence.append(('pickup ' + agent_dir, 'pickup'))
+                move_sequence.append((agent_dir, 'pickup'))
             else:
                 move_sequence.append(("invalide move", "invalide move"))
         return move_sequence
@@ -466,11 +465,14 @@ class GameControl:
     @timeit
     def end_of_episode_summary(self, need_feedback_data:bool = True):
         if need_feedback_data:
+            move_sequence = self.actions_to_moves_sequence(self.episode_actions)
             path_img_base64, actions_locations, images_buf_list = plot_move_sequence_by_parts(
                 self.episode_images,
-                self.actions_to_moves_sequence(self.episode_actions),
+                move_sequence,
                 self.episode_actions,
             )
+            actions_cells = actions_cells_locations(move_sequence)
+            print("actions_cells=", actions_cells   )
         else:
             # path_img_base64, actions_locations, images_buf_list = plot_move_sequence_by_parts(
             #     self.episode_images,
@@ -480,13 +482,15 @@ class GameControl:
             path_img_base64 = None
             actions_locations = None
             images_buf_list = None
+            actions_cells = None
 
         return {'path_image': path_img_base64,
                 'actions': actions_locations, # actions :[{'action', 'action_dir', 'x', 'y', 'width', 'height'},..]
                 # 'cumulative_rewards': self.episode_cumulative_rewards,
                 'invalid_moves': self.invalid_moves,
                 'score': self.last_score,
-                'feedback_images': images_buf_list}
+                'feedback_images': images_buf_list,
+                'actions_cells': actions_cells}
 
     @timeit
     def find_simillar_env(self, simillarity_level=5, deploy=False):
@@ -580,7 +584,7 @@ def create_new_env(lava_penalty) -> CustomEnv:
 AllColors LL - 2,2,2,0,0.1    -   models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip   /   models/3,3,4,0.2,0.05Steps50Grid8_20250604/best_model.zip
 AllColors LH - 2,2,2,-4,0.1    -  models/2,2,4,-4,0.1Steps50Grid8_20250617/best_model.zip   /  models/2,2,4,-3,0.1Steps50Grid8_20250611/best_model.zip  
 OnlyBlue LH - -0.5,-0.5,4,-3,0.1  -    
-OnlyBlue LL - 0, 0, 4, 0, 0,1
+OnlyBlue LL - 0, 0, 4, 0, 0,1  -  models/-1,-1,4,0.2,0.1Steps70Grid8_20250625/best_model.zip
 NoRed LL - 0, 3, 3, 0, 0.1  -  models/-0.5,3,4,0.2,0.1Steps50Grid8_20250616/best_model.zip   /   models/-1,3,4,0.2,0.2Steps50Grid8_20250617/best_model.zip
 NoRed LH - 0, 3, 3, -3, 0.1  -  models/-1,3,4,-3,0.1Steps60Grid8_20250618/best_model.zip   /   models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip   /   
                                 models/-0.5,3,4,-3,0.1Steps50Grid8_20250616/best_model.zip 
@@ -593,7 +597,7 @@ new_models_dict = {
     1: {"path": "models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip", "name": "AllColorsLL1_0526", "vector": (3, 3, 3, 0.1, 0.1)},
     2: {"path": "models/3,3,4,0.2,0.05Steps50Grid8_20250604/best_model.zip", "name": "AllColorsLL2_0604", "vector": (3, 3, 4, 0.2, 0.05)},
     3: {"path": "models/2,2,4,-4,0.1Steps50Grid8_20250617/best_model.zip", "name": "AllColorsLH_0617", "vector": (2, 2, 4, -3, 0.1)},
-    4: {"path": "models/2,2,4,-4,0.1Steps50Grid8_20250617/best_model.zip", "name": "AllColorsLH_0617", "vector": (2,2,4,-3,0.1)}, # same as 3
+    4: {"path": "models/-1,-1,4,0.2,0.1Steps70Grid8_20250625/best_model.zip", "name": "OnlyBlueLL_0625", "vector": (-1,-1,4,0.2,0.1)}, 
     5: {"path": "models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip", "name": "NoRedLH1_0612", "vector": (-0.5,2,4,-3,0.1)},
     6: {"path": "models/-0.5,3,4,0.2,0.1Steps50Grid8_20250616/best_model.zip", "name": "NoRedLL_0616", "vector": (-0.5, 3, 4, 0.2, 0.1)},
     7: {"path": "models/-1,4,-1,0.2,0.1Steps60Grid8_20250618/best_model", "name": "OnlyGreenLL_0429", "vector": (-0.1, 3, -0.1, 0, 0.01)},
@@ -603,15 +607,15 @@ new_models_dict = {
 }
 
 new_models_distance = {
-  1: [(2, 'AllColorsLL2_0604'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0411'), (6, 'NoRedLL_0616')],
-  2: [(1, 'AllColorsLL1_0526'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0411'), (7, 'OnlyGreenLL_0429')],
-  3: [(4, 'AllColorsLH_0411'), (6, 'NoRedLL_0616'), (9, 'NoRedLH3_0612'), (2, 'AllColorsLL2_0604')],
+  1: [(2, 'AllColorsLL2_0604'), (3, 'AllColorsLH_0611'), (4, 'OnlyBlueLL_0625'), (6, 'NoRedLL_0616')],
+  2: [(1, 'AllColorsLL1_0526'), (3, 'AllColorsLH_0611'), (4, 'OnlyBlueLL_0625'), (7, 'OnlyGreenLL_0429')],
+  3: [(4, 'OnlyBlueLL_0625'), (6, 'NoRedLL_0616'), (9, 'NoRedLH3_0612'), (2, 'AllColorsLL2_0604')],
   4: [(3, 'AllColorsLH_0611'), (5, 'NoRedLH1_0612'), (9, 'NoRedLH3_0612'), (2, 'AllColorsLL2_0604')],
-  5: [(9, 'NoRedLH3_0612'), (8, 'NoRedLH2_0618'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0411')],
+  5: [(9, 'NoRedLH3_0612'), (8, 'NoRedLH2_0618'), (3, 'AllColorsLH_0611'), (4, 'OnlyBlueLL_0625')],
   6: [(10, 'NoRedLL_G_0617'), (8, 'NoRedLH2_0618'), (5, 'NoRedLH1_0612'), (9, 'NoRedLH3_0612')],
   7: [(6, 'NoRedLL_0616'), (10, 'NoRedLL_G_0617'), (8, 'NoRedLH2_0618'), (9, 'NoRedLH3_0612')],
   8: [(9, 'NoRedLH3_0612'), (5, 'NoRedLH1_0612'), (10, 'NoRedLL_G_0617'), (3, 'AllColorsLH_0611')],
-  9: [(8, 'NoRedLH2_0618'), (5, 'NoRedLH1_0612'), (3, 'AllColorsLH_0611'), (4, 'AllColorsLH_0411')],
+  9: [(8, 'NoRedLH2_0618'), (5, 'NoRedLH1_0612'), (3, 'AllColorsLH_0611'), (4, 'OnlyBlueLL_0625')],
   10: [(6, 'NoRedLL_0616'), (8, 'NoRedLH2_0618'), (9, 'NoRedLH3_0612'), (5, 'NoRedLH1_0612'), (3, 'AllColorsLH_0611')]
 }
 
@@ -699,11 +703,20 @@ async def start_game(sid, data, callback=None):
     
     sid_to_user[sid] = user_id
     if user_id not in game_controls:
-        simillarity_level = int(data.get("group", 1))
+        # Safely convert group to int, default to 1 if invalid
+        try:
+            group_val = data.get("group", "1")
+            # Check if it's a template variable or other invalid value
+            if isinstance(group_val, str) and "${" in group_val:
+                simillarity_level = 1
+            else:
+                simillarity_level = int(group_val)
+        except (ValueError, TypeError):
+            simillarity_level = 1
+            print(f"Invalid group value: {data.get('group')}, defaulting to 1")
+
         # Create a new environment and GameControl instance for the user.
         env_instance = create_new_env(lava_penalty=-3)
-        # new_game = GameControl(env_instance, model_paths, simillar_level_env=0)
-        # simillarity_level = random.randint(0, 5)
         new_game = GameControl(env_instance, new_models_dict, new_models_distance, user_id, simillar_level_env=simillarity_level, feedback_partial_view=True)
         game_controls[user_id] = new_game
         print(f"Created new game control for user {user_id} with simillarity level {simillarity_level}")
@@ -854,6 +867,7 @@ async def use_old_agent(sid, data):
         return
 
     user_game = game_controls[user_id]
+    print("demonstration_time=", data.demonstration_time)
 
     # Update the agent to the old one
     if user_game.prev_agent is None:
@@ -869,6 +883,7 @@ async def use_old_agent(sid, data):
                     old_agent_path=str(user_game.prev_agent_path),  # adjust as needed
                     new_agent_path=str(user_game.current_agent_path),     # after switching, still same objects
                     timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    demonstration_time=data.demonstration_time,
                     episode_index=user_game.episode_num,
                     choice_to_update=data['use_old_agent'],
                     choice_explanation=data.get('choiceExplanation', ''),
@@ -890,7 +905,7 @@ async def use_old_agent(sid, data):
 
 # ---------------------- RUNNING THE APP -------------------------
 if __name__ == "__main__":
-    save_to_db = True
+    save_to_db = False
     if save_to_db:
         # clear_database()
         create_database()

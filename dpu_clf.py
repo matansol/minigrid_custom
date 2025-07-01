@@ -133,7 +133,7 @@ def get_infront_object(obs, to_print=False):
 
 
 @timeit
-def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves, number of illegal moves, total reward, list of all actions
+def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves (action and diraction, action), number of illegal moves, total reward, list of actions names
     illigal_moves = 0
     last_obs = copy_env.get_wrapper_attr('current_state')
     
@@ -143,14 +143,14 @@ def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of 
     agent_actions = []
     state_record = [last_obs]
     total_reward = 0    
-    done = False
+    derminated = False
     # copy_env = copy.deepcopy(env)
     # plt.imshow(copy_env.render())
-    while not done:
+    while not (derminated or truncated):
         agent_pos_before = copy_env.get_wrapper_attr('agent_pos')
         action, _states = agent.predict(last_obs, deterministic=True)
         agent_actions.append(action)
-        obs, reward, done, _, info = copy_env.step(action)
+        obs, reward, derminated, truncated, info = copy_env.step(action)
         total_reward += reward
         
         if is_illegal_move(action, last_obs, obs, agent_pos_before, copy_env.get_wrapper_attr('agent_pos')):
@@ -165,43 +165,52 @@ def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of 
         
         
     # number_to_action = {0: 'turn right', 1: 'turn left', 3: 'pickup'}
-    small_arrow = 'turn ' # small arrow is used to indicate the agent turning left or right
     agent_dir = "right"
     move_sequence = []
     for action in ligal_actions:
         if action == 0: # turn left
             agent_dir = turn_agent(agent_dir, "left")
-            move_sequence.append((small_arrow + agent_dir, 'turn left'))
+            move_sequence.append((agent_dir, 'turn left'))
         elif action == 1: # turn right
             agent_dir = turn_agent(agent_dir, "right")
-            move_sequence.append((small_arrow + agent_dir, 'turn right'))
+            move_sequence.append((agent_dir, 'turn right'))
         elif action == 2: # move forward
             move_sequence.append((agent_dir, 'forward'))
         elif action == 3: # pickup
-            move_sequence.append(('pickup ' +  agent_dir, 'pickup'))
+            move_sequence.append((agent_dir, 'pickup'))
     return move_sequence, illigal_moves, total_reward, ligal_actions
 
+def actions_cells_locations(move_sequence: list) -> list:
+    x, y = 1,1
+    cells_dir = {"up" :   (0, -1),
+                 "down":  (0, 1),
+                 "right": (1, 0),
+                 "left":  (-1, 0)}
+    actions_cells = [(x,y)]
+    for dir, action in move_sequence:
+        if action == "forward":
+            x += cells_dir[dir][0]
+            y += cells_dir[dir][1]
+        actions_cells.append((x,y))
+    # print("move sequence=", move_sequence)
+    # print("actions_cells", actions_cells)
+    return actions_cells
 
-def convert_move_sequence_to_jason(move_sequence):
+
+def convert_move_sequence_to_jason(move_sequence: list):
     """
     Convert a move_sequence (list of strings) into a JSON-serializable list 
-    where each element is a two-item list: [actionDir, explanation].
+    where each element is a two-item list: [actionDir, action].
     
     Example conversion:
-      "turn left"      -> ["turn left", "turn"]
-      "pickup right"   -> ["pickup right", "pickup"]
+      "left"      -> ["left", "turn left"]
+      "pickup right"   -> ["right", "pickup"]
       "right"          -> ["right", "forward"]
     """
     converted = []
-    for move, action in move_sequence:
-        if move.startswith("turn"):
-            # For turning, we use the string itself as explanation
-            converted.append([move, "turn"])
-        elif move.startswith("pickup"):
-            converted.append([move, "pickup"])
-        else:
-            # Assume all other moves are forward moves
-            converted.append([move, "forward"])
+    for direction, action in move_sequence:
+        converted.append([direction, action])
+
     return json.dumps(converted)
 
 
@@ -221,7 +230,7 @@ def ax_to_feedback_image(ax):
     return img_base64
 
 @timeit
-def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='pink', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
     imgs_action_list = []
     feedback_action_color = 'cyan'
     start_point = (50, 50)
@@ -234,10 +243,10 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
                         'down': (0, 20, 0, all_arrow_size), 
                         'right': (20, 0, all_arrow_size, 0), 
                         'left': (-20, 0, -all_arrow_size, 0)}
-    turn_arrow_sizes = {'turn up': (0, -5),
-                        'turn down': (0, 5),
-                        'turn right': (5, 0),
-                        'turn left': (-5, 0)}
+    turn_arrow_sizes = {'up': (0, -5),
+                        'down': (0, 5),
+                        'right': (5, 0),
+                        'left': (-5, 0)}
     pickup_direction = {'up': (0, -1),
                          'down': (0, 1),
                          'left': (-1, 0),
@@ -259,11 +268,9 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
             # add a rectangle to mark the converging point:
             ax.add_patch(Rectangle((current_point[0] - 10, current_point[1]- 10), 15, 15, color='b', alpha=0.4))
         i += 1
-        full_action = action_dir.split(' ')
-        action = full_action[0]
         action_loc = {'action': actual_action}
         # moving action
-        if action_dir in move_arrow_sizes.keys(): # a big arrow that represents a move
+        if actual_action == 'forward': # a big arrow that represents a move
             # add the action arrow to the feedback arrow and save the image
             ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=feedback_action_color, ec=feedback_action_color)
             imgs_action_list.append(ax_to_feedback_image(ax))
@@ -291,7 +298,7 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
             
         
         #turning action   
-        elif action_dir in turn_arrow_sizes.keys(): # a small arrow that represents a turn or a pickup
+        elif actual_action in turn_arrow_sizes.keys(): # a small arrow that represents a turn or a pickup
             # add the action arrow to the feedback arrow and save the image
             ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=feedback_action_color, ec=feedback_action_color)
             imgs_action_list.append(ax_to_feedback_image(ax))
@@ -299,17 +306,17 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
             # overide the feedback arrow with the real action
             ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=turn_color, ec=turn_color)
             shift_size = 17
-            turnning_mark_shifts = {'turn up': (0, -shift_size), 'turn down': (0, shift_size), 'turn right': (shift_size, 0), 'turn left': (-shift_size, 0)}
+            turnning_mark_shifts = {'up': (0, -shift_size), 'down': (0, shift_size), 'right': (shift_size, 0), 'left': (-shift_size, 0)}
             x_shift, y_shift = turnning_mark_shifts[action_dir]
             # print("turned to:", action_dir)
             
-            if action_dir == 'turn up':
+            if action_dir == 'up':
                 mark_x -= 2
                 # mark_y += -10
-            elif action_dir == 'turn down':
+            elif action_dir == 'down':
                 mark_x -= 2
                 # mark_y += -5
-            elif action_dir == 'turn right':
+            elif action_dir == 'right':
                 mark_x -= 2
                 # mark_y += -10
             else: # turn left
@@ -323,8 +330,8 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
 
             
         # pickup action
-        elif action == 'pickup':        
-            pickup_position = pickup_direction[full_action[1]]
+        elif actual_action == 'pickup':        
+            pickup_position = pickup_direction[action_dir]
 
             ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=feedback_action_color)
             imgs_action_list.append(ax_to_feedback_image(ax))
@@ -348,7 +355,8 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
 # each move with its own image
 @timeit
 # return -> buffer with the last image, actions :[{'action', 'x', 'y', 'width', 'height'},..], imgs_action_list: list of base64 encoded images
-def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='purple', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='pink', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+    print("move sequence:", move_sequence)
     imgs_action_list = []
     feedback_action_color = 'cyan'
     start_point = (50, 50)
@@ -361,10 +369,10 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
                         'down': (0, 20, 0, all_arrow_size), 
                         'right': (20, 0, all_arrow_size, 0), 
                         'left': (-20, 0, -all_arrow_size, 0)}
-    turn_arrow_sizes = {'turn up': (0, -5),
-                        'turn down': (0, 5),
-                        'turn right': (5, 0),
-                        'turn left': (-5, 0)}
+    turn_arrow_sizes = {'up': (0, -5),
+                        'down': (0, 5),
+                        'right': (5, 0),
+                        'left': (-5, 0)}
     pickup_direction = {'up': (0, -1),
                          'down': (0, 1),
                          'left': (-1, 0),
@@ -385,12 +393,11 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
             # add a rectangle to mark the converging point:
             ax.add_patch(Rectangle((current_point[0] - 10, current_point[1]- 10), 15, 15, color='b', alpha=0.4))
         i += 1
-        full_action = action_dir.split(' ')
-        action = full_action[0]
+
         action_loc = {'action': actual_action, 'action_dir': action_dir}
         # moving action
-        if action_dir in move_arrow_sizes.keys(): # a big arrow that represents a move
-            ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=feedback_action_color, ec=feedback_action_color)
+        if actual_action  == 'forward': # a big arrow that represents a move
+            ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc='yellow', ec='yellow') #fc=feedback_action_color, ec=feedback_action_color)
             buf = ax_to_feedback_image(ax)
 
             # overide the feedback arrow with the real action
@@ -413,20 +420,20 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
             
         
         #turning action   
-        elif action_dir in turn_arrow_sizes.keys(): # a small arrow that represents a turn or a pickup
+        elif 'turn' in actual_action: # a small arrow that represents a turn
             # add the action arrow to the feedback arrow and save the image
             ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=feedback_action_color, ec=feedback_action_color)
             buf = ax_to_feedback_image(ax)
             shift_size = 17
-            turnning_mark_shifts = {'turn up': (0, -shift_size), 'turn down': (0, shift_size), 'turn right': (shift_size, 0), 'turn left': (-shift_size, 0)}
+            turnning_mark_shifts = {'up': (0, -shift_size), 'down': (0, shift_size), 'right': (shift_size, 0), 'left': (-shift_size, 0)}
             x_shift, y_shift = turnning_mark_shifts[action_dir]
             # print("turned to:", action_dir)
             
-            if action_dir == 'turn up':
+            if action_dir == 'up':
                 mark_x -= 2
-            elif action_dir == 'turn down':
+            elif action_dir == 'down':
                 mark_x -= 2
-            elif action_dir == 'turn right':
+            elif action_dir == 'right':
                 mark_x -= 2
             else: # turn left
                 mark_x += 5
@@ -435,15 +442,15 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
             action_loc['y'] = mark_y + y_shift
             action_loc['width'] = mark_sizes['turn'][0]
             action_loc['height'] = mark_sizes['turn'][1]
-
             
         # pickup action
-        elif action == 'pickup':        
-            pickup_position = pickup_direction[full_action[1]]
+        elif actual_action == 'pickup':    
+            pickup_position = pickup_direction[action_dir]
 
-            action_sign = ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=feedback_action_color)
+            
+            _ = ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=feedback_action_color)
             buf = ax_to_feedback_image(ax)
-   
+            
             action_loc['x'] = mark_x + 25 * pickup_position[0]
             action_loc['y'] = mark_y + 15 * pickup_position[1]
             action_loc['width'] = mark_sizes['pickup'][0]

@@ -17,6 +17,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback,
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
+
 # from gym.wrappers import TimeLimit
 # from gymnasium import spaces
 # from torch import optim
@@ -274,6 +275,54 @@ class UpgradedObjEnvExtractor(BaseFeaturesExtractor):
                 outputs.append(module(observations[key].float()))
         return th.cat(outputs, dim=1)
 
+class ImageObjEnvExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space: gym.spaces.Dict):
+        super().__init__(observation_space, features_dim=1)
+
+        self.extractors = nn.ModuleDict()
+        total_feature_dim = 0
+
+
+        c, h, w = observation_space.shape[::-1]  # From (H, W, C) to (C, H, W)
+
+        self.extractors["image"] = nn.Sequential(
+                    nn.Conv2d(c, 32, kernel_size=3, stride=1, padding=1),
+                    # nn.BatchNorm2d(32),
+                    nn.ReLU(),
+                    nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+                    # nn.BatchNorm2d(64),
+                    nn.ReLU(),
+                    nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+                    # nn.BatchNorm2d(64),
+                    nn.ReLU(),
+                    nn.Flatten()
+                )
+
+        with th.no_grad():
+            sample = th.as_tensor(observation_space.sample()[None]).float() / 255.0
+            sample = sample.permute(0, 3, 1, 2)  # (B, H, W, C) -> (B, C, H, W)
+            n_flatten = self.extractors["image"](sample).shape[1]
+
+        self.image_linear = nn.Sequential(
+            nn.Linear(n_flatten, 64),
+            nn.ReLU()
+        )
+        total_feature_dim += 64
+
+        self._features_dim = total_feature_dim
+
+    def forward(self, observations: Dict[str, th.Tensor]) -> th.Tensor:
+        outputs = []
+        for key, module in self.extractors.items():
+            if key == "image":
+                x = observations["image"].float() / 255.0
+                x = x.permute(0, 3, 1, 2)  # BCHW, very important
+                x = self.extractors["image"](x)
+                x = self.image_linear(x)
+                outputs.append(x)
+            else:
+                outputs.append(module(observations[key].float()))
+        return th.cat(outputs, dim=1)
 
 def create_env(grid_size, agent_view_size, max_steps, highlight, step_cost, num_objects, lava_cells, color_rewards, train_env=True, image_full_view=False, step_count_observation=False):
     env = CustomEnv(
@@ -345,9 +394,9 @@ def main(**kwargs):
         # AllColors LH  - 1
         {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': -4, 'step': 0.1},
         # OnlyBlue LH  - 2
-        {'balls': {'red': -0.5, 'green': -0.5, 'blue': 4}, 'lava': -4, 'step': 0.1},
+        {'balls': {'red': -2, 'green': -2, 'blue': 4}, 'lava': -4, 'step': 0.1},
         # OnlyBlue LL  - 3
-        {'balls': {'red': -0.1, 'green': -0.1, 'blue': 4}, 'lava': 0.1, 'step': 0.1},
+        {'balls': {'red': -2, 'green': -2, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
         # NoRed LL  - 4
         {'balls': {'red': -1, 'green': 3, 'blue': 4}, 'lava': 0.2, 'step': 0.2},
         # NoRed LH  - 5
@@ -364,7 +413,7 @@ def main(**kwargs):
 
     option = args.option
     if option < 0 or option >= len(colors_options):
-        option = 3
+        option = 2
     # else:
     lava_cost = colors_options[option]['lava']  
     step_cost = colors_options[option]['step']
@@ -404,6 +453,7 @@ def main(**kwargs):
             lava_panishment=lava_cost,
         )
     train_env = NoDeath(ObjObsWrapper(train_env), no_death_types=('lava',), death_cost=lava_cost)
+    # train_env = NoDeath(ObjObsWrapper(ImgObsWrapper(FullyObsWrapper(train_env))), no_death_types=('lava',), death_cost=lava_cost)
     train_env = Monitor(train_env)  # Add Monitor for logging
 
     # Wrap training env
@@ -450,6 +500,7 @@ def main(**kwargs):
             lava_panishment=lava_cost,
         )
     eval_env = NoDeath(ObjObsWrapper(eval_env), no_death_types=('lava',), death_cost=lava_cost)
+    # eval_env = NoDeath(ObjObsWrapper(ImgObsWrapper(FullyObsWrapper(eval_env))), no_death_types=('lava',), death_cost=lava_cost)
 
     # eval_env = VecTransposeImage(eval_env)
     eval_callback = EvalCallback(
@@ -492,7 +543,7 @@ def main(**kwargs):
             policy_kwargs=policy_kwargs,
             verbose=1,
             learning_rate=1e-4,
-            ent_coef=1e-2,
+            ent_coef=5e-3,
             n_steps=32,
             batch_size=16,
             gamma=0.98,
@@ -527,7 +578,7 @@ def main(**kwargs):
     model.policy.to("cuda")  # Force policy to CUDA
     print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
     model.learn(
-        4e5,
+        8e5,
         tb_log_name=f"{stamp}",
         callback=[eval_callback]#, wandb_eval_callback]
     )

@@ -1,121 +1,111 @@
 document.addEventListener('DOMContentLoaded', (event) => {
     console.log('Script Loaded');
     
+    /* ---------------- SOCKET.IO ---------------- */
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const socket = io.connect(protocol + '://' + document.domain + ':' + location.port);
+    const socket   = io.connect(`${protocol}://${document.domain}:${location.port}`);
 
-    const coverStartButton = document.getElementById('cover-start-button');
+    /* ---------------- ELEMENTS ---------------- */
+    const coverStartButton      = document.getElementById('cover-start-button');
     const welcomeContinueButton = document.getElementById('welcome-continue-button');
-    const playerNameInput = document.getElementById('player-name');
+    const playerNameInput       = document.getElementById('player-name');
 
-    // Elements for Phase‑1
-    // const gameImagePh1 = document.getElementById('game-image-ph1');
-    // Elements for Phase‑2
+    // Phase-2
     const ph2PlaceholderSpinner = document.getElementById('ph2-placeholder-spinner');
-    const gameImagePh2 = document.getElementById('game-image-ph2');
-    // Elements for Overview Page
-    // const overviewSpinner = null;
-    const overviewGameImage = document.getElementById('overview-game-image');
-    // Elements for Compare Agent Update Page
-    // const comparePrevSpinner = null;
-    // const compareUpdSpinner = null;
-    // const previousAgentImage = document.getElementById('previous-agent-image');
-    // const updatedAgentImage = document.getElementById('updated-agent-image');
+    const gameImagePh2          = document.getElementById('game-image-ph2');
+    // Overview
+    const overviewGameImage     = document.getElementById('overview-game-image');
+    // Compare-update page
     const compareExplanationInput = document.getElementById('compare-explanation-input');
     const feedbackExplanationInput = document.getElementById('feedback-explanation');
+    let ph2ImageLoaded = false;
+    let phase2_counter = 0;
+
+    /* ───────── ①  READ & STORE “group” FROM URL ───────── */
+    let group = (() => {
+        const qsGroup = new URLSearchParams(location.search).get('group');
+        if (qsGroup !== null) {
+            localStorage.setItem('qual_group', qsGroup);
+            return qsGroup;
+        }
+        return localStorage.getItem('qual_group');   // may be null
+    })();
+    console.log('Participant group =', group);
+
+    /* ---------------- PAGE HELPERS ---------------- */
+    function showPage(pageId) {
+        console.log('showPage', pageId);
+
+        if (pageId === 'ph2-game-page') {
+            if (phase2_counter >= 5) {
+                showPage('summary-page')
+                return;
+            }
+            ph2ImageLoaded = false;
+            if (ph2PlaceholderSpinner) ph2PlaceholderSpinner.style.display = 'block';
+            if (gameImagePh2)          gameImagePh2.style.visibility = 'hidden';
+        }
+
+        const startAgentButton = document.getElementById('start-agent-button');
+        if (startAgentButton) {
+            startAgentButton.style.backgroundColor = 'white';
+            startAgentButton.style.color           = 'black';
+        }
+
+        document.querySelectorAll('.page').forEach(p => {
+            p.classList.remove('active');
+            p.style.display = 'none';
+        });
+
+        const page = document.getElementById(pageId);
+        if (!page) return console.error(`Page "${pageId}" not found.`);
+        page.classList.add('active');
+        page.style.display = 'flex';
+    }
+
+    showPage('cover-page');          // initial
+
+    /* ---------------- NAVIGATION ---------------- */
+    coverStartButton.addEventListener('click', () => showPage('welcome-page'));
+
+    /* ───────── ②  SINGLE HANDLER FOR “Continue” ───────── */
+    welcomeContinueButton.addEventListener('click', () => {
+        const playerName = playerNameInput.value.trim();
+        if (!playerName) {
+            return alert('Please enter your name.');
+        }
+
+        console.log('Welcome Continue button clicked');
+
+        /* ──────── ③  SEND group WITH start_game ──────── */
+        socket.emit('start_game', { playerName: playerName, group: group, updateAgent: false },
+            (ack) => console.log('Server acknowledged start_game:', ack)
+        );
+
+        showPage('ph2-game-page');
+    });
+
+//     function clearCompareAgentCanvases() {
+//     console.log('Clearing compare agent canvases');
+//     const updatedAgentCanvas = document.getElementById('updated-agent-canvas');
+//     if (updatedAgentCanvas) {
+//         console.log('Clearing updated agent canvas');
+//         const ctx = updatedAgentCanvas.getContext('2d');
+//         ctx.clearRect(0, 0, updatedAgentCanvas.width, updatedAgentCanvas.height);
+//     }
+//     const previousAgentCanvas = document.getElementById('previous-agent-canvas');
+//     if (previousAgentCanvas) {
+//         console.log('Clearing previous agent canvas');
+//         const ctx = previousAgentCanvas.getContext('2d');
+//         ctx.clearRect(0, 0, previousAgentCanvas.width, previousAgentCanvas.height);
+//     }
+// }
+    
 
     // Show the cover page initially
     function showCoverPage() {
         showPage('cover-page');
     }
-
-    // Cover Start button: move to welcome page
-    coverStartButton.addEventListener('click', () => {
-        showPage('welcome-page');
-    });
-
-    // Welcome Continue button: move to ph2-game-page
-    welcomeContinueButton.addEventListener('click', () => {
-        const playerName = playerNameInput.value;
-        if (!playerName) {
-            alert("Please enter your name.");
-            return;
-        }
-        showPage('ph2-game-page');
-    });
-
-    // Navigate to Phase 2 game page from the welcome page
-    welcomeContinueButton.addEventListener('click', () => {
-        const playerName = playerNameInput.value;
-        if (!playerName) {
-            alert("Please enter your name.");
-            return;
-        }
-
-        console.log('Welcome Continue button clicked');
-        socket.emit('start_game', { playerName: playerName, updateAgent: false }, (response) => {
-            console.log('Server acknowledged start_game:', response);
-        });
-
-        // showPage('ph1-game-page');
-        showPage('ph2-game-page');
-    });
-
-    let ph2ImageLoaded = false; // Track if the first image has loaded
-
-    function showPage(pageId) {
-        console.log('showPage', pageId);
-
-        // If we're about to enter a page with dynamic images, set up spinner and hide image.
-        // if (pageId === 'ph1-game-page') {
-        //     gameImagePh1.style.visibility = 'hidden';
-        // }
-        if (pageId === 'ph2-game-page') {
-            // ph2Spinner.style.display = 'block';
-            ph2ImageLoaded = false; // Reset flag when entering ph2
-            if (ph2PlaceholderSpinner) ph2PlaceholderSpinner.style.display = 'block';
-            if (gameImagePh2) gameImagePh2.style.visibility = 'hidden';
-        }
-        // Reset the start-agent button style when entering ph2
-        const startAgentButton = document.getElementById('start-agent-button');
-        if (startAgentButton) {
-            console.log('Resetting start-agent button style');
-            startAgentButton.style.backgroundColor = 'white';
-            startAgentButton.style.color = 'black';
-        }
-
-        document.querySelectorAll('.page').forEach(page => {
-            page.classList.remove('active');
-            page.style.display = 'none'; 
-        });
-
-        const page = document.getElementById(pageId);
-        if (!page) {
-            return console.error(`Page "${pageId}" not found.`);
-        }
-        page.classList.add('active');
-        page.style.display = 'flex';
-
-        // No loading overlay
-        // updateLegendIfNeeded();
-    }
-
-    function clearCompareAgentCanvases() {
-    console.log('Clearing compare agent canvases');
-    const updatedAgentCanvas = document.getElementById('updated-agent-canvas');
-    if (updatedAgentCanvas) {
-        console.log('Clearing updated agent canvas');
-        const ctx = updatedAgentCanvas.getContext('2d');
-        ctx.clearRect(0, 0, updatedAgentCanvas.width, updatedAgentCanvas.height);
-    }
-    const previousAgentCanvas = document.getElementById('previous-agent-canvas');
-    if (previousAgentCanvas) {
-        console.log('Clearing previous agent canvas');
-        const ctx = previousAgentCanvas.getContext('2d');
-        ctx.clearRect(0, 0, previousAgentCanvas.width, previousAgentCanvas.height);
-    }
-}
-    
 
     // Show the cover page on load
     showCoverPage();
@@ -124,7 +114,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const agentPlayAllButton = document.getElementById('agent_play_all'); 
     const nextEpisodeButton = document.getElementById('next-episode-button');
     // const anotherExampleButton = document.getElementById('another-example-button');
-    const compareAgentsButton = document.getElementById('compare-agents-button');
+    const updateAgentsButton = document.getElementById('update-agent-button');
     const finishGameButton = document.getElementById('finish-game-button');
     // const gotoPhase2Button = document.getElementById('goto-phase2-button');
     // gotoPhase2Button.style.display = 'none';
@@ -143,7 +133,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let currentActionIndex = 0;
     let feedbackImages = []; // Define feedbackImages in the correct scope
     let userFeedback = []; // List to store user changes
-    let simillarity_level = 0; // Initialize simillarity_level
 
     const actionsNameList = ['forward', 'turn right', 'turn left', 'pickup'];
 
@@ -242,22 +231,32 @@ document.addEventListener('DOMContentLoaded', (event) => {
     // Move to Phase 2 game page from overview
     nextEpisodeButton.addEventListener('click', () => {
         console.log('Next Episode button clicked');
-        simillarity_level = 0; // Reset simillarity_level for the next comparison
-        // const feedbackExplanation = feedbackExplanationInput ? feedbackExplanationInput.value : "";
+        const feedbackExplanation = feedbackExplanationInput ? feedbackExplanationInput.value : "";
         // socket.emit('user_feedback_explanation', { 
         //     playerName: playerNameInput.value, 
         //     explanation: feedbackExplanation, 
         //     action: 'next_round' 
         // });
-        // socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: true, userFeedback: userFeedback, actions: actions, userExplanation: feedbackExplanation});
-        
+        socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: false, userNoFeedback: true, userExplanation: feedbackExplanation});
+
         resetOverviewHighlights(); // Reset highlights for overview actions
-        socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: false});
+        // socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: false});
         // userFeedback = []; // Clear user feedback for the next round
         // feedbackExplanationInput.value = ""; // Clear user explanation for the next round
         // socket.emit('play_entire_episode');
         showPage('ph2-game-page');
     });
+
+    // Logic for next-episode-simple-button (same as next-episode-button)
+    const nextEpisodeSimpleButton = document.getElementById('next-episode-simple-button');
+    if (nextEpisodeSimpleButton) {
+        nextEpisodeSimpleButton.addEventListener('click', () => {
+            console.log('Next Episode (simple) button clicked');
+            resetOverviewHighlights();
+            socket.emit('start_game', { playerName: playerNameInput.value, updateAgent: false });
+            showPage('ph2-game-page');
+        });
+    }
 
     const nextEpisodeButtonCompare = document.getElementById('next-episode-compare-button');
     if (nextEpisodeButtonCompare) {
@@ -324,12 +323,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
 
 
-    // anotherExampleButton.addEventListener('click', () => {
-    //     simillarity_level += 1; // Increment simillarity_level for the next comparison
-    //     socket.emit('compare_agents', { playerName: playerNameInput.value, updateAgent: false , simillarity_level: simillarity_level});
-    //     showPage('compare-agent-update-page');
-    // });
-
     // Helper to reset highlights for overview actions
     function resetOverviewHighlights() {
         changedIndexes = [];
@@ -338,30 +331,40 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
     
-    compareAgentsButton.addEventListener('click', () => {
+    updateAgentsButton.addEventListener('click', () => {
         const feedbackExplanation = feedbackExplanationInput ? feedbackExplanationInput.value : "";
         if (feedbackExplanationInput) {
             feedbackExplanationInput.value = '';
         }
-        showLoader(); // Show loader overlay immediately    
         console.log('Compare Agents button clicked userFeedback:', userFeedback);
+        if (userFeedback.length === 0) {
+            // No feedback: show message and stay on the page
+            alert('No feedback was given. You cannot update the agent without providing feedback.');
+            return;
+        }
+        showLoader(); // Show loader overlay immediately    
+
         // Do not call showPage here!
         socket.emit('compare_agents', { 
             playerName: playerNameInput.value, 
             updateAgent: true, 
             userFeedback: userFeedback, 
             actions: actions, 
-            simillarity_level: simillarity_level,
+            simillarity_level: group,
             feedbackExplanationText: feedbackExplanation
         });
         userFeedback = []; // Clear user feedback for the next round
         feedbackExplanationInput.input = ""; // Clear user explanation for the next round
 
         resetOverviewHighlights(); // Reset highlights for overview actions
-        // After 2 seconds, hide loader and show compare-agent-update-page (no waiting for canvas drawing)
+        // After 2 seconds, hide loader and show the correct page based on group
         setTimeout(() => {
             hideLoader();
-            showPage('compare-agent-update-page');
+            if (parseInt(group) === 0) {
+                showPage('simple-update-page');
+            } else {
+                showPage('compare-agent-update-page');
+            }
         }, 2000);
     });
 
@@ -375,22 +378,23 @@ document.addEventListener('DOMContentLoaded', (event) => {
         const activePage = document.querySelector('.page.active');
         console.log('Game update:', activePage.id, data);
         if (activePage.id === 'ph1-game-page') {
-            gameImagePh1.style.visibility = 'visible';
-            gameImagePh1.src = 'data:image/png;base64,' + data.image;
-            placeholderIconPh.style.display = 'none';
-            if (data.action) {
-                document.getElementById('action').innerText = data.action;
-            }
-            console.log('ph1 game update data:', data.action, data.reward, data.score, data.last_score, data.step_count);
-            document.getElementById('reward').innerText = data.reward;
-            document.getElementById('score').innerText = data.score;
-            document.getElementById('last_score').innerText = data.last_score;
+            ;
+            // gameImagePh1.style.visibility = 'visible';
+            // gameImagePh1.src = 'data:image/png;base64,' + data.image;
+            // placeholderIconPh.style.display = 'none';
+            // if (data.action) {
+            //     document.getElementById('action').innerText = data.action;
+            // }
+            // console.log('ph1 game update data:', data.action, data.reward, data.score, data.last_score, data.step_count);
+            // document.getElementById('reward').innerText = data.reward;
+            // document.getElementById('score').innerText = data.score;
+            // document.getElementById('last_score').innerText = data.last_score;
 
-            // Update step count for Phase 1
-            const stepCountElementPh1 = document.getElementById('step-count-ph1');
-            if (stepCountElementPh1) {
-                stepCountElementPh1.innerText = data.step_count;
-            }
+            // // Update step count for Phase 1
+            // const stepCountElementPh1 = document.getElementById('step-count-ph1');
+            // if (stepCountElementPh1) {
+            //     stepCountElementPh1.innerText = data.step_count;
+            // }
         } else if (activePage.id === 'ph2-game-page') {
             console.log('ph2 game update data:', data.action, data.reward, data.score, data.last_score, data.step_count);
             setPh2GameImage('data:image/png;base64,' + data.image);
@@ -401,7 +405,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
             document.getElementById('score2').innerText = data.score;
             document.getElementById('last_score2').innerText = data.last_score;
 
-            // Update step count for Phase 2
             const stepCountElementPh2 = document.getElementById('step-count-ph2');
             if (stepCountElementPh2) {
                 stepCountElementPh2.innerText = data.step_count;
@@ -435,7 +438,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         // Draw on the previous-agent-canvas
         drawPathOnCanvas('previous-agent-canvas', rawImageSrc, data.prevMoveSequence, {
             moveColor: 'yellow',
-            turnColor: 'lightblue', 
+            turnColor: 'lightblue',
             pickupColor: 'purple',
             convergeActionLocation: convergeActionLocation,
             scale: 1.7,
@@ -468,6 +471,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             showPage('ph1-game-page');
         } else {
             // Phase 2 has finished, update the overview page
+            phase2_counter += 1;
             updateOverviewPage(data);
         }
     });
@@ -489,6 +493,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
 
     let changedIndexes = []; // Track indexes where feedback was given
+    let feedbackActionMap = {}; // Map: index -> feedback action name
 
 function handleActionSelection(index, newAction) {
     console.log('handleActionSelection called with index:', index, 'newAction:', newAction);
@@ -501,14 +506,72 @@ function handleActionSelection(index, newAction) {
     const idx = changedIndexes.indexOf(index);
     if (newAction !== originalAction) {
         if (idx === -1) changedIndexes.push(index);
+        feedbackActionMap[index] = newAction; // Store feedback action
+    } else {
+        if (idx !== -1) changedIndexes.splice(idx, 1);
+        delete feedbackActionMap[index]; // Remove feedback action if reverted
     }
 
     showCurrentAction();
 }
 
+
+// const scale =  2;    // enlarge image (default: 2x)
+// const margin =  10; // margin around image (default: 10px)
+
+// // Constants similar to your Python code
+// const startPoint = { x: 50, y: 50 };
+// const arrowSize = 20;
+// const arrowHeadSize = 12;
+// const smallShift = 9;
+// const allArrowSize = arrowSize + arrowHeadSize;
+
+// // Settings for drawing arrows for move actions (will also be scaled)
+// const moveArrowSizes = {
+//     'up':    { dx: 0,  dy: -20, offsetX: 0,  offsetY: -allArrowSize },
+//     'down':  { dx: 0,  dy: 20,  offsetX: 0,  offsetY:  allArrowSize },
+//     'right': { dx: 20, dy: 0,   offsetX: allArrowSize, offsetY: 0 },
+//     'left':  { dx: -20,dy: 0,   offsetX: -allArrowSize, offsetY: 0 }
+// };
+
+// const turnArrowSizes = {
+//     'turn up':    { dx: 0,  dy: -5 },
+//     'turn down':  { dx: 0,  dy: 5 },
+//     'turn right': { dx: 5,  dy: 0 },
+//     'turn left':  { dx: -5, dy: 0 }
+// };
+
+// const pickupDirection = {
+//     'up':    { dx: 0,  dy: -1 },
+//     'down':  { dx: 0,  dy: 1 },
+//     'left':  { dx: -1, dy: 0 },
+//     'right': { dx: 1,  dy: 0 }
+// };
+
 function showCurrentAction() {
     if (actions.length === 0) return;
     const currentAction = actions[currentActionIndex];
+    overviewGameImage.style.display = 'block';
+    // Remove any previous feedback canvas
+    if (overviewGameImage.nextSibling && overviewGameImage.nextSibling.tagName === 'CANVAS') {
+        overviewGameImage.parentNode.removeChild(overviewGameImage.nextSibling);
+    }
+    // Ensure parent is positioned relative for absolute overlay
+    const parent = overviewGameImage.parentNode;
+    if (parent && window.getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+    }
+    // overviewGameImage.onload = function() {
+    //     // Draw feedback symbol if feedback action exists for this index
+    //     if (feedbackActionMap[currentActionIndex]) {
+    //         const {actionDir, x, y, width, height } = actions[currentActionIndex];
+    //         console.log("(showCurrentAction)  action_dir:", actionDir, "x:", x, "y:", y);
+    //         if (typeof x === 'number' && typeof y === 'number') {
+    //             const gridSize = actions[currentActionIndex].grid_size || width || 8;
+    //             drawFeedbackSymbolOnImageAtPos(overviewGameImage, feedbackActionMap[currentActionIndex], actionDir, x, y, gridSize);
+    //         }
+    //     }
+    // };
     overviewGameImage.src = 'data:image/png;base64,' + feedbackImages[currentActionIndex];
     currentActionElement.textContent = currentAction.action;
 
@@ -519,6 +582,121 @@ function showCurrentAction() {
     if (changedIndexes.includes(currentActionIndex)) {
         currentActionElement.classList.add('selected-action');
     }
+
+    // Show/hide next action button
+    if (currentActionIndex >= actions.length - 1) {
+        nextActionButton.style.display = 'none';
+    } else {
+        nextActionButton.style.display = 'inline-block';
+    }
+}
+
+function drawFeedbackSymbolOnImageAtPos(imgElement, actionName, actionDir, gridX, gridY, gridSize = 8) {
+    if (imgElement.width === 0 || imgElement.height === 0) {
+        console.warn('Image not loaded or has zero size');
+        return;
+    }
+    // Remove any existing feedback canvas first
+    const existingCanvas = imgElement.nextSibling;
+    if (existingCanvas && existingCanvas.tagName === 'CANVAS') {
+        existingCanvas.remove();
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = imgElement.width;
+    canvas.height = imgElement.height;
+    canvas.style.position = 'absolute';
+    canvas.style.left = imgElement.offsetLeft + 'px';
+    canvas.style.top = imgElement.offsetTop + 'px';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = 10;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+    if (moveArrowSizes.hasOwnProperty(actionDir)) {
+        // Draw feedback arrow (scale distances)
+        drawArrow(ctx, gridX, gridY,
+                    moveArrowSizes[actionDir].dx * scale, moveArrowSizes[actionDir].dy * scale,
+                    10 * scale, 'cyan');
+        // Draw the actual arrow
+        const moveColor = config.moveColor || 'orange';
+        drawArrow(ctx, gridX, gridY,
+                    moveArrowSizes[actionDir].dx * scale, moveArrowSizes[actionDir].dy * scale,
+                    10 * scale, moveColor);
+
+        
+    }
+    else if (turnArrowSizes.hasOwnProperty(actionDir)) {
+        // Draw turn arrow (feedback then actual) with scaling
+        drawArrow(ctx, gridX, gridY,
+                    turnArrowSizes[actionDir].dx * scale, turnArrowSizes[actionDir].dy * scale,
+                    7 * scale, 'cyan');
+        const turnColor = config.turnColor || 'orange';
+        drawArrow(ctx, gridX, gridY,
+                    turnArrowSizes[actionDir].dx * scale, turnArrowSizes[actionDir].dy * scale,
+                    10 * scale, turnColor);
+    }
+
+    // Calculate sizes based on grid
+    const cellW = canvas.width / gridSize;
+    const cellH = canvas.height / gridSize;
+    const cx = gridX * cellW + cellW / 2;
+    const cy = gridY * cellH + cellH / 2;
+
+    // Common style settings
+    ctx.strokeStyle = 'orange';
+    ctx.fillStyle = 'orange';
+    ctx.lineWidth = 2;
+
+    if (actionName === 'forward') {
+        // Draw forward arrow (vertical line with arrowhead)
+        const len = Math.min(cellW, cellH) * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + len/2);
+        ctx.lineTo(cx, cy - len/2);
+        ctx.stroke();
+        // Arrowhead
+        ctx.beginPath();
+        ctx.moveTo(cx - len/4, cy - len/4);
+        ctx.lineTo(cx, cy - len/2);
+        ctx.lineTo(cx + len/4, cy - len/4);
+        ctx.stroke();
+    } else if (actionName === 'turn right' || actionName === 'turn left') {
+        // Draw turn arrow (just the triangle, no stem)
+        const size = Math.min(cellW, cellH) * 0.3;
+        const angle = actionName === 'turn right' ? Math.PI/2 : -Math.PI/2;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, -size/2);
+        ctx.lineTo(-size/2, size/2);
+        ctx.lineTo(size/2, size/2);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+    } else if (actionName === 'pickup') {
+        // Draw star
+        const points = 5;
+        const outerRadius = Math.min(cellW, cellH) * 0.25;
+        const innerRadius = outerRadius * 0.4;
+        ctx.beginPath();
+        for (let i = 0; i < 2 * points; i++) {
+            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+            const angle = (i * Math.PI) / points - Math.PI / 2;
+            const x = cx + radius * Math.cos(angle);
+            const y = cy + radius * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+
+    // Add the canvas to the DOM
+    imgElement.parentNode.insertBefore(canvas, imgElement.nextSibling);
 }
     // Navigation actions buttons
     prevActionButton.addEventListener('click', () => {
@@ -635,18 +813,6 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
         'right': { dx: 1,  dy: 0 }
     };
 
-    // // Marker sizes for overlay (used as is; you can scale these too if needed)
-    // const markSizes = {
-    //     'move_vertical': { width: 25, height: 70 },
-    //     'move_horizontal': { width: 80, height: 20 },
-    //     'turn': { width: 20, height: 20 },
-    //     'pickup': { width: 20, height: 20 }
-    // };
-
-    // Marker offsets (we will also scale these)
-    // let markX = (startPoint.x + 80) * scale + margin;
-    // let markY = (startPoint.y + 40) * scale + margin;
-
     // Obtain canvas and its context
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
@@ -674,6 +840,7 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
 
         moveSequence.forEach((item, i) => {
             const actionDir = item[0];
+            console.log("(drawPathOnCanvas)  x=", currentPoint.x, "y=", currentPoint.y)
 
             // Optional: Draw a convergence mark if configured
             if (config.convergeActionLocation !== undefined && i === config.convergeActionLocation) {
@@ -697,17 +864,6 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
                 currentPoint.x += moveArrowSizes[actionDir].offsetX * scale;
                 currentPoint.y += moveArrowSizes[actionDir].offsetY * scale;
                 
-                // // Adjust marker coordinates as in your Python logic (scaled)
-                // if (actionDir === 'up') {
-                //     markY -= (25 + allArrowSize) * scale;
-                // } else if (actionDir === 'left') {
-                //     markX -= (43 + allArrowSize) * scale;
-                // }
-                // if (actionDir === 'down') {
-                //     markY += (25 + allArrowSize) * scale;
-                // } else if (actionDir === 'right') {
-                //     markX += (43 + allArrowSize) * scale;
-                // }
             }
             else if (turnArrowSizes.hasOwnProperty(actionDir)) {
                 // Draw turn arrow (feedback then actual) with scaling
@@ -718,17 +874,6 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
                 drawArrow(ctx, currentPoint.x, currentPoint.y,
                           turnArrowSizes[actionDir].dx * scale, turnArrowSizes[actionDir].dy * scale,
                           10 * scale, turnColor);
-                // Adjust marker coordinates for turn (scaled)
-                // const shiftSize = 17 * scale;
-                // const turnShifts = {
-                //     'turn up': { x: 0, y: -shiftSize },
-                //     'turn down': { x: 0, y: shiftSize },
-                //     'turn right': { x: shiftSize, y: 0 },
-                //     'turn left': { x: -shiftSize, y: 0 }
-                // };
-                // const shift = turnShifts[actionDir];
-                // markX += shift.x;
-                // markY += shift.y;
             }
             else if (actionDir.startsWith('pickup')) {
                 // Draw a pickup marker (e.g., a star), scaling offset as well
@@ -738,7 +883,7 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}) {
                 const centerX = currentPoint.x + smallShift * scale * pickup.dx;
                 const centerY = currentPoint.y + smallShift * scale * pickup.dy;
                 const outerRadius = 5 * scale;
-                const innerRadius = 3 * scale;
+                const innerRadius = outerRadius * 0.4;
                 const points = 5;
 
                 ctx.fillStyle = config.pickupColor || 'purple';
@@ -906,7 +1051,6 @@ function drawArrow(ctx, x, y, dx, dy, headSize, color) {
 //         updateAgent: true, 
 //         userFeedback: userFeedback, 
 //         actions: actions, 
-//         simillarity_level: simillarity_level 
 //     });
 //     showPage('compare-agent-update-page');
 //     // updateLegendIfNeeded();

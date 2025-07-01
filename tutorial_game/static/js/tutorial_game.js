@@ -30,14 +30,23 @@ coverStartButton.addEventListener('click', () => {
     welcomePage.classList.add('active');
 });
 
-startTutorialButton.addEventListener('click', () => {
-    const playerName = playerNameInput.value.trim();
-    if (playerName) {
-        showLoading();
-        socket.emit('start_game', { playerName });
+// --- PROLIFIC ID HANDLING ---
+function getProlificIdOrRandom() {
+    const params = new URLSearchParams(window.location.search);
+    let prolificId = params.get('prolificID');
+    if (prolificId && prolificId.trim() !== '') {
+        return prolificId;
     } else {
-        alert('Please enter your name to continue.');
+        // Generate a random number between 1 and 100
+        return Math.floor(Math.random() * 100) + 1;
     }
+}
+// Store the player name in a variable, not in the DOM
+const prolificID = getProlificIdOrRandom();
+
+startTutorialButton.addEventListener('click', () => {
+    showLoading();
+    socket.emit('start_game', { playerName: prolificID });
 });
 
 // Keyboard controls

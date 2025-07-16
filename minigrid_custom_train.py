@@ -97,68 +97,68 @@ def set_random_seed(seed):
         return wrapped_obs
 
 
-# class ObjEnvExtractor(BaseFeaturesExtractor):
-    def __init__(self, observation_space: Dict):
-        # We do not know features-dim here before going over all the items,
-        # so put something dummy for now. PyTorch requires calling
-        # nn.Module.__init__ before adding modules
-        super().__init__(observation_space, features_dim=1)
+# # class ObjEnvExtractor(BaseFeaturesExtractor):
+#     def __init__(self, observation_space: Dict):
+#         # We do not know features-dim here before going over all the items,
+#         # so put something dummy for now. PyTorch requires calling
+#         # nn.Module.__init__ before adding modules
+#         super().__init__(observation_space, features_dim=1)
 
-        extractors = {}
-        total_concat_size = 0
+#         extractors = {}
+#         total_concat_size = 0
 
-        print("Observation space:", observation_space)
-        # We need to know size of the output of this extractor,
-        # so go over all the spaces and compute output feature sizes
-        for key, subspace in observation_space.spaces.items():
-            if key == "image":
-                # We will just downsample one channel of the image by 4x4 and flatten.
-                # Assume the image is single-channel (subspace.shape[0] == 0)
-                cnn = nn.Sequential(
-                    nn.Conv2d(3, 16, (2, 2)),
-                    nn.ReLU(),
-                    nn.Conv2d(16, 32, (2, 2)),
-                    nn.ReLU(),
-                    nn.Conv2d(32, 64, (2, 2)),
-                    nn.ReLU(),
-                    nn.Flatten(),
-                )
+#         print("Observation space:", observation_space)
+#         # We need to know size of the output of this extractor,
+#         # so go over all the spaces and compute output feature sizes
+#         for key, subspace in observation_space.spaces.items():
+#             if key == "image":
+#                 # We will just downsample one channel of the image by 4x4 and flatten.
+#                 # Assume the image is single-channel (subspace.shape[0] == 0)
+#                 cnn = nn.Sequential(
+#                     nn.Conv2d(3, 16, (2, 2)),
+#                     nn.ReLU(),
+#                     nn.Conv2d(16, 32, (2, 2)),
+#                     nn.ReLU(),
+#                     nn.Conv2d(32, 64, (2, 2)),
+#                     nn.ReLU(),
+#                     nn.Flatten(),
+#                 )
 
-                # Compute shape by doing one forward pass
-                with th.no_grad():
-                    n_flatten = cnn(
-                        th.as_tensor(subspace.sample()[None]).float()
-                    ).shape[1]
+#                 # Compute shape by doing one forward pass
+#                 with th.no_grad():
+#                     n_flatten = cnn(
+#                         th.as_tensor(subspace.sample()[None]).float()
+#                     ).shape[1]
 
-                linear = nn.Sequential(nn.Linear(n_flatten, 64), nn.ReLU())
-                extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
-                total_concat_size += 64
+#                 linear = nn.Sequential(nn.Linear(n_flatten, 64), nn.ReLU())
+#                 extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
+#                 total_concat_size += 64
 
-            elif key == "mission":
-                extractors["mission"] = nn.Linear(subspace.shape[0], 32)
-                total_concat_size += 32
-            elif key == "step_count": 
-                # Add a linear layer to process the scalar `step_count`
-                extractors["step_count"] = nn.Sequential(
-                    nn.Linear(subspace.shape[0], 16),  # Convert 1D input to 16 features
-                    nn.ReLU(),
-                    )
-                total_concat_size += 16  # Update the total feature size
+#             elif key == "mission":
+#                 extractors["mission"] = nn.Linear(subspace.shape[0], 32)
+#                 total_concat_size += 32
+#             elif key == "step_count": 
+#                 # Add a linear layer to process the scalar `step_count`
+#                 extractors["step_count"] = nn.Sequential(
+#                     nn.Linear(subspace.shape[0], 16),  # Convert 1D input to 16 features
+#                     nn.ReLU(),
+#                     )
+#                 total_concat_size += 16  # Update the total feature size
 
-        self.extractors = nn.ModuleDict(extractors)
+#         self.extractors = nn.ModuleDict(extractors)
 
-        # Update the features dim manually
-        self._features_dim = total_concat_size
+#         # Update the features dim manually
+#         self._features_dim = total_concat_size
 
-    def forward(self, observations) -> th.Tensor:
-        encoded_tensor_list = []
+#     def forward(self, observations) -> th.Tensor:
+#         encoded_tensor_list = []
 
-        # self.extractors contain nn.Modules that do all the processing.
-        for key, extractor in self.extractors.items():
-            encoded_tensor_list.append(extractor(observations[key]))
+#         # self.extractors contain nn.Modules that do all the processing.
+#         for key, extractor in self.extractors.items():
+#             encoded_tensor_list.append(extractor(observations[key]))
 
-        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
-        return th.cat(encoded_tensor_list, dim=1)
+#         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
+#         return th.cat(encoded_tensor_list, dim=1)
 
 # class WandbEvalCallback(BaseCallback):
     # """
@@ -279,13 +279,13 @@ class ImageObjEnvExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict):
         super().__init__(observation_space, features_dim=1)
 
-        self.extractors = nn.ModuleDict()
+        # self.extractors = nn.ModuleDict()
         total_feature_dim = 0
 
 
         c, h, w = observation_space.shape[::-1]  # From (H, W, C) to (C, H, W)
 
-        self.extractors["image"] = nn.Sequential(
+        self.extractor = nn.Sequential(
                     nn.Conv2d(c, 32, kernel_size=3, stride=1, padding=1),
                     # nn.BatchNorm2d(32),
                     nn.ReLU(),
@@ -301,7 +301,7 @@ class ImageObjEnvExtractor(BaseFeaturesExtractor):
         with th.no_grad():
             sample = th.as_tensor(observation_space.sample()[None]).float() / 255.0
             sample = sample.permute(0, 3, 1, 2)  # (B, H, W, C) -> (B, C, H, W)
-            n_flatten = self.extractors["image"](sample).shape[1]
+            n_flatten = self.extractor(sample).shape[1]
 
         self.image_linear = nn.Sequential(
             nn.Linear(n_flatten, 64),
@@ -311,17 +311,15 @@ class ImageObjEnvExtractor(BaseFeaturesExtractor):
 
         self._features_dim = total_feature_dim
 
-    def forward(self, observations: Dict[str, th.Tensor]) -> th.Tensor:
+    def forward(self, observations: th.Tensor) -> th.Tensor:
         outputs = []
-        for key, module in self.extractors.items():
-            if key == "image":
-                x = observations["image"].float() / 255.0
-                x = x.permute(0, 3, 1, 2)  # BCHW, very important
-                x = self.extractors["image"](x)
-                x = self.image_linear(x)
-                outputs.append(x)
-            else:
-                outputs.append(module(observations[key].float()))
+
+        x = observations.float() / 255.0
+        x = x.permute(0, 3, 1, 2)  # BCHW, very important
+        x = self.extractor(x)
+        x = self.image_linear(x)
+        outputs.append(x)
+
         return th.cat(outputs, dim=1)
 
 def create_env(grid_size, agent_view_size, max_steps, highlight, step_cost, num_objects, lava_cells, color_rewards, train_env=True, image_full_view=False, step_count_observation=False):
@@ -353,30 +351,14 @@ def main(**kwargs):
     parser.add_argument(
         "--load_model", type=str, default=None, help="load a trained model"
     )
+    parser.add_argument("--full_image", action="store_true", help="use full image as observation")
     parser.add_argument("--option", type=int, default=-1, help="the option for the env rewards")
 
     args = parser.parse_args()
     # parser.add_argument("--render", action="store_true", help="render trained models")
     # parser.add_argument("--seed", type=int, default=42, help="random seed")
-    # parser.add_argument("--model", type=str, default="ppo", help="what model to train")
-    # args = parser.parse_args()
 
-    policy_kwargs = dict(features_extractor_class=ObjEnvExtractor,) # )UpgradedObjEnvExtractor
-    # set_random_seed(seed=42)
-
-    # def linear_schedule(initial_value):
-    #     def schedule(progress_remaining):
-    #         return progress_remaining * initial_value
-    #     return schedule
-
-    # if args.load_model:
-    #     print(f"Loading model from {args.load_model}")
-    #     model_name = args.load_model
-    #     env_info = model_name.split('/')[1].split('S')[0].split(',')
-    #     lava_cost = -3 #float(env_info[3])
-    #     step_cost = float(env_info[4])
-    #     step_cost = 0.1 
-    #     colors_rewards = {'red':float(env_info[0]), 'green': float(env_info[1]), 'blue': float(env_info[2])}
+    policy_kwargs = dict(features_extractor_class=ObjEnvExtractor) 
 
     # Models that need to be:
     # AllColors LL - 2,2,4,0.2,0.1
@@ -394,7 +376,7 @@ def main(**kwargs):
         # AllColors LH  - 1
         {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': -4, 'step': 0.1},
         # OnlyBlue LH  - 2
-        {'balls': {'red': -2, 'green': -2, 'blue': 4}, 'lava': -4, 'step': 0.1},
+        {'balls': {'red': -1, 'green': -1, 'blue': 4}, 'lava': -3, 'step': 0.1},
         # OnlyBlue LL  - 3
         {'balls': {'red': -2, 'green': -2, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
         # NoRed LL  - 4
@@ -413,7 +395,7 @@ def main(**kwargs):
 
     option = args.option
     if option < 0 or option >= len(colors_options):
-        option = 2
+        option = 0
     # else:
     lava_cost = colors_options[option]['lava']  
     step_cost = colors_options[option]['step']
@@ -430,8 +412,8 @@ def main(**kwargs):
     max_steps = 50
     grid_size = 8
     agent_view_size = 7
-    num_lava_cell = 4
-    num_balls = 6
+    num_lava_cell = 3
+    num_balls = 5
 
     # if args.train:
     device = "cuda" if th.cuda.is_available() else "cpu"
@@ -453,16 +435,21 @@ def main(**kwargs):
             lava_panishment=lava_cost,
         )
     train_env = NoDeath(ObjObsWrapper(train_env), no_death_types=('lava',), death_cost=lava_cost)
+    if args.full_image:
+        print("Using full image as observation")
+        policy_kwargs = dict(features_extractor_class=ImageObjEnvExtractor)
+        train_env = ImgObsWrapper(FullyObsWrapper(train_env))  # Use full image observation
     # train_env = NoDeath(ObjObsWrapper(ImgObsWrapper(FullyObsWrapper(train_env))), no_death_types=('lava',), death_cost=lava_cost)
     train_env = Monitor(train_env)  # Add Monitor for logging
 
-    # Wrap training env
-    train_env = DummyVecEnv([lambda: train_env])
+    # # Wrap training env
+    # train_env = DummyVecEnv([lambda: train_env])
 
     # Access attributes from the underlying environment
+    full_image_str = "FullImage" if args.full_image else ""
     preference_vector = [colors_rewards['red'], colors_rewards['green'], colors_rewards['blue'], lava_cost, step_cost]
     pref_str = ",".join([str(i) for i in preference_vector])
-    save_name = pref_str + f"Steps{max_steps}Grid{grid_size}_{stamp}"
+    save_name = pref_str  + f"Steps{max_steps}{full_image_str}_{stamp}"
 
     # if step_count_observation:
     #     save_name = save_name[:-9] + "_Step_Count" + save_name[-9:]
@@ -500,6 +487,9 @@ def main(**kwargs):
             lava_panishment=lava_cost,
         )
     eval_env = NoDeath(ObjObsWrapper(eval_env), no_death_types=('lava',), death_cost=lava_cost)
+
+    if args.full_image:
+        eval_env = ImgObsWrapper(FullyObsWrapper(eval_env))  # Use full image observation
     # eval_env = NoDeath(ObjObsWrapper(ImgObsWrapper(FullyObsWrapper(eval_env))), no_death_types=('lava',), death_cost=lava_cost)
 
     # eval_env = VecTransposeImage(eval_env)
@@ -543,7 +533,7 @@ def main(**kwargs):
             policy_kwargs=policy_kwargs,
             verbose=1,
             learning_rate=1e-4,
-            ent_coef=5e-3,
+            ent_coef=1e-3,
             n_steps=32,
             batch_size=16,
             gamma=0.98,
@@ -555,14 +545,18 @@ def main(**kwargs):
         # Copy parameters from the old model
         model.policy.load_state_dict(old_model.policy.state_dict())
     else:
+        if args.full_image:
+            str_policy = "CnnPolicy"
+        else:
+            str_policy = "MultiInputPolicy"
         print("No model specified, creating a new PPO agent")
         model = PPO(
-            "MultiInputPolicy",
+            str_policy,
             train_env,
             policy_kwargs=policy_kwargs,
             verbose=1,
-            learning_rate=3e-4,      # Lower for stability with multiple objectives
-            ent_coef=0.01,           # Increase to encourage exploration
+            learning_rate=1e-3,      # Lower for stability with multiple objectives
+            ent_coef=0.001,           # Increase to encourage exploration
             n_steps=64,              # Increase to capture fuller episode contexts
             batch_size=32,           # Increase for better gradient estimates
             gamma=0.98,              # Higher to value future rewards more
@@ -578,7 +572,7 @@ def main(**kwargs):
     model.policy.to("cuda")  # Force policy to CUDA
     print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
     model.learn(
-        8e5,
+        6e5,
         tb_log_name=f"{stamp}",
         callback=[eval_callback]#, wandb_eval_callback]
     )

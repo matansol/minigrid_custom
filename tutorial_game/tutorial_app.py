@@ -41,13 +41,11 @@ SessionLocal = sessionmaker(bind=engine)
 
 Base = declarative_base()
 
-# Global variable to control database saving
-save_to_db = False
 
 class Tutorial_Action(Base):
     __tablename__ = "tutorial_actions"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String(20))
+    user_id = Column(String(100))
     action = Column(String(50))
     score = Column(Float)
     reward = Column(Float)
@@ -60,6 +58,11 @@ def create_database():
     """Creates the database tables if they do not already exist."""
     print("Ensuring database tables are created...")
     Base.metadata.create_all(bind=engine)
+
+def clear_database():
+    """Clears the database tables."""
+    print("Clearing database tables...")
+    Base.metadata.drop_all(bind=engine)
 
 def encode_image(img_array):
     """Convert numpy array to base64 encoded image"""
@@ -97,8 +100,9 @@ class TutorialGameControl:
         done = terminated or truncated
         self.episode_actions.append(action)
         self.episode_images.append(self.env.get_full_image())
+        reward = round(float(reward), 1)
         self.score += reward
-        self.score = round(self.score, 2)
+        self.score = round(self.score, 1)
         if done:
             self.last_score = self.score
         img = self.env.render()
@@ -107,10 +111,10 @@ class TutorialGameControl:
         return {
             'image': encode_image(img),
             'episode': self.episode_num,
-            'reward': float(reward),
+            'reward': reward,
             'done': done,
-            'score': float(self.score),
-            'last_score': float(self.last_score),
+            'score': self.score,
+            'last_score': self.last_score,
             'step_count': int(self.env.get_wrapper_attr('step_count'))
         }
 
@@ -235,8 +239,8 @@ async def next_episode(sid):
     response = user_game.get_initial_observation()
     await sio.emit("game_update", response, to=sid)
 
+save_to_db = True  # Set to True to enable database saving
 if __name__ == "__main__":
-    save_to_db = True  # Set to True to enable database saving
     if save_to_db:
         create_database()
 

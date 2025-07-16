@@ -22,7 +22,7 @@ import random
 import numpy as np
 
 basic_color_rewards  = {
-                'red': 0.1,
+                'red': -1,
                 'green': 2,
                 'blue': 4,
             }
@@ -227,7 +227,7 @@ class CustomEnv(MiniGridEnv):
             simillarity_level = 5
         if 'set_env' in kwargs:
             self.set_env = kwargs['set_env']
-        self.on_baord_objects = 0
+        self.on_board_objects = 0
         self.step_count = 0
         self.took_key = False
         self.current_state = {}
@@ -537,7 +537,7 @@ class CustomEnv(MiniGridEnv):
         # obj_to_remove is a list of tuples (x, y)
         for (x,y) in obj_to_remove:
             self.grid.set(x, y, None)
-            self.on_baord_objects -= 1
+            self.on_board_objects -= 1
     
     def step(self, action):
         # print(f"step {self.step_count}, action={action}")
@@ -556,11 +556,7 @@ class CustomEnv(MiniGridEnv):
                 ball_color = self.carrying.color
                 reward += self.color_rewards.get(ball_color, 0) 
                 self.carrying = None
-                self.on_baord_objects -= 1
-        
-        # got to the right bottom corner - the goal
-        if self.agent_pos == (self.grid.width - 2, self.grid.height - 2) and self.train_env:
-            reward += 4
+                self.on_board_objects -= 1
 
         # # hit a lava cell
         # if self.agent_pos in self.lava_cells: 

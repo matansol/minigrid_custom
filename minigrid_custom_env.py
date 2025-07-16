@@ -28,7 +28,7 @@ import time
 import numpy as np
 
 basic_color_rewards  = {
-                'red': 0.1,
+                'red': -1,
                 'green': 2,
                 'blue': 4,
             }
@@ -71,6 +71,16 @@ class ObjObsWrapper(ObservationWrapper):
             }
 
         return wrapped_obs
+
+class ObjObsWrapperImageOnly(ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+        self.observation_space =  Box(low=0, high=255, shape=(8, 8, 3), dtype=np.uint8)
+
+    def observation(self, obs):
+        return obs,
+        
 
 
 class ObjEnvExtractor(BaseFeaturesExtractor):
@@ -296,24 +306,27 @@ class CustomEnv(MiniGridEnv):
         if action <= 1: # turn is always legal
             return False
         if action == 2 and agent_pos_befor == agent_pos:
-            # print("illigal_move ", action)
             return True
         if action > 2 and np.array_equal(obs['image'], last_obs['image']):
-            # print("illigal_move ", action)
             return True
         return False
 
     def reset(self, **kwargs):
         self.unique_env = 0
         self.ep_score = 0
-        if 'simillarity_level' in kwargs:
-            simillarity_level = kwargs['simillarity_level']
-        else:
-            simillarity_level = 0
+        similarity_level = kwargs.get('simillarity_level', 1)
+        if not 'optional_unique_env' in kwargs:
+            kwargs['optional_unique_env'] = list(range(1,15))
+        self.optional_unique_env = kwargs['optional_unique_env']
+        print("(reset) self.optional_unique_env:", self.optional_unique_env)
         if 'from_unique_env' in kwargs:
             self.from_unique_env = kwargs['from_unique_env']
         if 'unique_env' in kwargs:
-            self.unique_env = kwargs['unique_env']
+            if self.train_env:
+                self.unique_env = kwargs['unique_env']
+            else:
+                self.unique_env = kwargs['unique_env'] if kwargs['unique_env'] in self.optional_unique_env else random.choice(self.optional_unique_env)
+
         self.on_board_objects = 0
         self.step_count = 0
         self.took_key = False
@@ -321,7 +334,7 @@ class CustomEnv(MiniGridEnv):
         self.initial_balls = []
         self.lava_cells = []
         
-        self._place_initial_objects(simillarity_level, kwargs)
+        self._place_initial_objects(similarity_level, kwargs)
         state , info = super().reset()
         if self.image_full_view:
             state['image'] = self.grid.encode()
@@ -339,7 +352,7 @@ class CustomEnv(MiniGridEnv):
     @staticmethod
     def _gen_mission():
         return ""
-        # return "go to the red box" # just for the it to run, TODO: remove this
+        # return "go to the red box" # just for the it to run
     
         # color_rank = ' red > green > blue' if not self.change_reward else ' blue > green > red'
         # return "Collect as many balls as possible, colors rank: " + color_rank
@@ -365,12 +378,13 @@ class CustomEnv(MiniGridEnv):
     def _place_initial_objects(self, simillarity_level, kwargs):
         """
         Create the initial balls list based on the simillarity level and the other initial_balls passed in the kwargs.
-        simillarity_level (group): 0  - all balls and lava in the same locations
+        simillarity_level (group): 0  - no demonstration
         simillarity_level (group): 1 - same baord as last one
         simillarity_level (group): 2 - lava the same, balls close to old locations   
-        simillarity_level (group): 3 - infront objects (creating a board wiht the objects that the agent saw in the feedback actions 
+        simillarity_level (group): 3 - infront objects (creating a board with the objects that the agent saw in the feedback actions 
         simillarity_level (group): 4+ - new random board
         """
+        unique_env = kwargs.get('unique_env', 0)
 
         added_lava = False
         if simillarity_level == 1 and "initial_balls" in kwargs and isinstance(kwargs["initial_balls"], list):
@@ -379,21 +393,6 @@ class CustomEnv(MiniGridEnv):
                 added_lava = True
             self.initial_balls = kwargs['initial_balls'] # all balls in the same locations
         
-        # elif simillarity_level == 1:  # simillarity_level = 1 - lava cells in the same place, same balls different place (add random balls to get to 6 balls)
-        #     if "other_lava_cells" in kwargs.keys() or "other_lava_cells" in kwargs: 
-        #         self.create_lava_locations(kwargs['other_lava_cells'], 0)
-        #         added_lava = True
-        #     balls_colors = [ball[2] for ball in kwargs['initial_balls']]
-        #     for color in balls_colors:
-        #         print("add ball in color ", color)
-        #         x = random.randint(1, self.width - 2)
-        #         y = random.randint(1, self.height - 2)
-        #         if (x, y) == self.goal_pos or (x, y) == self.agent_start_pos:
-        #             continue
-        #         self.initial_balls.append((x, y, color, self.color_rewards[color]))
-
-        #     while len(self.initial_balls) < 6:
-        #         self.initial_balls.append(self.generate_init_ball())
             
         elif simillarity_level == 2 and "initial_balls" in kwargs and isinstance(kwargs["initial_balls"], list):
             if "other_lava_cells" in kwargs: 
@@ -420,7 +419,7 @@ class CustomEnv(MiniGridEnv):
                 b_color = ball[2]
                 self.initial_balls.append((x, y, b_color, self.color_rewards[b_color])) # (x, y, color, reward when picked)
             
-        elif simillarity_level == 3 and 'infront_objects' in kwargs: # TODO: Change for different user group in the experiment 
+        elif simillarity_level == 3 and 'infront_objects' in kwargs:  
             infront_objects = kwargs['infront_objects'][1]
             infront_base_objects = kwargs['infront_objects'][0]
             infront_feedback_objects = kwargs['infront_objects'][2]
@@ -431,6 +430,9 @@ class CustomEnv(MiniGridEnv):
             else:
                 print("infront objects is empty, not placing any objects")
                 self.from_unique_env = True
+        
+        elif simillarity_level == 3 and self.unique_env > 0:
+            self._gen_unique_grid(self.width, self.height, unique_env)
         # elif simillarity_level == 2 and "initial_balls" in kwargs and isinstance(kwargs["initial_balls"], list): # 
         #     if "other_lava_cells" in kwargs:
         #         self.create_lava_locations(kwargs['other_lava_cells'], 1)
@@ -468,7 +470,7 @@ class CustomEnv(MiniGridEnv):
                 if (x, y) == self.goal_pos or (x, y) == self.agent_start_pos:
                     continue
                 self.initial_balls.append((x, y, color, self.color_rewards[color]))
-
+            
         if not added_lava: # create random laval cells
             for i in range(self.num_lava_cells):
                 x = random.randint(1, self.width - 2)
@@ -476,6 +478,7 @@ class CustomEnv(MiniGridEnv):
                 if (x, y) == self.goal_pos or (x, y) == self.agent_start_pos:
                     continue
                 self.lava_cells.append((x,y))
+        
 
 
     def _place_infront_objects(self, infront_objects, number_of_objects=5):
@@ -511,18 +514,20 @@ class CustomEnv(MiniGridEnv):
         # Generate the surrounding walls
         self.grid.wall_rect(0, 0, width, height)
         self.goal_position = self.goal_pos
+        optional_unique_env = kwargs['optional_unique_env'] if 'optional_unique_env' in kwargs else range(1, 17)
+        
 
         if (not self.train_env) or (random.random() < 0.5):
             if self.from_unique_env: # create a random unique env
-                if self.unique_env == 0:
-                    self.unique_env = random.randint(1, 12)
+                if self.unique_env == 0 or (self.unique_env not in optional_unique_env):
+                    self.unique_env = random.choice(optional_unique_env)
                     c = 0
                     while self.unique_env in self.board_seen and c < 10:
-                        self.unique_env = random.randint(1, 12)
+                        self.unique_env = random.choice(optional_unique_env)
                         c += 1
-                    self.board_seen.append(self.unique_env)
+                self.board_seen.append(self.unique_env)
                 print(f"generate unique env number-{self.unique_env}")
-                return self._gen_unique_grid(width, height)
+                return self._gen_unique_grid(width, height, self.unique_env)
             
         # Place a ball in some cells
         for ball_info in self.initial_balls:
@@ -539,222 +544,108 @@ class CustomEnv(MiniGridEnv):
         self.put_obj(Goal(), width - 2, height - 2)
 
 
-    def _gen_unique_grid(self, width, height):
-        if self.unique_env == 1:
-            self.put_obj(Ball('blue'), width - 2, 1)
-            self.initial_balls.append((width - 2, 1, 'blue', self.color_rewards['blue']))
-            self.put_obj(Lava(), width - 3, 2)
-            self.lava_cells.append((width - 3, 2))
-            self.put_obj(Lava(), width - 3, 1)
-            self.lava_cells.append((width - 3, 1))
-            # self.put_obj(Lava(), width - 2, 2)
-            self.put_obj(Ball('green'), width - 4, 3)
-            self.initial_balls.append((width - 4, 3, 'green', self.color_rewards['green']))
+    def _gen_unique_grid(self, width, height, unique_env=1):
+        # Define balls and lava lists for each unique_env
+        balls_list = []
+        lava_list = []
 
-        if self.unique_env == 2:
-            self.put_obj(Ball('green'), width - 2, 1)
-            self.initial_balls.append((width - 2, 1, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 1, 5)
-            self.initial_balls.append((1, 5, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 2, 6)
-            self.initial_balls.append((2, 6, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('red'), 2, 5)
-            self.initial_balls.append((2, 5, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('blue'), 3, 4)
-            self.initial_balls.append((3, 4, 'blue', self.color_rewards['blue']))
+        if unique_env == 1:
+            balls_list = [(width - 2, 1, 'blue'), (width - 4, 3, 'green')]
+            lava_list = [(width - 3, 2), (width - 3, 1)]
 
-        if self.unique_env == 3:
-            self.put_obj(Lava(), 1, 2)
-            self.lava_cells.append((1, 2))
-            self.put_obj(Lava(), 2, 2)
-            self.lava_cells.append((2, 2))
-            self.put_obj(Lava(), 6, 2)
-            self.lava_cells.append((6, 2))
-            self.put_obj(Lava(), 5, 2)
-            self.lava_cells.append((5, 2))
-            self.put_obj(Ball('red'), 5, 1)
-            self.initial_balls.append((5, 1, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('blue'), 1, 3)
-            self.initial_balls.append((1, 3, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('blue'), 6, 3)
-            self.initial_balls.append((6, 3, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 1, 4)
-            self.initial_balls.append((1, 4, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 6, 4)
-            self.initial_balls.append((6, 4, 'green', self.color_rewards['green']))
+        if unique_env == 2:
+            balls_list = [(width - 2, 1, 'green'), (1, 5, 'green'), (2, 6, 'green'), (2, 5, 'red'), (3, 4, 'blue')]
+            lava_list = []
 
-        if self.unique_env == 4:
-            self.put_obj(Lava(), 1, 3)
-            self.lava_cells.append((1, 3))
-            self.put_obj(Lava(), 2, 3)
-            self.lava_cells.append((2, 3))
-            self.put_obj(Lava(), 3, 3)
-            self.lava_cells.append((3, 3))
-            self.put_obj(Ball('green'), 1, 5)
-            self.initial_balls.append((1, 5, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('red'), 1, 4)
-            self.initial_balls.append((1, 4, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('blue'), 4, 4)
-            self.initial_balls.append((4, 4, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 6, 5)
-            self.initial_balls.append((6, 5, 'green', self.color_rewards['green']))
+        if unique_env == 3:
+            balls_list = [(5, 1, 'red'), (1, 3, 'blue'), (6, 3, 'blue'), (1, 4, 'green'), (6, 4, 'green')]
+            lava_list = [(1, 2), (2, 2), (6, 2), (5, 2)]
 
-        if self.unique_env == 5:
-            self.put_obj(Lava(), 6, 1)
-            self.lava_cells.append((6, 1))
-            self.put_obj(Lava(), 5, 2)
-            self.lava_cells.append((5, 2))
-            self.put_obj(Ball('blue'), 1, 3)
-            self.initial_balls.append((1, 3, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('blue'), 6, 2)
-            self.initial_balls.append((6, 2, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 6, 4)
-            self.initial_balls.append((6, 4, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 5, 1)
-            self.initial_balls.append((5, 1, 'green', self.color_rewards['green']))
+        if unique_env == 4:
+            balls_list = [(1, 5, 'green'), (1, 4, 'red'), (4, 4, 'blue'), (6, 5, 'green')]
+            lava_list = [(1, 3), (2, 3), (3, 3)]
 
-        if self.unique_env == 6:
-            self.put_obj(Lava(), 3, 3)
-            self.lava_cells.append((3, 3))
-            self.put_obj(Lava(), 1, 3)
-            self.lava_cells.append((1, 3))
-            self.put_obj(Ball('red'), 4, 3)
-            self.initial_balls.append((4, 3, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('red'), 5, 2)
-            self.initial_balls.append((5, 2, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('red'), 2, 6)
-            self.initial_balls.append((2, 6, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('red'), 3, 6)
-            self.initial_balls.append((3, 6, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('green'), 1, 4)
-            self.initial_balls.append((1, 4, 'green', self.color_rewards['green']))
+        if unique_env == 5:
+            balls_list = [(1, 3, 'blue'), (6, 2, 'blue'), (6, 4, 'green'), (5, 1, 'green')]
+            lava_list = [(6, 1), (5, 2)]
 
-        if self.unique_env == 7:
-            self.put_obj(Ball('blue'), 4, 4)
-            self.initial_balls.append((4, 4, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 5, 2)
-            self.initial_balls.append((5, 2, 'green', self.color_rewards['green']))
-            for i in range(3, 6):
-                for j in range(3, 6):
-                    if (i == 4 and j == 4) or (i == 5 and j == 4) or (i == 5 and j == 5) or (i == 4 and j == 3):
-                        continue
-                    self.put_obj(Lava(), i, j)
-                    self.lava_cells.append((i, j))
+        if unique_env == 6:
+            balls_list = [(4, 3, 'red'), (5, 2, 'red'), (2, 6, 'red'), (3, 6, 'blue'), (1, 4, 'green')]
+            lava_list = [(3, 3), (1, 3)]
 
-        if self.unique_env == 8:
+        if unique_env == 7:
+            balls_list = [(4, 4, 'blue'), (5, 2, 'green')]
+            lava_list = [(3,3), (3,4), (3,5), (5,5), (4,5), (5,3)]
+            # for i in range(3, 6):
+            #     for j in range(3, 6):
+            #         if (i == 4 and j == 4) or (i == 5 and j == 4) or (i == 4 and j == 3):
+            #             continue
+            #     lava_list.append((i, j))
+
+        if unique_env == 8:
+            balls_list = [(5, 5, 'red'), (6, 4, 'green'), (3, 6, 'blue'), (2, 4, 'blue')]
+            lava_list = []
             self.grid.vert_wall(4, 1, 3)
-            self.put_obj(Ball('red'), 5, 5)
-            self.initial_balls.append((5, 5, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('green'), 6, 4)
-            self.initial_balls.append((6, 4, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('blue'), 3, 6)
-            self.initial_balls.append((3, 6, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('blue'), 2, 4)
-            self.initial_balls.append((2, 4, 'blue', self.color_rewards['blue']))
 
-        if self.unique_env == 9:
-            self.put_obj(Ball('blue'), 4, 1)
-            self.initial_balls.append((4, 1, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('blue'), 6, 1)
-            self.initial_balls.append((6, 1, 'blue', self.color_rewards['blue']))
-            self.put_obj(Lava(), 5, 1)
-            self.lava_cells.append((5, 1))
-            self.put_obj(Lava(), 3, 1)
-            self.lava_cells.append((3, 1))
-            self.put_obj(Ball('green'), 2, 4)
-            self.initial_balls.append((2, 4, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 4, 4)
-            self.initial_balls.append((4, 4, 'green', self.color_rewards['green']))
+        if unique_env == 9:
+            balls_list = [(4, 1, 'blue'), (6, 1, 'blue'), (2, 4, 'green'), (4, 4, 'green')]
+            lava_list = [(5, 1), (3, 1)]
 
-        if self.unique_env == 10:
-            self.put_obj(Ball('red'), 2, 2)
-            self.initial_balls.append((2, 2, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('red'), 5, 6)
-            self.initial_balls.append((5, 6, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('blue'), 3, 5)
-            self.initial_balls.append((3, 5, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('blue'), 5, 2)
-            self.initial_balls.append((5, 2, 'blue', self.color_rewards['blue']))
-            self.put_obj(Lava(), 4, 4)
-            self.lava_cells.append((4, 4))
-            self.put_obj(Lava(), 3, 4)
-            self.lava_cells.append((3, 4))
-            self.put_obj(Lava(), 5, 4)
-            self.lava_cells.append((5, 4))
-            self.put_obj(Lava(), 3, 2)
-            self.lava_cells.append((3, 2))
+        if unique_env == 10:
+            balls_list = [(2, 2, 'red'), (5, 6, 'red'), (3, 5, 'blue'), (5, 2, 'blue')]
+            lava_list = [(4, 4), (3, 4), (5, 4), (3, 2)]
 
-        if self.unique_env == 11:
-            self.put_obj(Ball('green'), 2, 6)
-            self.initial_balls.append((2, 6, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('red'), 5, 2)
-            self.initial_balls.append((5, 2, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('blue'), 6, 4)
-            self.initial_balls.append((6, 4, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 3, 5)
-            self.initial_balls.append((3, 5, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('red'), 4, 6)
-            self.initial_balls.append((4, 6, 'red', self.color_rewards['red']))
-            self.put_obj(Lava(), 3, 3)
-            self.lava_cells.append((3, 3))
-            self.put_obj(Lava(), 4, 3)
-            self.lava_cells.append((4, 3))
-            self.put_obj(Lava(), 5, 3)
-            self.lava_cells.append((5, 3))
+        if unique_env == 11:
+            balls_list = [(2, 6, 'green'), (5, 2, 'red'), (6, 4, 'blue'), (3, 5, 'green'), (4, 6, 'red')]
+            lava_list = [(3, 3), (4, 3), (5, 3)]
 
-        if self.unique_env == 12:
-            self.put_obj(Ball('green'), 2, 2)
-            self.initial_balls.append((2, 2, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('blue'), 6, 5)
-            self.initial_balls.append((6, 5, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 2, 5)
-            self.initial_balls.append((2, 5, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('red'), 6, 2)
-            self.initial_balls.append((6, 2, 'red', self.color_rewards['red']))
-            self.put_obj(Lava(), 5, 2)
-            self.lava_cells.append((5, 2))
-            self.put_obj(Lava(), 2, 4)
-            self.lava_cells.append((2, 4))
+        if unique_env == 12:
+            balls_list = [(2, 2, 'green'), (6, 5, 'blue'), (2, 5, 'green'), (6, 2, 'red')]
+            lava_list = [(5, 2), (2, 4)]
 
-        if self.unique_env == 13:
-            self.put_obj(Ball('green'), 2, 2)
-            self.initial_balls.append((2, 2, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('blue'), 4, 4)
-            self.initial_balls.append((4, 4, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('green'), 5, 2)
-            self.initial_balls.append((5, 2, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('blue'), 6, 3)
-            self.initial_balls.append((6, 3, 'blue', self.color_rewards['blue']))
-            self.put_obj(Ball('red'), 5, 6)
-            self.initial_balls.append((5, 6, 'red', self.color_rewards['red']))
-            self.put_obj(Lava(), 3, 3)
-            self.lava_cells.append((3, 3))
-            self.put_obj(Lava(), 4, 3)
-            self.lava_cells.append((4, 3))
-            self.put_obj(Lava(), 2, 4)
-            self.lava_cells.append((2, 4))
-            self.put_obj(Lava(), 6, 5)
-            self.lava_cells.append((6, 5))
+        if unique_env == 13:
+            balls_list = [(2, 2, 'green'), (4, 4, 'blue'), (5, 2, 'green'), (6, 3, 'blue'), (5, 6, 'red')]
+            lava_list = [(3, 3), (4, 3), (2, 4), (6, 5)]
 
-        if self.unique_env == 14:
-            self.put_obj(Ball('red'), 3, 3)
-            self.initial_balls.append((3, 3, 'red', self.color_rewards['red']))
-            self.put_obj(Ball('green'), 6, 4)
-            self.initial_balls.append((6, 4, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('green'), 3, 5)
-            self.initial_balls.append((3, 5, 'green', self.color_rewards['green']))
-            self.put_obj(Ball('blue'), 6, 2)
-            self.initial_balls.append((6, 2, 'blue', self.color_rewards['blue']))
+        if unique_env == 14:
+            balls_list = [(3, 3, 'red'), (6, 4, 'green'), (3, 5, 'green'), (6, 2, 'blue')]
+            lava_list = []
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1)]:
                 x, y = 6 + dx, 2 + dy
                 if 1 <= x <= width - 2 and 1 <= y <= height - 2:
-                    self.put_obj(Lava(), x, y)
-                    self.lava_cells.append((x, y))
-            self.put_obj(Lava(), 5, 3)
-            self.lava_cells.append((5, 3))
-            self.put_obj(Lava(), 4, 4)
-            self.lava_cells.append((4, 4))
+                    lava_list.append((x, y))
+            lava_list.extend([(5, 3), (4, 4)])
 
+        if unique_env == 15:
+            balls_list = [(3, 1, 'red'), (3, 3, 'blue'), (2, 5, 'green'), (5, 5, 'red')]
+            lava_list = [(1, 2), (2, 2), (3, 2)]
+
+        if unique_env == 16:
+            balls_list = [(4, 1, 'blue'), (2, 3, 'green'), (6, 3, 'green'), (5, 5, 'green')]
+            lava_list = [(4, 3), (5,3), (3, 2), (3, 1)]
+        
+        if unique_env == 17:
+            balls_list = [(4, 1, 'red'), (6, 1, 'blue'), (3, 2, 'green'), (6, 4, 'blue')]
+            lava_list = [(6, 2), (5, 2)]
+
+        if unique_env == 18:
+            balls_list = [(1, 4, 'red'), (1, 6, 'blue'), (2, 3, 'green'), (4, 6, 'blue')]
+            lava_list = [(2, 6), (2, 5)]
+
+        # Place balls and lava on the grid
+        for ball_info in balls_list:
+            x_loc = ball_info[0]
+            y_loc = ball_info[1]
+            color = ball_info[2]
+            self.put_obj(Ball(color), x_loc, y_loc)
+            self.initial_balls.append((x_loc, y_loc, color, self.color_rewards[color]))
+        for lava_cell in lava_list:
+            x_loc = lava_cell[0]
+            y_loc = lava_cell[1]
+            self.put_obj(Lava(), x_loc, y_loc)
+            self.lava_cells.append((x_loc, y_loc))
+
+        # Place a wall in the middle of the grid
         self.put_obj(Goal(), width - 2, height - 2)
 
 
@@ -833,7 +724,6 @@ class CustomEnv(MiniGridEnv):
             self.on_board_objects -= 1
     
     def step(self, action):
-        # print(f"step {self.step_count}, action={action}")
         if self.current_state:
             last_obs = self.current_state.copy() # save the last observation
             agent_pos_befor = self.agent_pos
@@ -854,7 +744,7 @@ class CustomEnv(MiniGridEnv):
             hold_obj = self.carrying
             if hold_obj.type == "ball":
                 ball_color = self.carrying.color
-                reward += self.color_rewards.get(ball_color, 0) + self.step_cost
+                reward += self.color_rewards.get(ball_color, 0)
                 self.carrying = None
                 self.on_board_objects -= 1
         
@@ -863,9 +753,9 @@ class CustomEnv(MiniGridEnv):
             reward += 5
 
         # hit a lava cell
-        if self.agent_pos in self.lava_cells: 
-            terminated = False
-            reward += self.lava_panishment + self.step_cost
+        # if self.agent_pos in self.lava_cells: 
+        #     # terminated = False
+        #     reward += self.lava_panishment
 
         if truncated:
             terminated = True
@@ -873,20 +763,14 @@ class CustomEnv(MiniGridEnv):
             if self.train_env:
                 reward -= 5
 
-        # each step cost the agent some reward, in order to minimize the number of steps
-        # reward -= self.step_cost 
-        self.ep_score += reward
-        # if terminated or truncated:
-        #     print(f"episode done, score={self.ep_score}, step count={self.step_count}")
-
         dis_from_goal = np.abs(self.agent_pos[0] - (self.grid.width - 2)) + np.abs(self.agent_pos[1] - (self.grid.height - 2))
         reward -=  self.step_cost # * dis_from_goal #the aproximation of number of steps to the goal
-        return obs, reward, terminated, truncated, info
+        self.ep_score += reward
+        return obs, round(reward,1), terminated, truncated, info
 
     def find_optimal_path(self):
         points = [(1,1,0)] + self.initial_balls
         points = {i: p for i, p in enumerate(points) if p[2] >= 0}
-        print("points", points) 
         matrix = np.zeros((len(points.keys()), len(points.keys())))
         for i in range(len(points)):
             p1 = points[i]

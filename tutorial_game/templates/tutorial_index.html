@@ -13,6 +13,7 @@
             justify-content: center;
             flex-direction: column;
             overflow-y: auto;
+            background: #eaf6fb !important;
         }
         .page {
             display: none;
@@ -24,7 +25,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: white;
+            background:#eaf6fb;
         }
         .active {
             display: flex;
@@ -161,65 +162,72 @@
     </div>
 
     <!-- Welcome Page -->
-    <div id="welcome-page" class="page">
-        <div id="welcome-page-content">
-            <h2>Welcome to the MiniGrid Tutorial</h2>
-            <p>Familiarize yourself with the game environment and practice your skills.</p>
-            <p>Your objective is to collect the right balls while avoiding lava cells.</p>
-            <p>Below the image, you'll see the reward earned for each move and your round's total score so far.</p>
-            <p>The controls are as follows:</p>
-            <ul>
-                <li>Arrow Left: Turn left</li>
-                <li>Arrow Right: Turn right</li>
-                <li>Arrow Up: Move forward</li>
-                <li>1: Pick up objects</li>
-            </ul>
-            <p>Enter your ID to begin:</p>
+    <div id="welcome-page" class="page active">
+        <div id="welcome-page-content" style="text-align: left; align-items: flex-start; display: flex; flex-direction: column;">
+            <h2 style="font-size: 2.7em; font-weight: bold; margin-bottom: 0.3em; text-align: left;">Welcome to the MiniGrid Tutorial</h2>
+            <p style="margin-left: 0; font-size: 1.2em;">Get familiarize with the game environment and practice your skills.</p>
+            <p style="margin-left: 0; font-size: 1.2em;">Your objective is to maximize the score in each round.</p>
+            <p style="margin-left: 0; font-size: 1.2em;">Below the image, you'll see the reward earned for each move and your round's total score so far.</p>
+            <div id="key-instructions" style="margin-top: 18px; margin-bottom: 0; border: 1px solid black; border-radius: 8px; padding: 14px 18px; background: #f8f8f8; min-width: 180px; max-width: 320px;">
+                <h3 style="margin-top: 0; margin-bottom: 8px; text-align: center;">Controls:</h3>
+                <ul style="margin: 0 auto; padding-left: 20px; margin-top: 0; display: table; text-align: left;">
+                    <li>&uarr; : Move forward</li>
+                    <li>&larr; : Turn left</li>
+                    <li>&rarr; : Turn right</li>
+                    <li>1 : Pickup</li>
+                </ul>
+            </div>
+            <!-- <p>Enter your ID to begin:</p> -->
             <!-- <input type="text" id="player-name" placeholder="Enter your Prolific ID"> -->
-            <button id="start-tutorial">Start Tutorial</button>
         </div>
+    <button id="start-tutorial" style="margin: 32px auto 0 auto; display: block; align-self: center;">Start Tutorial</button>
     </div>
 
     <!-- Game Page -->
     <div id="game-page" class="page">
         <div id="game-container">
+            <h2 id="round-header" style="width: 100%; text-align: center; margin-bottom: 10px; font-size: 2em;">Round <span id="round-number">1</span></h2>
             <div id="game-content" style="position: relative;">
                 <div id="game-image-container">
                     <div id="step-count">Steps: <span id="steps">0</span></div>
                     <img id="game-image" src="" alt="Game State">
                 </div>
-                <!-- Finish button placed outside of the image container -->
-                <div id="finish-button-container"></div>
-                <div id="key-instructions">
-                    <h3>Controls:</h3>
-                    <ul>
-                        <li>← : Turn left</li>
-                        <li>→ : Turn right</li>
-                        <li>↑ : Move forward</li>
-                        <li>1 : Pickup</li>
-                    </ul>
-                </div>
-                <!-- MAP LEGEND FOR PH1 PAGE -->
-                <div id="map-legend" style="margin-left: 30px; border: 1px solid #aaa; border-radius: 8px; padding: 16px; background: #f9f9f9; min-width: 160px; max-width: 200px; display: flex; flex-direction: column; align-items: flex-start;">
-                    <h4 style="margin-top:0;">Map Legend</h4>
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#3498db;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Blue Ball = <b style="margin-left:5px;">4</b></div>
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Green Ball = <b style="margin-left:5px;">2</b></div>
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#e74c3c;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Red Ball = <b style="margin-left:5px;">-1</b></div>
-                    <div style="display: flex; align-items: center; margin-bottom: 0;"><span style="display:inline-block;width:22px;height:22px;margin-right:10px;border:2px solid #222;"><img src="images/lava_cell.png" alt="Lava" style="width:100%;height:100%;object-fit:cover;border-radius:5px;"></span>-3</div>
+                <div style="display: flex; flex-direction: column; margin-left: 20px;">
+                    <div id="key-instructions">
+                        <h3>Controls:</h3>
+                        <ul>
+                            <li>&uarr; : Move forward</li>
+                            <li>&larr; : Turn left</li>
+                            <li>&rarr; : Turn right</li>
+                            <li>1 : Pickup</li>
+                        </ul>
+                    </div>
+                    <div id="map-legend" style="margin-top: 20px; border: 1px solid #aaa; border-radius: 8px; padding: 16px; background: #f9f9f9; min-width: 160px; max-width: 200px; display: flex; flex-direction: column; align-items: flex-start;">
+                        <h4 style="margin-top:0;">Scores</h4>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#3498db;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Blue Ball = <b style="margin-left:5px;">4</b></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Green Ball = <b style="margin-left:5px;">2</b></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#e74c3c;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Red Ball = <b style="margin-left:5px;">-1</b></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 0;"><span style="display:inline-block;width:22px;height:22px;margin-right:10px;border:2px solid #222;"><img src="static/images/lava_cell.png" alt="Lava" style="width:100%;height:100%;object-fit:cover;border-radius:5px;"></span>Lava = -3</div>
+                    </div>
                 </div>
             </div>
             <div id="info-container">
                 <p>Score: <span id="score">0</span></p>
-                <p>Round: <span id="episode">1</span></p>
+                <!-- <p>Round: <span id="episode">1</span></p> -->
                 <div id="reward-display">Last Action Reward: <span id="reward">0</span></div>
             </div>
+            
         </div>
     </div>
 
     <!-- Finish Page -->
     <div id="finish-page" class="page">
-        <h1>Finish Tutorial</h1>
-        <p>Your confirmation number: <span id="confirmation-number">1997</span></p>
+        <h1 style="font-size: 3.5em; font-weight: bold; margin-bottom: 0.5em;">Finish Tutorial</h1>
+        <div id="score-list-container" style="margin-top: 2em;">
+            <h2 style="font-size: 2em; margin-bottom: 0.5em;">Scores by Round</h2>
+            <ul id="score-list" style="font-size: 1.3em; list-style: none; padding-left: 0;"></ul>
+        </div>
+        <p style="font-size: 2em;">Your confirmation number: <span id="confirmation-number" style="font-size: 1.7em; font-weight: bold;">4242</span></p>
     </div>
 
     <!-- Loading Overlay -->

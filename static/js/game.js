@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let actions = [];
     let currentActionIndex = 0;
     let feedbackImages = [];
+    let cumulative_rewards = []
     let userFeedback = [];
     let changedIndexes = [];
     let feedbackActionMap = {};
@@ -225,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             hideLoader();
             showPage(parseInt(group) === 0 ? 'simple-update-page' : 'compare-agent-update-page');
-        }, 2000);
+        }, 4000);
     });
 
     // --- SOCKET EVENTS ---
@@ -234,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activePage) return;
         if (activePage.id === 'ph2-game-page') {
             setPh2GameImage('data:image/png;base64,' + data.image);
-            if (data.action) document.getElementById('action2').innerText = data.action;
+            // if (data.action) document.getElementById('action2').innerText = data.action;
             document.getElementById('reward2').innerText = data.reward;
             document.getElementById('score2').innerText = data.score;
             // document.getElementById('last_score2').innerText = data.last_score;
@@ -304,6 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentActionIndex = 0;
         feedbackImages = data.feedback_images;
         actionsCells = data.actions_cells;
+        cumulative_rewards = data.cumulative_rewards;
         showCurrentAction();
         showPage('overview-page');
     }
@@ -335,6 +337,28 @@ document.addEventListener('DOMContentLoaded', () => {
             currentActionElement.classList.add('selected-action');
         }
         nextActionButton.style.display = currentActionIndex >= actions.length - 1 ? 'none' : 'inline-block';
+
+        // Update reward and score for this action
+        const reward2Elem = document.getElementById('reward2');
+        const score2Elem = document.getElementById('score2');
+        if (Array.isArray(cumulative_rewards) && cumulative_rewards.length > 0) {
+            const idx = currentActionIndex;
+            let reward = 0;
+            let score = cumulative_rewards[idx];
+            if (idx === 0) {
+                reward = cumulative_rewards[0];
+            } else {
+                reward = cumulative_rewards[idx] - cumulative_rewards[idx - 1];
+            }
+            // Round to 1 decimal place
+            reward = Math.round(reward * 10) / 10;
+            score = Math.round(score * 10) / 10;
+            if (reward2Elem) reward2Elem.textContent = reward;
+            if (score2Elem) score2Elem.textContent = score;
+        } else {
+            if (reward2Elem) reward2Elem.textContent = '';
+            if (score2Elem) score2Elem.textContent = '';
+        }
     }
 
     

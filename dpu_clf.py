@@ -13,7 +13,7 @@ import base64
 from io import BytesIO
 from stable_baselines3 import PPO
 from minigrid_custom_env import *
-from minigrid_custom_train import UpgradedObjEnvExtractor
+from minigrid_custom_train import UpgradedObjEnvExtractor, ImageObjEnvExtractor
 import json
 import copy
 
@@ -33,7 +33,7 @@ def timeit(func):
     return wrapper
 
 @timeit
-def load_agent(env, model_path, update=False) -> PPO:
+def load_agent(env, model_path, update=False, image_obs=False) -> PPO:
     # policy_kwargs = dict(features_extractor_class=ObjEnvExtractor)
     model_path = model_path.split('.zip')[0]
     print(f'load new model path {model_path}')
@@ -42,6 +42,13 @@ def load_agent(env, model_path, update=False) -> PPO:
         "policy_kwargs": {"features_extractor_class": UpgradedObjEnvExtractor},  # Example kernel size
         "clip_range": 0.2,  # Example custom parameters
         "lr_schedule": 0.001  # Example learning rate schedule
+    }
+    elif image_obs:
+        custom_objects = {
+        "policy_kwargs": {"features_extractor_class": ImageObjEnvExtractor},  # Example kernel size
+        "clip_range": 0.2,  # Example custom parameters
+        "lr_schedule": 0.001,  # Example learning rate schedule
+        "image_obs": True  # Indicate that the model uses image observations
     }
     else:
         custom_objects = {
@@ -144,6 +151,7 @@ def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of 
     state_record = [last_obs]
     total_reward = 0    
     derminated = False
+    truncated = False
     # copy_env = copy.deepcopy(env)
     # plt.imshow(copy_env.render())
     while not (derminated or truncated):
@@ -230,7 +238,7 @@ def ax_to_feedback_image(ax):
     return img_base64
 
 @timeit
-def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='pink', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y', turn_color='cyan', pickup_color='pink', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
     imgs_action_list = []
     feedback_action_color = 'cyan'
     start_point = (50, 50)
@@ -355,8 +363,8 @@ def plot_all_move_sequence(img, move_sequence, agent_true_actions, move_color='y
 # each move with its own image
 @timeit
 # return -> buffer with the last image, actions :[{'action', 'x', 'y', 'width', 'height'},..], imgs_action_list: list of base64 encoded images
-def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_color='y', turn_color='white', pickup_color='pink', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
-    print("move sequence:", move_sequence)
+def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_color='yellow', turn_color='cyan', pickup_color='#e6007a', converge_action_location = -1): # -> State image with the path of the agent, actions marks locations    
+    # print("move sequence:", move_sequence)
     imgs_action_list = []
     feedback_action_color = 'cyan'
     start_point = (50, 50)
@@ -397,7 +405,7 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
         action_loc = {'action': actual_action, 'action_dir': action_dir}
         # moving action
         if actual_action  == 'forward': # a big arrow that represents a move
-            ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc='yellow', ec='yellow') #fc=feedback_action_color, ec=feedback_action_color)
+            ax.arrow(current_point[0], current_point[1], move_arrow_sizes[action_dir][0], move_arrow_sizes[action_dir][1], head_width=10, head_length=10, fc=move_color, ec=move_color) #fc=feedback_action_color, ec=feedback_action_color)
             buf = ax_to_feedback_image(ax)
 
             # overide the feedback arrow with the real action
@@ -422,7 +430,7 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
         #turning action   
         elif 'turn' in actual_action: # a small arrow that represents a turn
             # add the action arrow to the feedback arrow and save the image
-            ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=feedback_action_color, ec=feedback_action_color)
+            ax.arrow(current_point[0], current_point[1], turn_arrow_sizes[action_dir][0], turn_arrow_sizes[action_dir][1], head_width=7, head_length=6, fc=turn_color, ec=turn_color)
             buf = ax_to_feedback_image(ax)
             shift_size = 17
             turnning_mark_shifts = {'up': (0, -shift_size), 'down': (0, shift_size), 'right': (shift_size, 0), 'left': (-shift_size, 0)}
@@ -448,7 +456,7 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
             pickup_position = pickup_direction[action_dir]
 
             
-            _ = ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=feedback_action_color)
+            _ = ax.plot(current_point[0] + small_shift * pickup_position[0], current_point[1] + small_shift*pickup_position[1], marker='*', markersize=8, color=pickup_color)
             buf = ax_to_feedback_image(ax)
             
             action_loc['x'] = mark_x + 25 * pickup_position[0]
@@ -469,6 +477,17 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
         plt.close(fig)
     return buf, actions_with_location, imgs_action_list
 
+def will_it_stuck(agent, env):
+    truncated = False
+    terminated = False
+    cpy_env = copy.deepcopy(env)
+    obs = cpy_env.get_wrapper_attr('current_state')
+    while not truncated and not terminated:
+        action, _ = agent.predict(obs, deterministic=True)
+        obs, reward, terminated, truncated, _ = cpy_env.step(action)
+    if truncated:
+        return True
+    return False
 
 WALL_SHIFT_FACTOR = 1
 WALL_FACTOR = 10

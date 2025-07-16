@@ -2,33 +2,30 @@
 const socket = io();
 
 // DOM Elements
-const coverPage = document.getElementById('cover-page');
 const welcomePage = document.getElementById('welcome-page');
 const gamePage = document.getElementById('game-page');
 const finishPage = document.getElementById('finish-page');
-const coverStartButton = document.getElementById('cover-start-button');
+const scoreList = document.getElementById('score-list');
 const startTutorialButton = document.getElementById('start-tutorial');
 const playerNameInput = document.getElementById('player-name');
 const gameImage = document.getElementById('game-image');
 const scoreElement = document.getElementById('score');
-const episodeElement = document.getElementById('episode');
+// const episodeElement = document.getElementById('episode');
 const stepsElement = document.getElementById('steps');
 const rewardElement = document.getElementById('reward');
 const nextEpisodeButton = document.getElementById('next-episode');
 const loadingOverlay = document.getElementById('loading-overlay');
 const finishButtonContainer = document.getElementById('finish-button-container');
+const roundNumberElement = document.getElementById('round-number');
 
 // Game state
 let currentEpisode = 1;
 let currentScore = 0;
 let currentSteps = 0;
 let episodesCompleted = 0;
+let roundScores = [];
 
 // Event Listeners
-coverStartButton.addEventListener('click', () => {
-    coverPage.classList.remove('active');
-    welcomePage.classList.add('active');
-});
 
 // --- PROLIFIC ID HANDLING ---
 function getProlificIdOrRandom() {
@@ -41,7 +38,6 @@ function getProlificIdOrRandom() {
         return Math.floor(Math.random() * 100) + 1;
     }
 }
-// Store the player name in a variable, not in the DOM
 const prolificID = getProlificIdOrRandom();
 
 startTutorialButton.addEventListener('click', () => {
@@ -86,37 +82,54 @@ socket.on('game_update', (data) => {
 socket.on('episode_finished', (data) => {
     updateGameState(data);
     episodesCompleted++;
-    
-    if (episodesCompleted >= 2) {
-        // Create and show the finish tutorial button only if it doesn't already exist
+    if (data.score !== undefined) {
+        roundScores.push(data.score);
+    }
+    // Show finish button after 3 episodes (or adjust as needed)
+    if (episodesCompleted >= 3) {
         if (!document.getElementById('finish-tutorial-btn')) {
             const finishButton = document.createElement('button');
             finishButton.id = 'finish-tutorial-btn';
             finishButton.textContent = 'Finish Tutorial';
-            finishButton.style.padding = '10px 20px';
-            finishButton.style.fontSize = '16px';
-            finishButton.style.backgroundColor = '#4CAF50'; // Green button
+            finishButton.style.padding = '14px 28px';
+            finishButton.style.fontSize = '18px';
+            finishButton.style.backgroundColor = '#4CAF50';
             finishButton.style.color = 'white';
             finishButton.style.border = 'none';
-            finishButton.style.borderRadius = '5px';
+            finishButton.style.borderRadius = '8px';
             finishButton.style.cursor = 'pointer';
+            finishButton.style.marginTop = '24px';
+            finishButton.style.alignSelf = 'flex-start';
             finishButton.addEventListener('click', () => {
                 gamePage.classList.remove('active');
                 finishPage.classList.add('active');
+                // Populate the scores list on the finish page
+                if (scoreList) {
+                    scoreList.innerHTML = '';
+                    roundScores.forEach((score, idx) => {
+                        const li = document.createElement('li');
+                        li.textContent = `Round ${idx + 1}: ${score}`;
+                        li.style.listStyleType = 'none';
+                        scoreList.appendChild(li);
+                    });
+                }
+                finishButton.remove();
             });
-
-            // Ensure the finish button container is visible and positioned correctly
-            finishButtonContainer.appendChild(finishButton);
+            // Place the button after the map-legend (below ledge, right to key-instructions)
+            const mapLegend = document.getElementById('map-legend');
+            if (mapLegend && mapLegend.parentNode) {
+                mapLegend.parentNode.appendChild(finishButton);
+            } else {
+                document.body.appendChild(finishButton);
+            }
         }
     } else {
         // Remove the button if not enough episodes completed
         const existingBtn = document.getElementById('finish-tutorial-btn');
         if (existingBtn) {
-            finishButtonContainer.removeChild(existingBtn);
+            existingBtn.remove();
         }
     }
-    
-    alert(`Round finished! Your score: ${data.score}`);
     socket.emit('next_episode');
 });
 
@@ -143,7 +156,10 @@ function updateGameState(data) {
     }
     if (data.episode !== undefined) {
         currentEpisode = data.episode;
-        episodeElement.textContent = currentEpisode;
+        // episodeElement.textContent = currentEpisode;
+        if (roundNumberElement) {
+            roundNumberElement.textContent = currentEpisode;
+        }
     }
     if (data.step_count !== undefined) {
         currentSteps = data.step_count;

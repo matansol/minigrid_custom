@@ -113,15 +113,6 @@
             cursor: pointer;
             margin-top: 20px;
         }
-        /* #goto-phase2-button {
-            position: absolute; /* Position button relative to the container */
-            /* bottom: 10px; /* Align to the bottom */
-            /* right: 10px; Align to the right */
-            /* margin: 0; Remove any extra margins */ 
-           /* padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        } */
         #loading-indicator {
             display: none; /* Initially hidden */
             font-size: 18px;
@@ -374,7 +365,8 @@
             <span style="font-size: 1.3em; font-weight: bold;">Round <span id="round-number">1</span></span>
         </div>
         <p style="font-size: 1.2em;">
-            Watch the AI agent control the avatar, and see where it makes mistakes. When the round is over, you will get the chance to give feedback.</p>
+            Watch the AI agent control the avatar and see where it makes mistakes. <br> 
+            When the round is over, you’ll have a chance to give feedback.</p>
         <!-- Start Agent Button -->
         <div id="button-container-ph2" style="margin-top: 5px; text-align: center;">
             <button id="start-agent-button" style="display: block;">Start Agent</button>
@@ -400,18 +392,11 @@
                 <div id="right-panel" style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 30px; min-width: 200px; max-width: 240px;">
                     <!-- MAP LEGEND FOR PH2 PAGE -->
                     <div id="map-legend" style="border: 1px solid #aaa; border-radius: 8px; padding: 16px; background: #f9f9f9; min-width: 160px; max-width: 200px; display: flex; flex-direction: column; align-items: flex-start;">
-                        <h4 style="margin-top:0;">Legend</h4>
+                        <h4 style="margin-top:0;">Scores</h4>
                         <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#3498db;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Blue Ball = <b style="margin-left:5px;">4</b></div>
                         <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Green Ball = <b style="margin-left:5px;">2</b></div>
                         <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#e74c3c;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Red Ball = <b style="margin-left:5px;">-1</b></div>
                         <div style="display: flex; align-items: center; margin-bottom: 0;"><span style="display:inline-block;width:22px;height:22px;margin-right:10px;border:2px solid #222;"><img src="static/images/lava_cell.png" alt="Lava" style="width:100%;height:100%;object-fit:cover;border-radius:5px;"></span>Lava = -3</div>
-                    </div>
-                    <!-- Game information below the legends -->
-                    <div id="info-container" style="margin-top: 20px; width: 100%;">
-                        <p>Action: <span id="action2"></span></p>
-                        <p>Reward: <span id="reward2"></span></p>
-                        <p>Score: <span id="score2"></span></p>
-                        <p>Last round score: <span id="last_score2"></span></p>
                     </div>
                 </div>
             </div>
@@ -421,9 +406,9 @@
 <!-- Overview Page -->
 <div id="overview-page" class="page" style="display: none; background: #eaf6fb;">
     <h2>Round <span id="overview-round-number">1</span> Overview</h2>
-    <p style="font-size: 1.2em;">Nevigate between actions with Previous/Next buttons. <br>
-        The feedback is given by selecting a new action from the dropdown. <br>
-        If more than one correction is made on the same action, only the last one will count.</p>
+    <p style="font-size: 1.2em;">Use the Previous / Next buttons to navigate between actions. <br>
+                Provide feedback by selecting a new action from the dropdown. <br>
+                If you make more than one correction to the same action, only the last one counts.</p>
   
     <div style="display: flex; flex-direction: row; align-items: flex-start; width: 100%; justify-content: center; background: #eaf6fb; padding-bottom: 30px;">
       <div id="left-panel" style="display: flex; flex-direction: column; align-items: flex-start; position: relative;">
@@ -443,7 +428,7 @@
       <div id="right-panel" style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 30px; min-width: 200px; max-width: 240px;">
         <!-- MAP LEGEND FOR PH2 PAGE -->
         <div id="map-legend" style="border: 1px solid #aaa; border-radius: 8px; padding: 16px; background: #f9f9f9; min-width: 160px; max-width: 200px; display: flex; flex-direction: column; align-items: flex-start;">
-            <h4 style="margin-top:0;">Legend</h4>
+            <h4 style="margin-top:0;">Scores</h4>
             <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#3498db;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Blue Ball = <b style="margin-left:5px;">4</b></div>
             <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Green Ball = <b style="margin-left:5px;">2</b></div>
             <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#e74c3c;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Red Ball = <b style="margin-left:5px;">-1</b></div>
@@ -467,12 +452,19 @@
                 <span style="font-size: 1em;">Pickup</span>
             </span>
         </div>
+        <!-- Info container moved here -->
+        <div id="info-container" style="margin-top: 20px; width: 100%;">
+            <!-- <p>Action: <span id="action2"></span></p> -->
+            <p>Reward: <span id="reward2"></span></p>
+            <p>Score: <span id="score2"></span></p>
+        </div>
       </div>
     </div>
-    <div id="overview-bottom-section" style="width: 100%; background: #eaf6fb; padding: 24px 0 24px 0; border-radius: 12px; display: flex; flex-direction: column; align-items: center; margin-top: 20px;">
-        <div id="explanation-feedback-container" style="width: 70%;">
-            <label for="feedback-input" style="font-weight: bold;">Please explain your feedback in your words:</label>
-            <input type="text" id="feedback-explanation" style="width: 50%; margin-top: 5px;" placeholder="..." />
+    <div id="overview-bottom-section" style="width: 100%; background: #eaf6fb; padding: 24px 0 24px 0; border-radius: 12px; display: flex; flex-direction: column; align-items: center; margin-top: 10px;">
+        <!-- Add explanation input below the compare buttons -->
+        <div id="compare-explanation-container" style="margin-top: 40px; width: 60%; text-align: center;">
+            <label for="compare-explanation-input" style="font-weight: bold;">Please explain your choice in your words:</label>
+            <input type="text" id="compare-explanation-input" style="width: 60%; margin-top: 5px;" placeholder="..." />
         </div>
         <div id="bottom-buttons" style="margin-bottom: 18px;">
             <button id="next-episode-button">Next Round</button>
@@ -493,7 +485,7 @@
 
     <!-- Compare Agent Update Page -->
     <div id="compare-agent-update-page" class="page" style="display: none;">
-        <h2>Compare Agent Update</h2>        <div id="compare-container" style="display: flex; justify-content: space-around; margin: 20px;">
+        <h2>Comparing Update Strategies</h2>        <div id="compare-container" style="display: flex; justify-content: space-around; margin: 20px;">
             <div style="text-align: center; border: 1px solid #ccc; padding: 10px;">
                 <h3>Previous Strategy</h3>
                 <canvas id="previous-agent-canvas" style="background: #f0f0f0; width: 400px; height: 400px;"></canvas>
@@ -506,7 +498,7 @@
         <!-- Add explanation input below the compare buttons -->
         <div id="compare-explanation-container" style="margin-top: 40px; width: 60%; text-align: center;">
             <label for="compare-explanation-input" style="font-weight: bold;">Please explain your choice in your words:</label>
-            <input type="text" id="compare-explanation-input" style="width: 90%; margin-top: 5px;" placeholder="..." />
+            <input type="text" id="compare-explanation-input" style="width: 60%; margin-top: 5px;" placeholder="..." />
         </div>
         <!-- Other buttons -->
         <div id="compare-buttons-container" style="display: flex; justify-content: space-around; margin-top: 20px;">

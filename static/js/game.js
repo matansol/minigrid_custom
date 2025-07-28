@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playerName: prolificID,
             updateAgent: true,
             userFeedback,
-            actions,
+            // actions,
             simillarity_level: group,
             feedbackExplanationText: feedbackExplanation
         });
@@ -235,10 +235,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activePage) return;
         if (activePage.id === 'ph2-game-page') {
             setPh2GameImage('data:image/png;base64,' + data.image);
-            // if (data.action) document.getElementById('action2').innerText = data.action;
-            document.getElementById('reward2').innerText = data.reward;
-            document.getElementById('score2').innerText = data.score;
-            // document.getElementById('last_score2').innerText = data.last_score;
+            const rewardElem = document.getElementById('reward2');
+            if (rewardElem) rewardElem.innerText = data.reward;
+            const scoreElem = document.getElementById('score2');
+            if (scoreElem) scoreElem.innerText = data.score;
             const stepCountElementPh2 = document.getElementById('step-count-ph2');
             if (stepCountElementPh2) stepCountElementPh2.innerText = data.step_count;
         } else if (activePage.id === 'overview-page') {

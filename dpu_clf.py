@@ -140,7 +140,7 @@ def get_infront_object(obs, to_print=False):
 
 
 @timeit
-def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of moves (action and diraction, action), number of illegal moves, total reward, list of actions names
+def capture_agent_path(copy_env: CustomEnv, agent: PPO) -> (list, int, int, list): # -> list of moves (action and diraction, action), number of illegal moves, total reward, list of actions names
     illigal_moves = 0
     last_obs = copy_env.get_wrapper_attr('current_state')
     
@@ -150,7 +150,7 @@ def capture_agent_path(copy_env, agent) -> (list, int, int, list): # -> list of 
     agent_actions = []
     state_record = [last_obs]
     total_reward = 0    
-    derminated = False
+    derminated = False  
     truncated = False
     # copy_env = copy.deepcopy(env)
     # plt.imshow(copy_env.render())
@@ -477,7 +477,7 @@ def plot_move_sequence_by_parts(imgs, move_sequence, agent_true_actions, move_co
         plt.close(fig)
     return buf, actions_with_location, imgs_action_list
 
-def will_it_stuck(agent, env):
+def will_it_stuck(agent: PPO, env: CustomEnv) -> bool:
     truncated = False
     terminated = False
     cpy_env = copy.deepcopy(env)
@@ -584,7 +584,7 @@ def evaluate_agent(env, agent, num_episodes=100, from_unique_env=False) -> (floa
         done = False
         while not (done):
             last_obs = state
-            agent_pos_before = env.unwrapped.agent_pos
+            agent_pos_before = env.unwrapped.get_wrapper_attr('agent_pos')
             # print(state)
             action, _ = agent.predict(state, deterministic=True)
             state, reward, done, truncle, _ = env.unwrapped.step(action)
@@ -593,7 +593,7 @@ def evaluate_agent(env, agent, num_episodes=100, from_unique_env=False) -> (floa
             state = {'image': state['image']}
             total_reward += reward
             total_moves += 1
-            if is_illegal_move(action, last_obs, state, agent_pos_before, env.unwrapped.agent_pos):
+            if is_illegal_move(action, last_obs, state, agent_pos_before, env.unwrapped.get_wrapper_attr('agent_pos')):
                 total_illegal_moves += 1
         # print("Episode:", i, "Reward:", total_reward, "Illegal moves:", total_illegal_moves, "Total moves:", total_moves)
             

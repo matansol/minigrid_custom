@@ -1,0 +1,185 @@
+StartDate,EndDate,Status,IPAddress,Progress,Duration (in seconds),Finished,RecordedDate,ResponseId,RecipientLastName,RecipientFirstName,RecipientEmail,ExternalReference,LocationLatitude,LocationLongitude,DistributionChannel,UserLanguage,Q389_Browser,Q389_Version,Q389_Operating System,Q389_Resolution,Consent timing_First Click,Consent timing_Last Click,Consent timing_Page Submit,Consent timing_Click Count,Consent,prolific_id,Q1_First Click,Q1_Last Click,Q1_Page Submit,Q1_Click Count,Q118_First Click,Q118_Last Click,Q118_Page Submit,Q118_Click Count,Q110,Q160,Q163,Q165,Q178,Q164,Q179,Q608_First Click,Q608_Last Click,Q608_Page Submit,Q608_Click Count,Q609,Tutorial,Q613,Q653_First Click,Q653_Last Click,Q653_Page Submit,Q653_Click Count,Q655,Q192_First Click,Q192_Last Click,Q192_Page Submit,Q192_Click Count,Q657,Q614_First Click,Q614_Last Click,Q614_Page Submit,Q614_Click Count,Q615,Q193_First Click,Q193_Last Click,Q193_Page Submit,Q193_Click Count,Q171,Q593_First Click,Q593_Last Click,Q593_Page Submit,Q593_Click Count,Q594,Q175,Q176,Demographics timing_First Click,Demographics timing_Last Click,Demographics timing_Page Submit,Demographics timing_Click Count,age,gender,country,country_3_TEXT,education,education_6_TEXT,ai,AI_1,AI_2,AI_3,AI_4,AI_5,comments,Q261,Random_ID,AWSURL,group,ProlificID
+Start Date,End Date,Response Type,IP Address,Progress,Duration (in seconds),Finished,Recorded Date,Response ID,Recipient Last Name,Recipient First Name,Recipient Email,External Data Reference,Location Latitude,Location Longitude,Distribution Channel,User Language,Click to write the question text - Browser,Click to write the question text - Version,Click to write the question text - Operating System,Click to write the question text - Resolution,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Thank you for participating in this study. It will include decision-making tasks followed by some questions about yourself.
+
+
+ 
+
+Estimated study time: 20 minutes. 
+Your responses are confidential. Whatever information you convey in this study will be anonymized and will not be traced back to you.
+
+
+
+Please read all the instructions and information very carefully.
+
+If you have any questions, you may contact Matan Solomon: ma.solomon@campus.technion.ac.il
+
+
+ 
+
+HEADS UP
+
+Achieving high performance can qualify you for bonus payments of up to 1 pound.
+
+
+
+Notice: After choosing one of the options below, click on the blue arrow at the bottom right side of the screen.",Please record your participant ID in prolific academic:,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Avatar View:
+
+ 
+
+The avatar's view is limited, and it can only see what is in front of it and 3 blocks to each side; out-of-view cells appear darker.
+
+Example images:
+
+
+
+
+
+
+ 
+By turning, the view will also change and let the avatar see different parts of the grid 
+
+
+ 
+When the avatar is facing a ball, like we see in the upper example, it can collect the ball using the Key ‘1’. There is no limit to the number of balls the avatar can collect.",Q160,Reward?,Q165,Reward?,Q164,Reward?,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"-------- Practice time - Getting familiar with the Environment  --------
+
+In the first part of the game, you will control the avatar using your keyboard:
+
+Up arrow (↑) – Move forward
+
+Left arrow (←)  Turn the avatar to ITS left
+
+Right arrow (→)  Turn the avatar to ITS right
+
+Key ‘1’ – Pick up a ball directly in front of the avatar
+
+
+To get a better understanding of the environment and the game, you will play the game yourself.
+In the link below, you need to play at least 3 rounds of the game.
+
+
+
+
+HEADS UP
+
+After 3 rounds, a green button will appear below. Press it to finish the tutorial and receive the completion number to continue the survey. 
+
+Good luck!","Notice: When planning your movement, feel free to take your time.The score is dependent only on the","You are now ready to proceed to the main task!
+
+Good luck!",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Instructions:
+
+ 
+In this section, an AI agent will control the avatar in the game for five rounds.
+
+The agent is imperfect—it may make mistakes or choose suboptimal actions.
+
+Your task is to train the agent to improve its performance: the better it performs by the end of the five rounds, the greater your reward.
+
+In each round, you will first observe the agent controlling the avatar. Afterwards, you will proceed to the Round Overview Page, where you can provide feedback by correcting the agent’s poor decisions.
+ 
+
+
+
+ 
+
+Use the Previous and Next Action buttons to step through the agent’s most recent round, one action at a time. 
+
+When you identify a poor action, click its label (e.g., “forward”) and select a better alternative.
+You can only correct actions on the agent’s most recent path. For example, in the image above, the correction would be ""turn right"" to avoid the lava.
+
+ 
+Correct the agent on each mistake it made along the path—the more corrections you provide, the better the training will be.
+
+ 
+
+
+
+If you revise the same action more than once, only your final selection will take effect.
+
+ 
+
+After selecting a correction, it will be highlighted with a blue background, and a white symbol will appear on the avatar to indicate the newly selected action. 
+
+In this example, we want to tell the agent not to step into the lava, so we selected the ‘turn right’ action instead, toward the blue ball.
+
+
+
+
+ 
+
+ 
+
+	When you finish submitting your feedback, click Update Agent to help the agent learn from your corrections and adjust its strategy.
+
+
+If you believe the agent’s actions in the round were already optimal, click Next Round to continue without updating the agent.",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Main Task
+
+
+
+The following link will open the task in a new browser tab - link
+
+
+
+To continue, enter below the confirmation number you got at the end of the task:",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Instructions:
+
+ 
+In this section, an AI agent will control the avatar in the game for five rounds.
+
+The agent is imperfect—it may make mistakes or choose suboptimal actions.
+
+Your task is to train the agent to improve its performance: the better it performs by the end of the five rounds, the greater your reward.
+
+In each round, you will first observe the agent controlling the avatar. Afterwards, you will proceed to the Round Overview Page, where you can provide feedback by correcting the agent’s poor decisions.
+ 
+
+
+
+ 
+
+Use the Previous and Next Action buttons to step through the agent’s most recent round, one action at a time. 
+
+When you identify a poor action, click its label (e.g., “forward”) and select a better alternative.
+You can only correct actions on the agent’s most recent path. For example, in the image above, the correction would be ""turn right"" to avoid the lava.
+
+ 
+Correct the agent on each mistake it made along the path—the more corrections you provide, the better the training will be.
+
+ 
+
+
+
+If you revise the same action more than once, only your final selection will take effect.
+
+ 
+
+After selecting a correction, it will be highlighted with a blue background, and a white symbol will appear on the avatar to indicate the newly selected action. 
+
+In this example, we want to tell the agent not to step into the lava, so we selected the ‘turn right’ action instead, toward the blue ball.
+
+
+
+
+ 
+
+ 
+
+	When you finish submitting your feedback, click Update Agent to help the agent learn from your corrections and adjust its strategy.
+
+
+If you believe the agent’s actions in the round were already optimal, click Next Round to continue without updating the agent.",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Main Task
+
+
+
+The following link will open the game in a new browser tab  - link
+
+
+
+to continue, enter below the confirmation number you got at the end of the task:",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"If you could play 10 rounds of the game and be paid an amount equal to your total score, would you rather play yourself or let the agent you just trained play for you?",Please briefly explain your choice:,Any other comments?,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,Age:,Gender identity:,In which country do you reside? - Selected Choice,In which country do you reside? - Other - Text,Years of education: - Selected Choice,Years of education: - Other: - Text,How familiar are you with Artificial Intelligence?,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I believe AI will improve my life.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I believe that AI will improve my work.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think I will use AI technology in the future.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think AI technology is a threat to humans.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think AI technology is positive for humanity.,"Thank you for your participation.
+Please share any thoughts or comments about this study in the space below.",Click the next button to complete the survey.,Random_ID,AWSURL,group,ProlificID
+"{""ImportId"":""startDate"",""timeZone"":""America/Denver""}","{""ImportId"":""endDate"",""timeZone"":""America/Denver""}","{""ImportId"":""status""}","{""ImportId"":""ipAddress""}","{""ImportId"":""progress""}","{""ImportId"":""duration""}","{""ImportId"":""finished""}","{""ImportId"":""recordedDate"",""timeZone"":""America/Denver""}","{""ImportId"":""_recordId""}","{""ImportId"":""recipientLastName""}","{""ImportId"":""recipientFirstName""}","{""ImportId"":""recipientEmail""}","{""ImportId"":""externalDataReference""}","{""ImportId"":""locationLatitude""}","{""ImportId"":""locationLongitude""}","{""ImportId"":""distributionChannel""}","{""ImportId"":""userLanguage""}","{""ImportId"":""QID520_BROWSER""}","{""ImportId"":""QID520_VERSION""}","{""ImportId"":""QID520_OS""}","{""ImportId"":""QID520_RESOLUTION""}","{""ImportId"":""QID11_FIRST_CLICK""}","{""ImportId"":""QID11_LAST_CLICK""}","{""ImportId"":""QID11_PAGE_SUBMIT""}","{""ImportId"":""QID11_CLICK_COUNT""}","{""ImportId"":""QID3""}","{""ImportId"":""QID574_TEXT""}","{""ImportId"":""QID431_FIRST_CLICK""}","{""ImportId"":""QID431_LAST_CLICK""}","{""ImportId"":""QID431_PAGE_SUBMIT""}","{""ImportId"":""QID431_CLICK_COUNT""}","{""ImportId"":""QID591_FIRST_CLICK""}","{""ImportId"":""QID591_LAST_CLICK""}","{""ImportId"":""QID591_PAGE_SUBMIT""}","{""ImportId"":""QID591_CLICK_COUNT""}","{""ImportId"":""QID583""}","{""ImportId"":""QID633""}","{""ImportId"":""QID636""}","{""ImportId"":""QID638""}","{""ImportId"":""QID651""}","{""ImportId"":""QID637""}","{""ImportId"":""QID652""}","{""ImportId"":""QID608_FIRST_CLICK""}","{""ImportId"":""QID608_LAST_CLICK""}","{""ImportId"":""QID608_PAGE_SUBMIT""}","{""ImportId"":""QID608_CLICK_COUNT""}","{""ImportId"":""QID609""}","{""ImportId"":""QID610_TEXT""}","{""ImportId"":""QID613""}","{""ImportId"":""QID653_FIRST_CLICK""}","{""ImportId"":""QID653_LAST_CLICK""}","{""ImportId"":""QID653_PAGE_SUBMIT""}","{""ImportId"":""QID653_CLICK_COUNT""}","{""ImportId"":""QID655""}","{""ImportId"":""QID665_FIRST_CLICK""}","{""ImportId"":""QID665_LAST_CLICK""}","{""ImportId"":""QID665_PAGE_SUBMIT""}","{""ImportId"":""QID665_CLICK_COUNT""}","{""ImportId"":""QID657_TEXT""}","{""ImportId"":""QID614_FIRST_CLICK""}","{""ImportId"":""QID614_LAST_CLICK""}","{""ImportId"":""QID614_PAGE_SUBMIT""}","{""ImportId"":""QID614_CLICK_COUNT""}","{""ImportId"":""QID615""}","{""ImportId"":""QID666_FIRST_CLICK""}","{""ImportId"":""QID666_LAST_CLICK""}","{""ImportId"":""QID666_PAGE_SUBMIT""}","{""ImportId"":""QID666_CLICK_COUNT""}","{""ImportId"":""QID644_TEXT""}","{""ImportId"":""QID593_FIRST_CLICK""}","{""ImportId"":""QID593_LAST_CLICK""}","{""ImportId"":""QID593_PAGE_SUBMIT""}","{""ImportId"":""QID593_CLICK_COUNT""}","{""ImportId"":""QID594""}","{""ImportId"":""QID648_TEXT""}","{""ImportId"":""QID649_TEXT""}","{""ImportId"":""QID12_FIRST_CLICK""}","{""ImportId"":""QID12_LAST_CLICK""}","{""ImportId"":""QID12_PAGE_SUBMIT""}","{""ImportId"":""QID12_CLICK_COUNT""}","{""ImportId"":""QID5_TEXT""}","{""ImportId"":""QID6""}","{""ImportId"":""QID281""}","{""ImportId"":""QID281_3_TEXT""}","{""ImportId"":""QID7""}","{""ImportId"":""QID7_6_TEXT""}","{""ImportId"":""QID16""}","{""ImportId"":""QID626_1""}","{""ImportId"":""QID626_2""}","{""ImportId"":""QID626_3""}","{""ImportId"":""QID626_4""}","{""ImportId"":""QID626_5""}","{""ImportId"":""QID10_TEXT""}","{""ImportId"":""QID392""}","{""ImportId"":""Random_ID""}","{""ImportId"":""AWSURL""}","{""ImportId"":""group""}","{""ImportId"":""ProlificID""}"
+22/07/2025 12:05,22/07/2025 12:33,0,5.29.23.32,100,1713,1,22/07/2025 12:33,R_1obQ2qlgPRSzqMx,,,,,32.0804,34.7807,anonymous,EN,Safari,16.6,Macintosh,1440x900,187.04,187.04,192.964,1,1,ivri123456789101112131415,0,0,75.096,0,0,0,20.852,0,,2,2,4,2,1,1,235.99,414.291,416.35,2,,4242,,,,,,,,,,,,0,0,138.701,0,,100.182,282.912,284.359,2,APPL,11.385,92.555,105.199,4,1,"I will play myself as I think that the the board in the examples you provided is not that ""hard"" to design the best strategy by myself.
+
+Had the board been more complex, I would have trained the agent in the rounds",Amazing game and amazing tutorial Ya totach,1.94,52.914,54.268,12,26,0,3,Israel,4,,5,7,7,7,6,4,TODA,,8081426610,,2,ivri123456789101112131415
+22/07/2025 12:07,22/07/2025 12:35,0,89.139.8.126,100,1653,1,22/07/2025 12:35,R_14Boab74RN1aDtf,,,,,32.8259,34.9968,anonymous,EN,Firefox,140,Linux x86_64,1920x1080,66.977,66.977,68.841,1,1,Nir12345122141235132512561,0,0,193.124,0,0,0,9.523,0,,2,2,4,2,1,1,56.132,261.786,263.863,3,,4242,,0,0,119.148,0,,57.411,752.865,754.086,5,APPL,,,,,,,,,,,15.088,16.506,28.883,2,1,The Agent made some poor choises,,1.454,40.882,41.698,11,27,0,3,Israel,3,,2,6,6,7,2,5,,,4784277470,,0,Nir12345122141235132512561
+22/07/2025 12:07,22/07/2025 12:35,0,46.116.16.186,100,1657,1,22/07/2025 12:35,R_9xZyJBuRSIlLj3P,,,,,32.0804,34.7807,anonymous,EN,Edge,138.0.0.0,Windows NT 10.0,1280x720,2.897,31.797,32.602,3,1,mor1111111111111111111111111111111111111111111111111111111111111,35.427,35.628,186.391,2,0,0,27.667,0,,2,2,4,2,1,1,13.013,202.801,209.975,2,,4242,,,,,,,,,,,,13.845,40.585,156.861,4,,30.043,528.915,532.117,7,APPL,18.901,56.55,79.309,5,2,it seems that the agent learns as well,,1.27,90.366,91.55,18,26,0,3,,3,,4,7,7,7,5,6,,,7361541239,,3,mor1111111111111111111111111111111111111111111111111111111111111
+22/07/2025 12:07,22/07/2025 12:23,0,5.29.14.10,66,928,0,22/07/2025 13:07,R_4cnD85bSvcw2LE3,,,,,32.0821,34.8122,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,65.252,65.252,65.972,1,1,Matan12222222222222222222222222222,0,0,61.782,0,0,0,18.154,0,,2,2,4,2,1,1,167.013,362.325,365.844,2,,4242,,,,,,,,,,,,0,0,100.977,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2431723413,,3,Matan12222222222222222222222222222
+22/07/2025 12:07,22/07/2025 12:31,0,80.230.83.30,51,1414,0,22/07/2025 13:07,R_40B2WHFoxsKtcVz,,,,,32.0876,34.8739,anonymous,EN,Edge,138.0.0.0,Windows NT 10.0,1280x800,84.105,84.105,86.11,1,1,Lior Vardi 1111111111111111111111,79.241,79.241,139.226,1,0,0,17.306,0,,2,2,4,2,1,1,0.125,262.73,274.792,3,,4242,,98.697,98.697,120.404,1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6403633869,,0,Lior Vardi 1111111111111111111111

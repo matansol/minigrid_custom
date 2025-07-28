@@ -134,6 +134,34 @@ def get_all_tables_from_mysql() -> Dict[str, pd.DataFrame]:
         print("❌ Failed to connect to database")
         return {}
 
+def alter_database_tables(query: str):
+    """
+    Alters the 'user_choices' table by adding new columns.
+    """
+    # Load configuration from .env file
+    config = {
+        'host': os.getenv('AZURE_MYSQL_HOST'),
+        'database': os.getenv('AZURE_MYSQL_DATABASE'),
+        'user': os.getenv('AZURE_MYSQL_USER'),
+        'password': os.getenv('AZURE_MYSQL_PASSWORD'),
+        'port': int(os.getenv('AZURE_MYSQL_PORT', 3306))
+    }
+
+    explorer = MySQLDataExplorer(**config)
+    if explorer.connect():
+        try:
+            cursor = explorer.connection.cursor()
+            # Add unique_env column
+            cursor.execute(query)
+            print("✅ ", query)
+            cursor.close()
+        except Error as e:
+            print(f"❌ Error altering table: {e}")
+        finally:
+            explorer.close_connection()
+    else:
+        print("❌ Failed to connect to database")
+
 
 def main():
     """

@@ -1,0 +1,244 @@
+StartDate,EndDate,Status,IPAddress,Progress,Duration (in seconds),Finished,RecordedDate,ResponseId,RecipientLastName,RecipientFirstName,RecipientEmail,ExternalReference,LocationLatitude,LocationLongitude,DistributionChannel,UserLanguage,Q389_Browser,Q389_Version,Q389_Operating System,Q389_Resolution,Consent timing_First Click,Consent timing_Last Click,Consent timing_Page Submit,Consent timing_Click Count,Consent,prolific_id,Q1_First Click,Q1_Last Click,Q1_Page Submit,Q1_Click Count,Q118_First Click,Q118_Last Click,Q118_Page Submit,Q118_Click Count,Q110,Q160,Q163,Q165,Q178,Q164,Q179,Q608_First Click,Q608_Last Click,Q608_Page Submit,Q608_Click Count,Q609,Tutorial,Q613,Q653_First Click,Q653_Last Click,Q653_Page Submit,Q653_Click Count,Q655,Q192_First Click,Q192_Last Click,Q192_Page Submit,Q192_Click Count,Q657,Q614_First Click,Q614_Last Click,Q614_Page Submit,Q614_Click Count,Q615,Q193_First Click,Q193_Last Click,Q193_Page Submit,Q193_Click Count,Q171,Q593_First Click,Q593_Last Click,Q593_Page Submit,Q593_Click Count,Q594,Q175,Q197_First Click,Q197_Last Click,Q197_Page Submit,Q197_Click Count,Q196,Demographics timing_First Click,Demographics timing_Last Click,Demographics timing_Page Submit,Demographics timing_Click Count,age,gender,country,country_3_TEXT,education,education_6_TEXT,ai,AI_1,AI_2,AI_3,AI_4,AI_5,comments,Q261,Random_ID,AWSURL,group,ProlificID,agent_level,bonus_group
+Start Date,End Date,Response Type,IP Address,Progress,Duration (in seconds),Finished,Recorded Date,Response ID,Recipient Last Name,Recipient First Name,Recipient Email,External Data Reference,Location Latitude,Location Longitude,Distribution Channel,User Language,Click to write the question text - Browser,Click to write the question text - Version,Click to write the question text - Operating System,Click to write the question text - Resolution,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Thank you for participating in this study. It will include decision-making tasks followed by some questions about yourself.
+
+
+ 
+
+Estimated study time: 25 minutes. 
+Your responses are confidential. Whatever information you convey in this study will be anonymized and will not be traced back to you.
+
+
+
+Please read all the instructions and information very carefully.
+
+If you have any questions, you may contact Matan Solomon: ma.solomon@campus.technion.ac.il
+
+
+ 
+
+HEADS UP
+
+Achieving high performance can qualify you for bonus payments of up to 1 pound.
+
+
+
+Notice: After choosing one of the options below, click on the blue arrow at the bottom right side of the screen.",Please record your participant ID in prolific academic:,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Avatar View:
+
+ 
+
+The avatar's view is limited, and it can only see what is in front of it and 3 blocks to each side; out-of-view cells appear darker.
+
+Example images:
+
+
+
+
+
+
+ 
+By turning, the view will also change and let the avatar see different parts of the grid 
+
+
+ 
+When the avatar is facing a ball, like we see in the upper example, it can collect the ball using the Key ‘1’. There is no limit to the number of balls the avatar can collect.",Q160,Reward?,Q165,Reward?,Q164,Reward?,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"-------- Practice time - Getting familiar with the Environment  --------
+
+In the first part of the game, you will control the avatar using your keyboard:
+
+Up arrow (↑) – Move forward
+
+Left arrow (←)  Turn the avatar to ITS left
+
+Right arrow (→)  Turn the avatar to ITS right
+
+Key ‘1’ – Pick up a ball directly in front of the avatar
+
+
+To get a better understanding of the environment and the game, you will play the game yourself.
+In the link below, you need to play at least 3 rounds of the game.
+
+
+
+
+HEADS UP
+
+After 3 rounds, a green button will appear below. Press it to finish the tutorial and receive the completion number to continue the survey. 
+
+Good luck!","Notice: When planning your movement, feel free to take your time.The score is dependent only on the","You are now ready to proceed to the main task!
+
+Good luck!",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Instructions:
+
+ 
+In this section, an AI agent will control the avatar in the game for five rounds.
+
+The agent is imperfect—it may make mistakes or choose suboptimal actions.
+
+Your task is to train the agent to improve its performance: the better it performs by the end of the five rounds, the greater your reward.
+
+In each round, you will first observe the agent controlling the avatar. Afterwards, you will proceed to the Round Overview Page, where you can provide feedback by correcting the agent’s poor decisions.
+ 
+
+
+
+
+
+ 
+
+Use the Previous and Next Action buttons to step through the agent’s most recent round, one action at a time. 
+
+When you identify a poor action, click its label (e.g., “forward”) and select a better alternative.
+You can only correct actions on the agent’s most recent path. For example, in the image above, the correction would be ""turn right"" to avoid the lava.
+
+ 
+Correct the agent on each mistake it made along the path—the more corrections you provide, the better the training will be.
+
+ 
+
+
+
+If you revise the same action more than once, only your final selection will take effect.
+
+ 
+
+After selecting a correction, it will be highlighted with a blue background, and a white symbol will appear on the avatar to indicate the newly selected action. 
+
+In this example, we want to tell the agent not to step into the lava, so we selected the ‘turn right’ action instead, toward the blue ball.
+
+
+
+
+ 
+
+ 
+
+	When you finish submitting your feedback, click Update Agent to help the agent learn from your corrections and adjust its strategy.
+
+
+If you believe the agent’s actions in the round were already optimal, click Next Round to continue without updating the agent.",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Main Task
+
+
+
+The following link will open the task in a new browser tab - link
+
+
+
+To continue, enter below the confirmation number you got at the end of the task:",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Instructions:
+
+ 
+In this section, an AI agent will control the avatar in the game for five rounds.
+
+The agent is imperfect—it may make mistakes or choose suboptimal actions.
+
+Your task is to train the agent to improve its performance: the better it performs by the end of the five rounds, the greater your reward.
+
+In each round, you will first observe the agent controlling the avatar. Afterwards, you will proceed to the Round Overview Page, where you can provide feedback by correcting the agent’s poor decisions.
+ 
+
+
+
+ 
+
+Use the Previous and Next Action buttons to step through the agent’s most recent round, one action at a time. 
+
+When you identify a poor action, click its label (e.g., “forward”) and select a better alternative.
+You can only correct actions on the agent’s most recent path. For example, in the image above, the correction would be ""turn right"" to avoid the lava.
+
+ 
+Correct the agent on each mistake it made along the path—the more corrections you provide, the better the training will be.
+
+ 
+
+
+
+If you revise the same action more than once, only your final selection will take effect.
+
+ 
+
+After selecting a correction, it will be highlighted with a blue background, and a white symbol will appear on the avatar to indicate the newly selected action. 
+
+In this example, we want to tell the agent not to step into the lava, so we selected the ‘turn right’ action instead, toward the blue ball.
+
+
+
+
+ 
+
+ 
+
+	When you finish submitting your feedback, click Update Agent to help the agent learn from your corrections and adjust its strategy.
+
+
+If you believe the agent’s actions in the round were already optimal, click Next Round to continue without updating the agent.",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Main Task
+
+
+
+The following link will open the game in a new browser tab  - link
+
+
+
+to continue, enter below the confirmation number you got at the end of the task:",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Final Part
+The bonus for this survey will be proportional to the success of the avatar in the next game round.
+
+Would you like to let the trained agent (after completing the five training rounds) control the avatar and finish the survey, 
+or would you prefer to control the avatar yourself?",Please briefly explain your choice:,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"The following link will open the game in a new browser tab  - link
+
+Paste your confirmation code here:",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,Age:,Gender identity:,In which country do you reside? - Selected Choice,In which country do you reside? - Other - Text,Years of education: - Selected Choice,Years of education: - Other: - Text,How familiar are you with Artificial Intelligence?,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I believe AI will improve my life.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I believe that AI will improve my work.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think I will use AI technology in the future.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think AI technology is a threat to humans.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think AI technology is positive for humanity.,"Thank you for your participation.
+Please share any thoughts or comments about this study in the space below.",Click the next button to complete the survey.,Random_ID,AWSURL,group,ProlificID,agent_level,bonus_group
+"{""ImportId"":""startDate"",""timeZone"":""America/Denver""}","{""ImportId"":""endDate"",""timeZone"":""America/Denver""}","{""ImportId"":""status""}","{""ImportId"":""ipAddress""}","{""ImportId"":""progress""}","{""ImportId"":""duration""}","{""ImportId"":""finished""}","{""ImportId"":""recordedDate"",""timeZone"":""America/Denver""}","{""ImportId"":""_recordId""}","{""ImportId"":""recipientLastName""}","{""ImportId"":""recipientFirstName""}","{""ImportId"":""recipientEmail""}","{""ImportId"":""externalDataReference""}","{""ImportId"":""locationLatitude""}","{""ImportId"":""locationLongitude""}","{""ImportId"":""distributionChannel""}","{""ImportId"":""userLanguage""}","{""ImportId"":""QID520_BROWSER""}","{""ImportId"":""QID520_VERSION""}","{""ImportId"":""QID520_OS""}","{""ImportId"":""QID520_RESOLUTION""}","{""ImportId"":""QID11_FIRST_CLICK""}","{""ImportId"":""QID11_LAST_CLICK""}","{""ImportId"":""QID11_PAGE_SUBMIT""}","{""ImportId"":""QID11_CLICK_COUNT""}","{""ImportId"":""QID3""}","{""ImportId"":""QID574_TEXT""}","{""ImportId"":""QID431_FIRST_CLICK""}","{""ImportId"":""QID431_LAST_CLICK""}","{""ImportId"":""QID431_PAGE_SUBMIT""}","{""ImportId"":""QID431_CLICK_COUNT""}","{""ImportId"":""QID591_FIRST_CLICK""}","{""ImportId"":""QID591_LAST_CLICK""}","{""ImportId"":""QID591_PAGE_SUBMIT""}","{""ImportId"":""QID591_CLICK_COUNT""}","{""ImportId"":""QID583""}","{""ImportId"":""QID633""}","{""ImportId"":""QID636""}","{""ImportId"":""QID638""}","{""ImportId"":""QID651""}","{""ImportId"":""QID637""}","{""ImportId"":""QID652""}","{""ImportId"":""QID608_FIRST_CLICK""}","{""ImportId"":""QID608_LAST_CLICK""}","{""ImportId"":""QID608_PAGE_SUBMIT""}","{""ImportId"":""QID608_CLICK_COUNT""}","{""ImportId"":""QID609""}","{""ImportId"":""QID610_TEXT""}","{""ImportId"":""QID613""}","{""ImportId"":""QID653_FIRST_CLICK""}","{""ImportId"":""QID653_LAST_CLICK""}","{""ImportId"":""QID653_PAGE_SUBMIT""}","{""ImportId"":""QID653_CLICK_COUNT""}","{""ImportId"":""QID655""}","{""ImportId"":""QID665_FIRST_CLICK""}","{""ImportId"":""QID665_LAST_CLICK""}","{""ImportId"":""QID665_PAGE_SUBMIT""}","{""ImportId"":""QID665_CLICK_COUNT""}","{""ImportId"":""QID657_TEXT""}","{""ImportId"":""QID614_FIRST_CLICK""}","{""ImportId"":""QID614_LAST_CLICK""}","{""ImportId"":""QID614_PAGE_SUBMIT""}","{""ImportId"":""QID614_CLICK_COUNT""}","{""ImportId"":""QID615""}","{""ImportId"":""QID666_FIRST_CLICK""}","{""ImportId"":""QID666_LAST_CLICK""}","{""ImportId"":""QID666_PAGE_SUBMIT""}","{""ImportId"":""QID666_CLICK_COUNT""}","{""ImportId"":""QID644_TEXT""}","{""ImportId"":""QID593_FIRST_CLICK""}","{""ImportId"":""QID593_LAST_CLICK""}","{""ImportId"":""QID593_PAGE_SUBMIT""}","{""ImportId"":""QID593_CLICK_COUNT""}","{""ImportId"":""QID594""}","{""ImportId"":""QID648_TEXT""}","{""ImportId"":""QID670_FIRST_CLICK""}","{""ImportId"":""QID670_LAST_CLICK""}","{""ImportId"":""QID670_PAGE_SUBMIT""}","{""ImportId"":""QID670_CLICK_COUNT""}","{""ImportId"":""QID669_TEXT""}","{""ImportId"":""QID12_FIRST_CLICK""}","{""ImportId"":""QID12_LAST_CLICK""}","{""ImportId"":""QID12_PAGE_SUBMIT""}","{""ImportId"":""QID12_CLICK_COUNT""}","{""ImportId"":""QID5_TEXT""}","{""ImportId"":""QID6""}","{""ImportId"":""QID281""}","{""ImportId"":""QID281_3_TEXT""}","{""ImportId"":""QID7""}","{""ImportId"":""QID7_6_TEXT""}","{""ImportId"":""QID16""}","{""ImportId"":""QID626_1""}","{""ImportId"":""QID626_2""}","{""ImportId"":""QID626_3""}","{""ImportId"":""QID626_4""}","{""ImportId"":""QID626_5""}","{""ImportId"":""QID10_TEXT""}","{""ImportId"":""QID392""}","{""ImportId"":""Random_ID""}","{""ImportId"":""AWSURL""}","{""ImportId"":""group""}","{""ImportId"":""ProlificID""}","{""ImportId"":""agent_level""}","{""ImportId"":""bonus_group""}"
+2025-07-22 12:05:12,2025-07-22 12:33:45,0,5.29.23.32,100,1713,1,2025-07-22 12:33:47,R_1obQ2qlgPRSzqMx,,,,,32.0804,34.7807,anonymous,EN,Safari,16.6,Macintosh,1440x900,187.04,187.04,192.964,1,1,ivri123456789101112131415,0,0,75.096,0,0,0,20.852,0,,2,2,4,2,1,1,235.99,414.291,416.35,2,,4242,,,,,,,,,,,,0,0,138.701,0,,100.182,282.912,284.359,2,APPL,11.385,92.555,105.199,4,1,"I will play myself as I think that the the board in the examples you provided is not that ""hard"" to design the best strategy by myself.
+
+Had the board been more complex, I would have trained the agent in the rounds",,,,,,1.94,52.914,54.268,12,26,0,3,Israel,4,,5,7,7,7,6,4,TODA,,8081426610,,2,ivri123456789101112131415,,
+2025-07-22 12:07:41,2025-07-22 12:35:15,0,89.139.8.126,100,1653,1,2025-07-22 12:35:15,R_14Boab74RN1aDtf,,,,,32.8259,34.9968,anonymous,EN,Firefox,140.0,Linux x86_64,1920x1080,66.977,66.977,68.841,1,1,Nir12345122141235132512561,0,0,193.124,0,0,0,9.523,0,,2,2,4,2,1,1,56.132,261.786,263.863,3,,4242,,0,0,119.148,0,,57.411,752.865,754.086,5,APPL,,,,,,,,,,,15.088,16.506,28.883,2,1,The Agent made some poor choises,,,,,,1.454,40.882,41.698,11,27,0,3,Israel,3,,2,6,6,7,2,5,,,4784277470,,0,Nir12345122141235132512561,,
+2025-07-22 12:07:40,2025-07-22 12:35:17,0,46.116.16.186,100,1657,1,2025-07-22 12:35:17,R_9xZyJBuRSIlLj3P,,,,,32.0804,34.7807,anonymous,EN,Edge,138.0.0.0,Windows NT 10.0,1280x720,2.897,31.797,32.602,3,1,mor1111111111111111111111111111111111111111111111111111111111111,35.427,35.628,186.391,2,0,0,27.667,0,,2,2,4,2,1,1,13.013,202.801,209.975,2,,4242,,,,,,,,,,,,13.845,40.585,156.861,4,,30.043,528.915,532.117,7,APPL,18.901,56.55,79.309,5,2,it seems that the agent learns as well,,,,,,1.27,90.366,91.55,18,26,0,3,,3,,4,7,7,7,5,6,,,7361541239,,3,mor1111111111111111111111111111111111111111111111111111111111111,,
+2025-07-22 12:07:39,2025-07-22 12:23:07,0,5.29.14.10,66,928,0,2025-07-22 13:07:40,R_4cnD85bSvcw2LE3,,,,,32.0821,34.8122,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,65.252,65.252,65.972,1,1,Matan12222222222222222222222222222,0,0,61.782,0,0,0,18.154,0,,2,2,4,2,1,1,167.013,362.325,365.844,2,,4242,,,,,,,,,,,,0,0,100.977,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2431723413,,3,Matan12222222222222222222222222222,,
+2025-07-22 12:07:42,2025-07-22 12:31:17,0,80.230.83.30,51,1414,0,2025-07-22 13:07:43,R_40B2WHFoxsKtcVz,,,,,32.0876,34.8739,anonymous,EN,Edge,138.0.0.0,Windows NT 10.0,1280x800,84.105,84.105,86.11,1,1,Lior Vardi 1111111111111111111111,79.241,79.241,139.226,1,0,0,17.306,0,,2,2,4,2,1,1,0.125,262.73,274.792,3,,4242,,98.697,98.697,120.404,1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6403633869,,0,Lior Vardi 1111111111111111111111,,
+2025-07-24 08:27:54,2025-07-24 08:58:36,0,5.29.14.10,100,1842,1,2025-07-24 08:58:38,R_4dTuUgW2wTI4lz3,,,,,32.0717,34.8153,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,0.772,1.251,2.112,2,1,0000000000000000000000000000,0,0,1.231,0,0,0,1.592,0,,2,2,4,2,1,1,1.923,1.923,8.821,1,,4242,,,,,,,,,,,,0,0,2.438,0,,1.573,1704.987,1705.266,3,APPL,0.833,4.154,4.941,3,1,,,,,,,1.148,20.581,21.578,12,28,0,1,,3,,3,4,4,3,4,6,,,2277528905,,1,0000000000000000000000000000,,
+2025-07-27 00:43:32,2025-07-27 00:48:21,0,5.29.14.10,100,289,1,2025-07-27 00:48:21,R_3OiQycPssePQmcY,,,,,32.0717,34.8153,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,7.084,7.084,8.159,1,1,100000000000000000000000000,0,0,1.99,0,0,0,2.358,0,,2,2,4,2,1,1,3.024,47.523,50.796,2,,4242,,,,,,,,,,,,0,0,22.336,0,,1.618,119.502,122.081,2,APPL,2.734,2.734,6.081,1,2,,,,,,,1.055,20.04,21.371,10,27,0,1,,3,,5,5,4,3,4,5,,,3842602829,,3,100000000000000000000000000,,
+2025-07-27 01:12:09,2025-07-27 01:18:36,0,5.29.14.10,100,387,1,2025-07-27 01:18:37,R_4S8ExNcm2MbEbhq,,,,,32.0717,34.8153,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,0.965,1.567,1.981,2,1,20000000000000000000000000000000000000,2.58,2.58,2.845,1,0,0,1.834,0,,2,2,4,2,1,1,2.955,2.955,9.501,1,,4242,,,,,,,,,,,,0,0,1.767,0,,1.346,308.561,310.414,3,APPL,1.047,3.195,4.626,2,1,,,,,,,1.039,16.13,16.917,11,43,0,2,,2,,3,6,5,4,3,6,,,4279812645,,2,20000000000000000000000000000000000000,,
+2025-07-27 07:45:49,2025-07-27 07:56:13,0,5.29.14.10,100,623,1,2025-07-27 07:56:13,R_9aFf3ZosFcXXqHD,,,,,32.0717,34.8153,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,0.913,0.913,1.744,1,1,M12983609234792834-23423423,1.887,1.887,2.157,1,0,0,1.504,0,,2,2,4,2,1,1,1.245,1.245,5.404,1,,4242,,,,,,,,,,,,0,0,1.823,0,,1.162,525.36,531.267,3,APPL,2.771,4.939,5.909,3,1,,,,,,,6.63,15.688,15.995,11,88,0,1,,1,,1,1,1,1,1,1,,,3399886356,,4,M12983609234792834-23423423,,
+2025-07-27 07:56:20,2025-07-27 07:59:34,0,5.29.14.10,100,194,1,2025-07-27 07:59:34,R_78NzJaIX4PeiCIV,,,,,32.0717,34.8153,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,1.927,1.927,3.178,1,1,Myyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,0,0,2.131,0,0,0,1.587,0,,2,2,4,2,1,1,1.636,2.006,4.697,2,,4242,,0,0,1.593,0,,4.822,128.842,132.494,2,APPL,,,,,,,,,,,2.515,2.515,3.841,1,1,,,,,,,0.758,11.501,11.957,12,97,1,5,,3,,3,4,4,4,4,4,,,4714371316,,0,Myyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,,
+2025-07-27 07:59:42,2025-07-27 08:04:28,0,5.29.14.10,100,286,1,2025-07-27 08:04:29,R_4YyvPINhOdVdil3,,,,,32.0717,34.8153,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,0.89,0.89,1.512,1,1,Y6757575757575757575757575,1.952,1.952,2.207,1,0,0,1.849,0,,2,2,4,2,1,1,1.971,1.971,4.622,1,,4242,,,,,,,,,,,,0,0,1.699,0,,0.187,206.887,210.972,3,APPL,2.447,2.983,4.65,2,2,,,,,,,1.133,13.293,14.453,13,55,3,5,,3,,2,4,5,5,4,4,,,7186087304,,1,Y6757575757575757575757575,,
+2025-07-28 06:54:39,2025-07-28 07:01:16,0,5.29.14.10,100,397,1,2025-07-28 07:01:17,R_4oNnVZyNjpwiZqG,,,,,32.0717,34.8153,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,1.233,1.233,1.977,1,1,Solomon122222222222222222,1.722,1.722,2.013,1,0,0,1.796,0,,2,2,4,2,1,1,2.947,71.554,71.871,3,,4242,,,,,,,,,,,,0,0,13.999,0,,1.183,206.843,209.716,2,APPL,26.416,26.416,28.916,1,2,,,,,,,1.112,9.587,9.882,11,66,0,2,,2,,2,2,2,2,5,5,,,4151968018,,4,Solomon122222222222222222,,
+2025-07-28 07:05:24,2025-07-28 07:20:14,0,69.249.13.141,100,890,1,2025-07-28 07:20:15,R_5FLDC9rfQMOE7JQ,,,,,40.4438,-75.3426,anonymous,EN,Firefox,141.0,Windows NT 10.0,1280x720,1.381,2.182,2.993,2,1,5ba292385301b80001c71ba2,52.12,52.12,62.007,1,6.901,6.901,14.308,1,,2,2,4,2,1,1,6.068,193.758,195.971,5,,4242,,,,,,,,,,,,2.834,49.391,52.249,4,,2.61,361.048,363.336,4,APPL,4.27,26.538,34.547,4,2,The AI agent is trained now to make the right moves for maximum points.,,,,,,1.938,23.763,24.109,18,52,0,1,,4,,6,7,7,7,1,7,"Fun study, thanks.",,3724821986,,3,5ba292385301b80001c71ba2,,
+2025-07-28 07:08:03,2025-07-28 07:22:50,0,84.65.44.6,100,886,1,2025-07-28 07:22:50,R_2pAVx2pFLVYOXuU,,,,,51.5554,0.6466,anonymous,EN,Firefox,141.0,Windows NT 10.0,3072x1728,11.997,11.997,12.9,1,1,63ea4d64095b3286433ed52e,1.355,288.359,290.362,9,3.34,3.34,6.9,1,,2,2,4,2,1,1,4.296,96.829,100.727,2,,4242,,,,,,,,,,,,2.213,12.956,16.286,5,,2.093,286.459,287.445,2,APPL,2.423,18.835,24.103,5,1,I feel I would do better as I understand the game logic,,,,,,0.899,20.657,21.623,13,35,0,2,,3,,4,3,5,7,4,4,,,2511589937,,1,63ea4d64095b3286433ed52e,,
+2025-07-28 07:06:09,2025-07-28 07:26:50,0,88.97.196.216,100,1241,1,2025-07-28 07:26:50,R_2EziTPQPQzl4lkY,,,,,54.5856,-1.3173,anonymous,EN,Chrome,137.0.0.0,CrOS x86_64 14541.0.0,1536x864,10.67,10.67,12.495,1,1,62d59b380be0866cf039e0ee,0,0,81.058,0,0,0,18.995,0,,2,2,4,2,1,1,58.453,340.275,343.789,2,,4242,,,,,,,,,,,,0,0,251.879,0,,2.813,322.763,326.173,2,APPL,12.261,12.914,30.504,2,1,I can control it more and potentially avoid mistakes and point loss,,,,,,1.194,17.821,18.582,10,43,0,2,,3,,3,6,5,7,5,5,,,7113928571,,2,62d59b380be0866cf039e0ee,,
+2025-07-28 07:09:55,2025-07-28 07:29:24,0,80.7.253.228,100,1168,1,2025-07-28 07:29:24,R_2wvmZDSeOh9NE4r,,,,,53.3896,-2.2801,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1366x768,3.323,5.201,7.954,2,1,6788319fd22b8480d7fd03da,26.784,62.45,103.931,3,0,0,52.172,0,,2,2,4,2,1,1,19.133,191.068,194.398,3,,4242,,,,,,,,,,,,0,0,68.733,0,,10.051,472.421,480.636,3,APPL,5.606,19.194,20.039,4,1,The agent made too many mistakes.,,,,,,2.224,39.445,40.925,14,58,0,2,,3,,4,5,6,7,3,5,,,6166487499,,2,6788319fd22b8480d7fd03da,,
+2025-07-28 07:09:24,2025-07-28 07:30:15,0,81.154.5.83,100,1250,1,2025-07-28 07:30:16,R_87QFxbG9zknqaFr,,,,,53.2588,-2.5202,anonymous,EN,Chrome,138.0.0.0,Macintosh,1920x1243,14.401,14.401,15.509,1,1,5d4838b1334cb0001af8273d,0,0,98.295,0,0,0,19.962,0,,2,2,4,2,1,1,17.675,131.291,133.314,2,,4242,,,,,,,,,,,,0,0,88.595,0,,4.115,626.251,628.505,2,APPL,9.959,44.511,61.331,3,1,"I would be able to make judgement calls about losing points versus gaining them. For example, I would sacrifice one point on a red ball, to get to a blue ball.",,,,,,1.66,27.937,28.892,10,42,0,2,,3,,5,6,7,7,5,6,,,5461653281,,4,5d4838b1334cb0001af8273d,,
+2025-07-28 07:11:34,2025-07-28 07:30:20,0,86.28.109.52,100,1125,1,2025-07-28 07:30:20,R_2fJGboYBZjo0QES,,,,,52.7681,-1.2026,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1536x864,2.937,4.067,5.488,2,1,5d2483e69e5cf1001c850dfb,51.056,51.056,52.396,1,10.37,10.37,12.207,1,,2,2,4,2,1,1,3.709,377.738,381.212,5,,4242,,,,,,,,,,,,4.775,6.697,9.258,2,,3.999,327.148,330.757,5,APPL,5.374,13.47,23.12,4,1,"i dont trust the agent ",,,,,,2.782,38.047,39.406,14,27,1,2,,3,,1,4,5,5,5,3,,,7612423273,,3,5d2483e69e5cf1001c850dfb,,
+2025-07-28 07:04:02,2025-07-28 07:36:58,0,146.198.30.54,100,1975,1,2025-07-28 07:36:58,R_2p4AvGYNKrHL4rv,,,,,55.8319,-4.4322,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,8.9,8.9,11.055,1,1,681b781064a5701a5ceee3bc,24.649,85.738,110.277,4,12.039,12.039,38.859,1,,2,2,4,2,1,1,27.553,304.585,309.767,3,,4242,,,,,,,,,,,,4.783,100.255,110.227,6,,7.712,1038.2,1042.797,2,APPL,4.056,78.576,111.668,10,1,"The agent cannot be programmed to follow my commands, I can do the task myself with orders of magnitude less hassle and frustration",,,,,,2.469,34.237,35.692,13,54,1,2,,4,,3,3,1,5,6,4,"absolutely maddening interface with agent, I hated it!",,4475175664,,1,681b781064a5701a5ceee3bc,,
+2025-07-28 07:18:38,2025-07-28 07:37:26,0,81.147.182.140,100,1127,1,2025-07-28 07:37:26,R_8eSYoWof2yj9Rxn,,,,,51.5384,-0.039,anonymous,EN,Chrome,138.0.0.0,Macintosh,1470x956,8.663,8.663,9.901,1,1,67a54503a9d38ce3140394eb,0,0,80.515,0,30.3,30.3,43.124,1,,2,2,4,2,1,1,22.147,340.431,344.323,2,,4242,,,,,,,,,,,,0,0,33.542,0,,3.713,343.949,345.855,2,APPL,5.142,7.412,50.114,2,1,The agent is avoiding some traps (lava/red balls) but is not yet optimising its score by going out of its way to collect blue and green balls.,,,,,,1.711,32.21,33.101,11,54,1,2,,4,,4,5,5,5,4,4,,,5096128244,,2,67a54503a9d38ce3140394eb,,
+2025-07-28 07:15:58,2025-07-28 07:37:56,0,82.16.234.144,100,1318,1,2025-07-28 07:37:57,R_2mLdSlaU91uW3xi,,,,,51.5773,-0.3278,anonymous,EN,Chrome,128.0.0.0,Macintosh,1920x1200,1.896,1.896,5.061,1,1,677c4ec6bf1d6e16cf3d3055,0,0,61.216,0,26.617,26.617,41.08,1,,2,2,4,2,1,1,9.692,241.51,243.808,3,,4242,,,,,,,,,,,,0,0,41.295,0,,2.34,647.995,649.409,4,APPL,5.199,6.042,26.43,2,1,The agent will sometimes avoid collecting balls and not getting the max score,,,,,,1.064,33.731,34.842,13,43,0,2,,3,,4,5,4,5,4,4,,,8879917687,,1,677c4ec6bf1d6e16cf3d3055,,
+2025-07-28 07:11:17,2025-07-28 07:42:01,0,94.5.122.183,100,1844,1,2025-07-28 07:42:01,R_2G9rjxeIoZrK3aY,,,,,52.6562,1.3277,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,8.834,8.834,11.458,1,1,58cd0bc2a47dbb000171dc8b,0,0,66.923,0,0,0,31.502,0,,2,2,4,2,1,1,27.339,358.447,363.147,2,,4242,,0,0,793.34,0,,5.172,188.12,196.53,3,APPL,,,,,,,,,,,8.977,11.035,55.97,2,2,Why should I do it if the agent can do it for me and still earn the same amount,,,,,,1.7,19.796,21.997,12,61,0,2,,2,,5,7,7,7,1,7,"The training bit didn't seem to work correctly, when you correct the path there is no way to get the cursor to follow your path, pressing next just carries on with the initial route.",,8120499080,,0,58cd0bc2a47dbb000171dc8b,,
+2025-07-28 07:16:44,2025-07-28 07:45:04,0,86.150.168.139,100,1700,1,2025-07-28 07:45:04,R_2j81rc3F4d7f469,,,,,52.8901,-1.4522,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,2560x1600,13.741,13.741,14.837,1,1,5ec79cbd44972a1fceed2719,0,0,280.857,0,0,0,44.515,0,,2,2,4,2,1,1,29.413,281.072,283.799,2,,4242,,,,,,,,,,,,0,0,103.323,0,,4.402,12.159,612.437,3,APPL,9.588,27.667,30.743,3,2,Agent seems to learn very quickly,,,,,,1.575,30.865,31.806,10,64,0,2,,3,,4,7,4,7,1,7,,,4323448521,,4,5ec79cbd44972a1fceed2719,,
+2025-07-28 07:21:00,2025-07-28 07:55:14,0,35.149.240.65,100,2053,1,2025-07-28 07:55:15,R_1w6IkqW5ILCFEWX,,,,,42.2624,-71.8011,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1366x768,17.92,19.815,21.981,2,1,6723b48ee32121e982a935b6,369.081,485.598,487.565,4,30.669,30.669,39.451,1,,2,2,4,2,1,1,29.863,436.791,441.164,4,,4242,,19.298,63.754,65.006,3,,6.519,527.775,528.135,4,APPL,,,,,,,,,,,9.033,32.813,34.588,3,1,I will make more moves that will increase my points.,,,,,,1.704,110.414,111.509,14,34,1,1,,3,,4,7,7,7,1,7,,,2165559440,,0,6723b48ee32121e982a935b6,,
+2025-07-28 07:33:32,2025-07-28 07:57:06,0,24.200.6.168,100,1414,1,2025-07-28 07:57:07,R_1OT0emftgq8MMeJ,,,,,45.8237,-73.4298,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,31.04,31.04,33.155,1,1,5c2b9ce5b337310001996c05,0,0,116.095,0,0,0,27.228,0,,2,2,4,2,1,1,42.853,164.189,165.473,5,,4242,,,,,,,,,,,,60.256,60.256,123.91,1,,3.767,525.406,527.768,2,APPL,9.234,20.106,74.394,2,1,I think the agent makes too many mistakes so I would prefer to play myself.,,,,,,21.815,49.67,100.248,11,38,0,5,,2,,4,6,5,7,2,5,,,7717591990,,2,5c2b9ce5b337310001996c05,,
+2025-07-28 07:34:41,2025-07-28 07:58:05,0,82.34.4.199,100,1403,1,2025-07-28 07:58:05,R_25AVXF2wt5L32rh,,,,,54.0677,-2.8565,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1440x900,10.064,10.064,12.085,1,1,6658b2d717b161dc426bd193,19.101,94.987,190.987,6,154.28,154.685,223.842,2,,2,2,4,2,1,1,127.674,332.567,335.968,2,,4242,,,,,,,,,,,,0,0,87.633,0,,3.688,279.469,281.669,2,APPL,5.174,6.065,27.386,2,1,"the AI agent often missed balls and went through the lava blocks or picked up red balls, losing points",,,,,,1.338,25.257,26.258,10,22,1,2,,3,,5,4,5,5,5,4,,,2056707960,,4,6658b2d717b161dc426bd193,,
+2025-07-28 07:05:45,2025-07-28 07:06:59,0,74.59.18.240,9,74,0,2025-07-28 08:05:46,R_53rJtQryQwERXeZ,,,,,45.4516,-73.5851,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,2560x1440,31.468,31.468,32.621,1,1,66e0569e76fa6e4be6919693,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6410518409,,0,66e0569e76fa6e4be6919693,,
+2025-07-28 07:07:31,2025-07-28 07:13:29,0,5.67.52.40,32,358,0,2025-07-28 08:07:32,R_82tFF3kPIIGUlKS,,,,,50.4788,-3.5446,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,122.199,122.199,124.452,1,1,5d4c9a5f112f830016026939,0,0,93.032,0,0,0,9.896,0,,2,2,4,2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2446998469,,4,5d4c9a5f112f830016026939,,
+2025-07-28 07:07:58,2025-07-28 07:20:59,0,68.54.14.205,66,780,0,2025-07-28 08:07:58,R_5iq8Rv9AZytlH4d,,,,,42.6678,-83.2917,anonymous,EN,Chrome,138.0.0.0,Macintosh,2560x1440,16.081,16.081,19,1,1,67bf2c95cf70e4409f3fb705,0,0,78.695,0,0,0,16.257,0,,2,2,4,2,1,1,45.753,45.753,186.243,1,,4242,,,,,,,,,,,,0,0,53.562,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5088699962,,3,67bf2c95cf70e4409f3fb705,,
+2025-07-28 07:28:54,2025-07-28 08:10:06,0,65.242.131.2,100,2472,1,2025-07-28 08:10:07,R_1uPbHlO8incsQsQ,,,,,40.6955,-73.9667,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,2048x1152,14.606,14.606,15.255,1,1,5c670a430d80fd00014264f9,408.263,413.079,1205.66,2,0,0,15.879,0,,2,2,4,2,1,1,25.534,504.532,505.958,2,,4242,,,,,,,,,,,,0,0,15.432,0,,2.737,311.31,312.31,2,APPL,2.901,26.917,27.697,3,1,It would be easier for me to maximize the choice as the agent still routinely avoids picking up the balls for score,,,,,,1.236,222.415,223.887,15,40,0,1,,3,,3,5,5,5,3,5,,,1857544265,,3,5c670a430d80fd00014264f9,,
+2025-07-28 07:13:37,2025-07-28 07:19:53,0,72.23.133.52,21,376,0,2025-07-28 08:13:38,R_7Kxv5kS8haVQe03,,,,,41.0996,-80.7523,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,24.627,24.627,26.774,1,1,662bf98a6f25e5ccdce46ebc,0,0,90.157,0,0,0,34.289,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8079814044,,0,662bf98a6f25e5ccdce46ebc,,
+2025-07-28 07:22:22,2025-07-28 07:28:39,0,164.11.21.49,36,377,0,2025-07-28 08:22:24,R_2SGfYliwtmQ3Dq1,,,,,51.5055,-2.5157,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1536x864,32.109,32.109,34.82,1,1,5dcc836b6a24b5912d7c33f4,0,0,47.473,0,0,0,7.793,0,,2,2,4,2,1,1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9904017571,,1,5dcc836b6a24b5912d7c33f4,,
+2025-08-07 08:12:58,2025-08-07 08:14:39,1,,100,100,1,2025-08-07 08:14:39,R_40Zh3dnOWaUNdkN,,,,,32.0804,34.7807,preview,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,1.63,1.63,2.209,1,1,12199999999999999999999999999999999,0,0,2.048,0,1.693,1.693,2.115,1,,2,2,4,2,1,1,2.075,2.075,4.806,1,,4242,,,,,,,,,,,,0,0,2.446,0,,2.257,12.79,14.784,5,APPL1,3.607,3.607,6.037,1,1,,1.691,1.691,7.332,1,2323,2.758,12.73,13.222,10,19,0,5,,4,,5,4,4,4,4,4,,,8156825099,,2,12199999999999999999999999999999999,", -1)}",", -1)}"
+2025-08-10 11:47:52,2025-08-10 12:25:14,0,5.29.14.10,79,2242,0,2025-08-10 12:47:53,R_1gq1qcnTPpVP2Oo,,,,,32.0804,34.7807,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,1.301,1.301,2.182,1,1,2342349999999999999999999999999999,0,0,88.331,0,0,0,1.763,0,,2,2,4,2,1,1,3.453,1953.069,1955.511,3,,4242,,,,,,,,,,,,0,0,6.477,0,,1,7.686,10.621,3,APPL2,2.074,2.074,5.171,1,1,,2.659,3.572,6.034,2,2321,,,,,,,,,,,,,,,,,,,2039228921,,1,2342349999999999999999999999999999,", -1)}",", -1)}"
+2025-08-11 00:03:33,2025-08-11 00:37:42,0,5.29.14.10,100,2049,1,2025-08-11 00:37:43,R_1tQ5qBE9OyLcFzz,,,,,32.0804,34.7807,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,8.632,8.632,9.613,1,1,4444444444444444444444444444444444444,2.224,2.548,2.896,2,0,0,1.508,0,,2,2,4,2,1,1,1.791,16.439,19.038,2,,4242,,,,,,,,,,,,0,0,9.868,0,,2.711,1912.491,1917.846,5,APPL2,4.46,4.46,6.122,1,2,,,,,,,20.293,32.908,33.2,11,23,0,2,,4,,3,2,3,4,5,6,,,2993891329,,2,4444444444444444444444444444444444444,", -1)}",agent_level
+2025-08-11 03:52:12,2025-08-11 03:53:46,0,5.29.14.10,100,94,1,2025-08-11 03:53:46,R_1Gwcqi2yhwjImkB,,,,,32.0804,34.7807,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,2.838,2.838,3.63,1,1,Matan88888888888888833333333333,0,0,1.728,0,0,0,2.58,0,,2,2,4,2,1,1,2.449,7.654,7.906,3,,4242,,0,0,4.373,0,,4.606,15.785,22.061,2,APPL3,,,,,,,,,,,4.243,6.078,7.346,2,2,,,,,,,3.258,15.557,15.925,12,56,3,4,,4,,6,4,4,4,4,4,,,3698301053,,0,Matan88888888888888833333333333,"), 0, 1)}",
+2025-08-11 04:01:02,2025-08-11 04:02:07,0,5.29.14.10,100,65,1,2025-08-11 04:02:08,R_3rQ2sFQiR3iMH5L,,,,,32.0804,34.7807,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,1.019,1.019,1.672,1,1,M56565656fdg56ffdsvdfgsdfgs,0,0,1.854,0,0,0,1.697,0,,2,2,4,2,1,1,1.673,1.673,4.001,1,,4242,,,,,,,,,,,,0,0,2.326,0,,1.006,1.006,4.888,1,APPL3,2.482,2.482,3.629,1,2,,,,,,,1.22,9.988,11.164,13,23,1,4,,4,,5,2,2,3,4,5,,,1751360362,,4,M56565656fdg56ffdsvdfgsdfgs,", length() - 1, 1)}",
+2025-08-11 04:15:09,2025-08-11 04:17:49,0,5.29.14.10,100,160,1,2025-08-11 04:17:49,R_7QheuZq91RnDo7D,,,,,32.0804,34.7807,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,1.078,1.078,1.941,1,1,LAst544444444444444444444444444444444444,1.964,1.964,2.327,1,0,0,1.422,0,,2,2,4,2,1,1,1.849,3.339,5.823,2,,4242,,0,0,2.201,0,,7.728,60.887,61.093,3,APPL3,,,,,,,,,,,3.083,3.083,4.17,1,2,,,,,,,1.003,9.759,10.672,10,55,0,1,,1,,4,4,4,5,6,3,,,1865560277,,0,LAst544444444444444444444444444444444444,APPL3}$,
+2025-08-11 04:36:10,2025-08-11 04:37:11,0,5.29.14.10,100,61,1,2025-08-11 04:37:12,R_5TRl64glxhaW9Wf,,,,,32.0804,34.7807,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,0.998,0.998,1.585,1,1,77777777777777777777777777777kjkjhkhkhkh,1.817,1.817,2.048,1,0,0,1.246,0,,2,2,4,2,1,1,1.162,1.162,3.365,1,,4242,,,,,,,,,,,,1.714,1.714,2.086,1,,1.315,1.315,4.822,1,APPL2,2.339,2.339,3.659,1,2,,,,,,,1.201,10.55,11.142,10,43,0,5,,3,,3,2,2,3,4,4,,,8238427512,,4,77777777777777777777777777777kjkjhkhkhkh,,
+2025-08-11 05:02:30,2025-08-11 05:04:12,0,5.29.14.10,100,102,1,2025-08-11 05:04:13,R_9ELT4y4afilHGo1,,,,,32.0804,34.7807,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,6.697,6.697,7.349,1,1,MS21387923849233423532453,1.641,1.641,1.903,1,0,0,1.231,0,,2,2,4,2,1,1,1.811,1.811,6.994,1,,4242,,,,,,,,,,,,0,0,2.662,0,,1.108,1.108,6.741,1,APPL3,3.835,3.835,10.199,1,1,,2.063,6.529,9.162,2,2322,1.273,8.331,8.977,11,56,1,2,,2,,5,5,5,5,5,6,,,4016735843,,3,MS21387923849233423532453,APPL3,2322
+2025-08-11 07:34:48,2025-08-11 07:34:57,0,99.108.141.65,100,9,1,2025-08-11 07:34:58,R_7Kp7KoyM7b54bJm,,,,,37.4152,-122.1224,anonymous,EN,Safari iPhone,18.6,iPhone,440x956,1.103,2.247,3.495,2,1,5fbc2c78c568aa0c84232ce2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5510627565,,4,5fbc2c78c568aa0c84232ce2,,
+2025-08-11 07:32:41,2025-08-11 07:46:49,0,83.105.34.131,100,847,1,2025-08-11 07:46:50,R_8LRuRZpfqH7c3De,,,,,51.1278,-3.0001,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1440x900,2.615,3.448,5.13,2,1,5fea2970cbe0699d90756fd7,10.956,65.63,66.234,21,2.106,13.313,16.73,5,,2,2,4,2,1,1,4.583,177.266,180.596,6,,4242,,,,,,,,,,,,2.216,19.403,20.283,10,,3.515,266.498,268.267,3,APPL3,14.203,15.603,28.639,3,2,The avatar did well in the previous rounds. I trust it.,,,,,,1.082,28.577,29.11,22,43,0,2,,4,,4,3,5,5,5,5,no thanks,,9077153614,,2,5fea2970cbe0699d90756fd7,APPL3,APPL3
+2025-08-11 07:32:55,2025-08-11 07:50:33,0,90.195.35.73,100,1058,1,2025-08-11 07:50:34,R_88AUiPd6hZzPahj,,,,,51.2171,-0.572,anonymous,EN,Chrome,138.0.0.0,Macintosh,2560x1440,2.295,2.295,3.165,1,1,68109d22b0ba84c17333ecab,0,0,65.146,0,0,0,19.185,0,,2,2,4,2,1,1,17.345,193.703,197.353,2,,4242,,,,,,,,,,,,0,0,54.765,0,,3.783,3.783,361.42,1,APPL2,3.467,4.865,12.451,2,1,I trust myself more,2.137,2.137,51.723,1,2322,1.242,32.915,33.909,12,51,0,2,,3,,4,3,5,5,5,3,the updating the AI moves didn't work very well,,5103980081,,1,68109d22b0ba84c17333ecab,APPL2,2322
+2025-08-11 07:40:47,2025-08-11 07:56:06,0,51.148.71.36,100,918,1,2025-08-11 07:56:06,R_2z5p8Y2zsvoVYCl,,,,,53.4512,-2.5627,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,2315x1543,8.356,8.356,9.269,1,1,58c26f473977190001f54116,87.185,88.114,99.573,2,0,0,24.988,0,,2,2,4,2,1,1,27.22,143.96,149.47,2,,4242,,,,,,,,,,,,0,0,94.664,0,,3.128,282.247,283.153,2,APPL1,12.55,14.273,25.211,2,1,I might do a better job,1.812,2.911,4.846,2,2322,1.166,29.1,29.807,13,44,0,2,,3,,2,4,4,5,3,5,,,5752543295,,4,58c26f473977190001f54116,APPL1,2322
+2025-08-11 07:41:51,2025-08-11 08:00:44,0,86.13.144.6,100,1133,1,2025-08-11 08:00:45,R_2rcVS7UjwyWXr4y,,,,,51.2521,-0.7295,anonymous,EN,Firefox,141.0,Windows NT 10.0,1920x1080,2.899,2.899,3.922,1,1,66fd3f6c93c24ecc119be354,0,0,72.379,0,0,0,14.478,0,,2,2,4,2,1,1,35.503,725.43,729.341,3,,4242,,,,,,,,,,,,0,0,11.413,0,,1.622,158.105,159.985,2,APPL1,3.893,11.519,19.62,3,2,Rolling the dice to see how well AI can compelte this,,,,,,1.293,13.008,13.787,11,39,0,2,,1,,4,7,7,7,7,7,,,9058041368,,2,66fd3f6c93c24ecc119be354,APPL1,APPL1
+2025-08-11 07:34:57,2025-08-11 08:04:27,0,24.101.237.151,100,1769,1,2025-08-11 08:04:30,R_3dfbbFeYAPL7ZhD,,,,,41.0996,-80.7523,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1536x864,2.258,2.881,3.43,2,1,62916bb383e38e21d42cef2b,0,0,81.244,0,9.773,10.317,15.742,2,,2,2,4,2,1,1,1.592,164.646,166.525,3,,4242,,1.478,15.172,16.237,20,,3.216,1348.592,1349.408,11,APPL1,,,,,,,,,,,6.622,13.032,20.881,3,2,rather the AI,,,,,,1.141,18.682,19.267,17,34,0,1,,2,,3,6,6,5,5,6,,,9268032231,,0,62916bb383e38e21d42cef2b,APPL1,APPL1
+2025-08-11 07:36:36,2025-08-11 08:28:46,0,47.26.71.230,100,3129,1,2025-08-11 08:28:47,R_6oYHOJowZgDDxfG,,,,,44.4203,-83.3308,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1536x864,32.187,32.187,33.883,1,1,5fc2c0cfdb80f9025c6b4810,0,0,39.141,0,0,0,12.032,0,,2,2,4,2,1,1,18.438,188.306,193.395,2,,4242,,,,,,,,,,,,0,0,29.667,0,,3.567,2400.585,2402.982,2,APPL3,2.715,34.442,35.252,3,1,I think the AI agent needed too much correction,53.504,173.144,175.92,2,2322,1.396,25.291,26.344,11,35,1,1,,3,,4,6,6,6,2,6,,,9343430718,,3,5fc2c0cfdb80f9025c6b4810,APPL3,2322
+2025-08-11 07:29:03,2025-08-11 07:30:02,0,5.29.14.10,6,59,0,2025-08-11 08:29:04,R_7wxuBZ82fQ4aOU9,,,,,32.0804,34.7807,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1920x1080,2.319,2.319,3.075,1,1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7742381740,,0,,,
+2025-08-11 07:33:43,2025-08-11 08:30:43,0,92.25.148.229,65,3420,0,2025-08-11 08:33:52,R_8S8rXs1h8rL7MHN,,,,,52.0443,-0.7601,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1536x864,21.328,23.252,25.248,2,1,66a35864d80b66f563731c3e,60.53,105.02,135.452,3,15.496,15.496,17.76,1,,2,2,4,2,1,1,9.246,1785.161,1789.395,6,,4242,,,,,,,,,,,,13.954,66.397,77.024,3,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9480804136,,2,66a35864d80b66f563731c3e,,
+2025-08-11 07:46:05,2025-08-11 08:36:45,0,5.71.16.66,100,3039,1,2025-08-11 08:36:45,R_2LZ4ERiwnPD6Pvs,,,,,53.7668,-2.7217,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1280x720,2.418,2.418,11.63,1,1,6658d02b830a00e979619fb8,367.462,372.633,374.317,2,29.982,32.841,42.367,2,,2,2,4,2,1,1,173.006,785.458,788.955,2,,4242,,14.552,17.863,43.383,2,,3.015,939.542,950.357,19,APPL1,,,,,,,,,,,7.752,30.64,34.97,6,2,I will let the AI agent play,,,,,,1.802,31.939,33.352,14,34,1,2,,4,,5,6,6,7,7,7,"Good job, cheers",,2127624404,,0,6658d02b830a00e979619fb8,APPL1,APPL1
+2025-08-11 07:39:06,2025-08-11 07:39:47,0,12.75.36.127,8,41,0,2025-08-11 08:39:14,R_5DvcaJIm3zjTqKG,,,,,39.7668,-86.4013,anonymous,EN,Chrome,138.0.0.0,Macintosh,1440x900,1.268,16.519,19.191,4,1,5d59f86367d37200015a78dc,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4246486969,,1,5d59f86367d37200015a78dc,,
+2025-08-11 07:41:52,2025-08-11 08:00:59,0,207.219.79.126,65,1147,0,2025-08-11 08:41:55,R_17V8laKFpJsnhlf,,,,,43.7806,-79.3503,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1280x800,8.384,8.384,11.146,1,1,659c0682d109f8537a89fdd3,0,0,45.725,0,0,0,12.501,0,,2,2,4,2,1,1,20.877,854.614,856.504,3,,4242,,,,,,,,,,,,0,0,73.094,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3980171534,,1,659c0682d109f8537a89fdd3,,
+2025-08-11 08:47:08,2025-08-11 08:50:15,0,207.219.79.126,100,186,1,2025-08-11 08:50:15,R_1hxT5RSoxWVBlxT,,,,,43.7806,-79.3503,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1280x800,1.722,1.722,2.449,1,1,659c0682d109f8537a89fdd3,2.068,2.068,2.59,1,0,0,1.095,0,,2,2,4,2,1,1,2.073,2.073,5.287,1,,4242,,,,,,,,,,,,0,0,1.541,0,,6,6,10.546,1,APPL3,10.165,18.713,38.693,2,1,"I find that if I play myself , I will always make the right moves",2.78,26.439,28.915,2,2321,2.894,28.483,29.824,11,23,0,5,,3,,4,6,6,6,4,5,,,6566460848,,4,659c0682d109f8537a89fdd3,APPL3,2321
+2025-08-11 07:57:57,2025-08-11 08:03:39,0,86.175.177.183,27,342,0,2025-08-11 08:57:59,R_2bD9tHDgqMdze0x,,,,,54.9749,-1.6451,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,2560x1440,15.995,15.995,16.863,1,1,66b8830e5812d8df82589ef3,71.172,71.172,72.897,1,33.18,33.18,34.517,1,,2,2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2024668015,,3,66b8830e5812d8df82589ef3,,
+2025-08-11 08:03:54,2025-08-11 08:10:59,0,90.195.139.127,54,424,0,2025-08-11 09:04:02,R_2gYFxJ0UIDV3BMS,,,,,53.8714,-1.913,anonymous,EN,Chrome,138.0.0.0,Macintosh,1470x956,3.278,3.278,4.201,1,1,59e71a3b1ac65d0001eb47ac,0,0,50.189,0,0,0,24.666,0,,2,2,4,2,1,1,22.379,207.545,211.702,2,,4242,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1771293619,,1,59e71a3b1ac65d0001eb47ac,,
+2025-08-11 08:48:13,2025-08-11 09:26:44,0,86.181.196.152,100,2310,1,2025-08-11 09:26:45,R_8JfJidj80Qmrs2m,,,,,54.9749,-1.6451,anonymous,EN,Chrome,138.0.0.0,Windows NT 10.0,1280x720,3.873,5.494,7.043,2,1,5c6e60b04e08ad00018cc995,15.445,226.032,227.093,23,22.483,39.611,41.64,2,,2,2,4,2,1,1,15.183,409.917,425.967,4,,4242,,,,,,,,,,,,25.35,133.248,135.04,8,,5.302,1075.876,1082.258,3,APPL2,7.983,11.117,25.635,3,2,I wasn't very good and I think the AI was better,,,,,,1.451,42.599,44.582,20,59,1,2,,4,,3,6,6,6,5,5,,,9827540657,,3,5c6e60b04e08ad00018cc995,APPL2,APPL2

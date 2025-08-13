@@ -52,6 +52,7 @@ class MySQLDataExplorer:
         except Error as e:
             print(f"❌ Error connecting to Azure MySQL: {e}")
             return False
+        return False
     
     def get_all_tables(self) -> Dict[str, pd.DataFrame]:
         """

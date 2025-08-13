@@ -74,7 +74,7 @@ def encode_image(img_array):
     return None
 
 class TutorialGameControl:
-    def __init__(self, env):
+    def __init__(self, env, final_step=False):
         self.env = env
         self.episode_num = 0
         self.score = 0
@@ -83,9 +83,14 @@ class TutorialGameControl:
         self.episode_images = []
         self.current_obs = None
         self.agent_last_pos = None
+        self.final_step = final_step
 
     def reset(self):
-        obs, _ = self.env.unwrapped.reset()
+        if self.final_step:
+            # Special reset for final step with unique_env=100 and from_unique_env=True
+            obs, _ = self.env.unwrapped.reset(unique_env=100, from_unique_env=True)
+        else:
+            obs, _ = self.env.unwrapped.reset()
         if 'direction' in obs:
             obs = {'image': obs['image']}
         self.score = 0
@@ -155,7 +160,7 @@ def create_new_env():
                            render_mode="rgb_array", 
                            image_full_view=False,
                            highlight=True, 
-                           max_steps=50, 
+                           max_steps=70, 
                            num_objects=5, 
                            lava_cells=4, 
                            partial_obs=True)
@@ -165,7 +170,9 @@ def create_new_env():
 # FastAPI Routes
 @app.get("/")
 def index(request: Request):
-    return templates.TemplateResponse("tutorial_index.html", {"request": request})
+    # return templates.TemplateResponse("tutorial_index.html", {"request": request})
+    return templates.TemplateResponse("final_index.html", {"request": request})
+
 
 # Socket.IO Events
 @sio.event
@@ -181,13 +188,15 @@ async def disconnect(sid):
 @sio.on("start_game")
 async def start_game(sid, data):
     user_id = data["playerName"]
+    final_step = data.get("finalStep", 0) == 1
     sid_to_user[sid] = user_id
     if user_id not in game_controls:
         env_instance = create_new_env()
-        new_game = TutorialGameControl(env_instance)
+        new_game = TutorialGameControl(env_instance, final_step=final_step)
         game_controls[user_id] = new_game
     else:
         new_game = game_controls[user_id]
+        # new_game.final_step = final_step
     response = new_game.get_initial_observation()
     response['action'] = None
     await sio.emit("game_update", response, to=sid)

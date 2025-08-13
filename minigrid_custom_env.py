@@ -36,7 +36,7 @@ basic_color_rewards  = {
 MAX_STEPS = 1000
 actions_translation = {0: 'turn left', 1: 'turn right', 2: 'move forward', 3: 'pickup', 'turn left': 0, 'turn right': 1, 'move forward': 2, 'forward': 2, 'pickup':3}
 
-class ObjObsWrapper(ObservationWrapper):
+class  ObjObsWrapper(ObservationWrapper):
     def __init__(self, env):
         """A wrapper that makes image the only observation.
         Args:
@@ -45,30 +45,37 @@ class ObjObsWrapper(ObservationWrapper):
         super().__init__(env)
 
         size = env.observation_space['image'].shape[0]
-        if False: #self.env.step_count_observation:
-            self.observation_space = Dict(
-                {
-                    "image": Box(low=0, high=255, shape=(size, size, 3), dtype=np.uint8),
-                    "step_count": Box(low=0, high=MAX_STEPS, shape=(1,), dtype=np.float32),
-                }
-            )
-        else:
-            self.observation_space = Dict(
-                {
-                    "image": Box(low=0, high=255, shape=(size, size, 3), dtype=np.uint8),
-                }
-            )
+        
+        # Build observation space based on environment configuration
+        obs_dict = {"image": Box(low=0, high=255, shape=(size, size, 3), dtype=np.uint8)}
+        
+        # Add step count if enabled (legacy support)
+        if hasattr(env, 'step_count_observation') and env.step_count_observation:
+            obs_dict["step_count"] = Box(low=0, high=MAX_STEPS, shape=(1,), dtype=np.float32)
+        
+        # Add enhanced observations if enabled
+        if hasattr(env, 'enhanced_observation') and env.enhanced_observation:
+            obs_dict["agent_pos"] = Box(low=0, high=8, shape=(2,), dtype=np.int32)
+            obs_dict["direction"] = Box(low=0, high=3, shape=(1,), dtype=np.int32)  # Convert Discrete to Box for compatibility
+            obs_dict["step_count"] = Box(low=0, high=MAX_STEPS, shape=(1,), dtype=np.int32)
+        
+        self.observation_space = Dict(obs_dict)
 
     def observation(self, obs):
-        if self.env.step_count_observation:
-            wrapped_obs = {
-                "image": obs["image"],
-                "step_count": np.array([obs["step_count"]]),
-            }
-        else:
-            wrapped_obs = {
-                "image": obs["image"],
-            }
+        wrapped_obs = {"image": obs["image"]}
+        
+        # Add step count if available (legacy support)
+        if "step_count" in obs and hasattr(self.env, 'step_count_observation') and self.env.step_count_observation:
+            wrapped_obs["step_count"] = np.array([obs["step_count"]], dtype=np.float32)
+        
+        # Add enhanced observations if available
+        if hasattr(self.env, 'enhanced_observation') and self.env.enhanced_observation:
+            if "agent_pos" in obs:
+                wrapped_obs["agent_pos"] = obs["agent_pos"]
+            if "direction" in obs:
+                wrapped_obs["direction"] = obs["direction"]  # Already in array format
+            if "step_count" in obs:
+                wrapped_obs["step_count"] = obs["step_count"]
 
         return wrapped_obs
 
@@ -119,9 +126,6 @@ class ObjEnvExtractor(BaseFeaturesExtractor):
                 extractors["image"] = nn.Sequential(*(list(cnn) + list(linear)))
                 total_concat_size += 64
 
-            elif key == "mission":
-                extractors["mission"] = nn.Linear(subspace.shape[0], 32)
-                total_concat_size += 32
             elif key == "step_count": 
                 # Add a linear layer to process the scalar `step_count`
                 extractors["step_count"] = nn.Sequential(
@@ -129,6 +133,22 @@ class ObjEnvExtractor(BaseFeaturesExtractor):
                     nn.ReLU(),
                     )
                 total_concat_size += 16  # Update the total feature size
+            
+            elif key == "agent_pos":
+                # Add a linear layer to process the agent position
+                extractors["agent_pos"] = nn.Sequential(
+                    nn.Linear(subspace.shape[0], 16),  # Convert 2D position to 16 features
+                    nn.ReLU(),
+                )
+                total_concat_size += 16
+            
+            elif key == "direction":
+                # Add a linear layer to process the direction
+                extractors["direction"] = nn.Sequential(
+                    nn.Linear(subspace.shape[0], 8),  # Convert 1D direction to 8 features
+                    nn.ReLU(),
+                )
+                total_concat_size += 8
 
         self.extractors = nn.ModuleDict(extractors)
 
@@ -140,7 +160,8 @@ class ObjEnvExtractor(BaseFeaturesExtractor):
 
         # self.extractors contain nn.Modules that do all the processing.
         for key, extractor in self.extractors.items():
-            encoded_tensor_list.append(extractor(observations[key]))
+            if key in observations:  # Only process keys that exist in observations
+                encoded_tensor_list.append(extractor(observations[key]))
 
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         return th.cat(encoded_tensor_list, dim=1)
@@ -152,7 +173,7 @@ class CustomEnv(MiniGridEnv):
         grid_size=8,
         agent_start_pos=(1, 1),
         agent_start_dir: int = 0, # 0: right, 1: down, 2: left, 3: up
-        max_steps: int = 100, 
+        max_steps: int = 70, 
         change_reward: bool = False,
         num_objects: int = 6,
         difficult_grid: bool = False,
@@ -173,6 +194,7 @@ class CustomEnv(MiniGridEnv):
         color_rewards: dict = basic_color_rewards, # all colors have the same reward = 2
         partial_obs: bool = False,
         step_count_observation: bool = False,
+        enhanced_observation: bool = False,  # NEW: includes agent_pos, direction, step_count
         lava_panishment: float = -3,
         small_actions_space: bool = False,
         # from_unique_env: bool = True, # is the env should be one of the unique envs
@@ -190,9 +212,10 @@ class CustomEnv(MiniGridEnv):
         self.partial_obs = partial_obs
         self.unique_env = 0
         self.step_count_observation = step_count_observation
+        self.enhanced_observation = enhanced_observation  # NEW: Store enhanced observation flag
         self.step_cost = step_cost
         self.lava_panishment = lava_panishment
-        self.from_unique_env = True  # from_unique_env
+        self.from_unique_env = False  # from_unique_env
         if not highlight:
             self.highlight = not image_full_view
 
@@ -210,6 +233,7 @@ class CustomEnv(MiniGridEnv):
         self.step_count = 0
         self.initial_balls = [] # list of objects on the grid in the format (x, y, color, reward when picked)
         self.lava_cells = [] # list of lava cells on the grid in the format (x, y)
+        self.walls = [] # list of walls to be created in the format (start_x, start_y, length)
 
         # Can't set both grid_size and width/height
         if grid_size:
@@ -258,9 +282,18 @@ class CustomEnv(MiniGridEnv):
                 # "mission": None,
             }
         )
+        
+        # Add step count if requested (legacy support)
         if self.step_count_observation:
             print("add step count")
             self.observation_space["step_count"] = spaces.Box(low=0, high=max_steps+1, shape=(1,), dtype="int")
+        
+        # Add enhanced observations (agent_pos, direction, step_count)
+        if self.enhanced_observation:
+            print("add enhanced observations: agent_pos, direction, step_count")
+            self.observation_space["agent_pos"] = spaces.Box(low=0, high=max(width, height), shape=(2,), dtype=np.int32)
+            self.observation_space["direction"] = spaces.Box(low=0, high=3, shape=(1,), dtype=np.int32)  # Changed to Box for consistency
+            self.observation_space["step_count"] = spaces.Box(low=0, high=max_steps+1, shape=(1,), dtype=np.int32)
 
         # Range of possible rewards
         self.reward_range = (0, 1)
@@ -312,17 +345,19 @@ class CustomEnv(MiniGridEnv):
     def reset(self, **kwargs):
         self.unique_env = 0
         self.ep_score = 0
-        similarity_level = kwargs.get('simillarity_level', 1)
+        similarity_level = kwargs.get('simillarity_level', 5)
         if not 'optional_unique_env' in kwargs:
-            kwargs['optional_unique_env'] = list(range(1,19))
+            kwargs['optional_unique_env'] = list(range(1,19)) # + list(range(101, 121)) # 1-18 are the original envs, 101-120 are the new envs
         self.optional_unique_env = kwargs['optional_unique_env']
         if 'from_unique_env' in kwargs:
             self.from_unique_env = kwargs['from_unique_env']
+        elif random.random() < 0.05 and self.train_env:
+            self.from_unique_env = True
         if 'unique_env' in kwargs:
             if self.train_env:
                 self.unique_env = kwargs['unique_env']
             else:
-                self.unique_env = kwargs['unique_env'] if kwargs['unique_env'] in self.optional_unique_env else random.choice(self.optional_unique_env)
+                self.unique_env =  kwargs['unique_env'] if kwargs['unique_env'] in self.optional_unique_env else random.choice(self.optional_unique_env)
 
         self.on_board_objects = 0
         self.step_count = 0
@@ -330,16 +365,31 @@ class CustomEnv(MiniGridEnv):
         self.current_state = {}
         self.initial_balls = []
         self.lava_cells = []
+        self.walls = []
         
         self._place_initial_objects(similarity_level, kwargs)
+        # print("\n\n(def reset)  initial_balls:", self.initial_balls)
         state , info = super().reset()
         if self.image_full_view:
             state['image'] = self.grid.encode()
             self.put_agent_in_obs(state)
-        self.current_state['image'] = state['image']
+        self.current_state['image'] = state['image']    
+        
+        # Add step count if requested (legacy support)
         if self.step_count_observation:
             self.current_state['step_count'] = self.step_count
             state['step_count'] = self.step_count
+        
+        # Add enhanced observations if requested
+        if self.enhanced_observation:
+            state['agent_pos'] = np.array(self.agent_pos, dtype=np.int32)
+            state['direction'] = np.array([self.agent_dir], dtype=np.int32)  # Convert to array
+            state['step_count'] = np.array([self.step_count], dtype=np.int32)
+            
+            # Update current state for consistency
+            self.current_state['agent_pos'] = state['agent_pos']
+            self.current_state['direction'] = state['direction']
+            self.current_state['step_count'] = state['step_count']
         
         return state, info
 
@@ -372,30 +422,32 @@ class CustomEnv(MiniGridEnv):
     def _place_initial_objects(self, simillarity_level, kwargs):
         """
         Create the initial balls list based on the simillarity level and the other initial_balls passed in the kwargs.
-        simillarity_level (group): 0  - no demonstration
-        simillarity_level (group): 1 - same baord as last one
-        simillarity_level (group): 2 - lava the same, balls close to old locations   
-        simillarity_level (group): 3 - infront objects (creating a board with the objects that the agent saw in the feedback actions 
-        simillarity_level (group): 4+ - new random board from the optinal env boards
+        similarity_level (group): 0  - no demonstration
+        similarity_level (group): 1 - same baord as last one
+        similarity_level (group): 2 - lava the same, balls close to old locations   
+        similarity_level (group): 3 - infront objects (creating a board with the objects that the agent saw in the feedback actions 
+        similarity_level (group): 4+ - new random board from the optinal env boards
         """
         
         unique_env = kwargs.get('unique_env', 0)
         board_seen = kwargs.get('board_seen', [])
+        demonstraion_unique_envs = kwargs.get('demonstraion_unique_envs', [])
 
         added_lava = False
 
         # if (not self.train_env) or (random.random() < 0.5):
         if self.from_unique_env: # create a random unique env
             if unique_env == 0 or (unique_env not in self.optional_unique_env):
-                unique_env = random.choice(self.optional_unique_env)
-                c = 0
-                while unique_env in board_seen and c < 10:
+                available_envs = [env for env in self.optional_unique_env if env not in board_seen]
+                if available_envs:
+                    unique_env = random.choice(available_envs)
+                else:
                     unique_env = random.choice(self.optional_unique_env)
-                    c += 1
             board_seen.append(unique_env)
             
             self._gen_unique_grid(self.width, self.height, unique_env)
-            added_lava = True          
+            added_lava = True  
+            self.from_unique_env = False        
 
         elif simillarity_level == 1 and "initial_balls" in kwargs and isinstance(kwargs["initial_balls"], list):
             if "other_lava_cells" in kwargs: 
@@ -443,7 +495,7 @@ class CustomEnv(MiniGridEnv):
         elif simillarity_level == 3:
             added_lava = True
             self._gen_unique_grid(self.width, self.height, unique_env)
-            board_seen.append(unique_env)
+            demonstraion_unique_envs.append(unique_env)
         
         elif simillarity_level == 4:
             old_optinal_envs = kwargs.get('old_optional_envs', list(range(1,19)))
@@ -452,9 +504,10 @@ class CustomEnv(MiniGridEnv):
             unique_env = random.choice(optinal_envs)
             added_lava = True
             self._gen_unique_grid(self.width, self.height, unique_env)
-            board_seen.append(unique_env)
+            demonstraion_unique_envs.append(unique_env)
 
         else: # random balls with random colors
+            print("generate random balls and lava")
             for i in range(self.num_objects):
                 color = random.choice(list(self.color_rewards.keys()))
                 x = random.randint(1, self.width - 2)
@@ -516,6 +569,14 @@ class CustomEnv(MiniGridEnv):
         for l_cell in self.lava_cells:
             self.put_obj(Lava(), l_cell[0], l_cell[1])
             
+        # Create walls
+        for wall_info in self.walls:
+            wall_type, x, y, length = wall_info
+            if wall_type == 'vert':
+                self.grid.vert_wall(x, y, length)
+            elif wall_type == 'horz':
+                self.grid.horz_wall(x, y, length)
+            
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
 
@@ -553,16 +614,12 @@ class CustomEnv(MiniGridEnv):
         if unique_env == 7:
             balls_list = [(4, 4, 'blue'), (5, 2, 'green')]
             lava_list = [(3,3), (3,4), (3,5), (5,5), (4,5), (5,3)]
-            # for i in range(3, 6):
-            #     for j in range(3, 6):
-            #         if (i == 4 and j == 4) or (i == 5 and j == 4) or (i == 4 and j == 3):
-            #             continue
-            #     lava_list.append((i, j))
 
         if unique_env == 8:
             balls_list = [(5, 5, 'red'), (6, 4, 'green'), (3, 6, 'blue'), (2, 4, 'blue')]
             lava_list = []
-            self.grid.vert_wall(4, 1, 3)
+            # Store wall information instead of creating it directly
+            self.walls.append(('vert', 4, 1, 3))  # ('type', x, y, length)
 
         if unique_env == 9:
             balls_list = [(4, 1, 'blue'), (6, 1, 'blue'), (2, 4, 'green'), (4, 4, 'green')]
@@ -608,6 +665,27 @@ class CustomEnv(MiniGridEnv):
         if unique_env == 18:
             balls_list = [(1, 4, 'red'), (1, 6, 'blue'), (2, 3, 'green'), (4, 6, 'blue')]
             lava_list = [(2, 6), (2, 5)]
+        
+        if unique_env == 101:
+            balls_list = [(width - 2, 1, 'blue'), (width - 4, 3, 'green'), (width - 2, 4, 'green')]
+            lava_list = [(width - 3, 2), (width - 3, 1), (width - 2, 2)]
+        if unique_env == 102:
+            balls_list = [(width - 2, 1, 'blue'), (width - 4, 3, 'green'), (width - 2, 4, 'green')]
+            lava_list = [(width - 3, 2), (width - 3, 1)]
+
+        if unique_env == 103:
+            balls_list = [(2, 1, 'red'), (1, 2, 'blue'), (4, 3, 'blue'), (6, 2, 'blue')]
+            lava_list = []
+            # Store wall information instead of creating it directly
+            self.walls.append(('vert', 2, 2, 3))  # ('type', x, y, length)
+
+        if unique_env == 104:
+            balls_list = [(2, 1, 'red')]
+            lava_list = []
+            # Store wall information instead of creating it directly
+            self.walls.append(('vert', 3, 3, 3))  # ('type', x, y, length)
+
+
 
         # Place balls and lava on the grid
         for ball_info in balls_list:
@@ -616,12 +694,9 @@ class CustomEnv(MiniGridEnv):
             color = ball_info[2]
             # self.put_obj(Ball(color), x_loc, y_loc)
             self.initial_balls.append((x_loc, y_loc, color, self.color_rewards[color]))
-        for lava_cell in lava_list:
-            x_loc = lava_cell[0]
-            y_loc = lava_cell[1]
-            # self.put_obj(Lava(), x_loc, y_loc)
-            self.lava_cells.append((x_loc, y_loc))
 
+        self.lava_cells += lava_list
+        
         # Place a wall in the middle of the grid
         # self.put_obj(Goal(), width - 2, height - 2)
 
@@ -705,17 +780,27 @@ class CustomEnv(MiniGridEnv):
     def step(self, action):
         if self.current_state:
             last_obs = self.current_state.copy() # save the last observation
-            agent_pos_befor = self.agent_pos
+            agent_pos_before = self.agent_pos
+        dist_to_goal_before = np.abs(self.agent_pos[0] - (self.grid.width - 2)) + np.abs(self.agent_pos[1] - (self.grid.height - 2))
         obs, reward, terminated, truncated, info = super().step(action)
+        
+        # Add step count if requested (legacy support)
         if self.step_count_observation:
             obs['step_count'] = self.step_count
+        
+        # Add enhanced observations if requested
+        if self.enhanced_observation:
+            obs['agent_pos'] = np.array(self.agent_pos, dtype=np.int32)
+            obs['direction'] = np.array([self.agent_dir], dtype=np.int32)  # Convert to array
+            obs['step_count'] = np.array([self.step_count], dtype=np.int32)
+            
         if self.image_full_view:
             obs['image'] = self.grid.encode() # get the full grid image
             self.put_agent_in_obs(obs)
         self.current_state = obs
 
         if last_obs:
-            if self.is_illegal_move(action, last_obs, obs, agent_pos_befor, self.agent_pos):
+            if self.is_illegal_move(action, last_obs, obs, agent_pos_before, self.agent_pos):
                 reward -= 1
 
         # Check if the agent picked up a ball
@@ -728,23 +813,23 @@ class CustomEnv(MiniGridEnv):
                 self.on_board_objects -= 1
         
         # got to the right bottom corner - the goal
-        if self.agent_pos == (self.grid.width - 2, self.grid.height - 2) and self.train_env:
-            reward += 5
-
-        # hit a lava cell
-        # if self.agent_pos in self.lava_cells: 
-        #     # terminated = False
-        #     reward += self.lava_panishment
+        if self.agent_pos == (self.grid.width - 2, self.grid.height - 2):
+            reward = 10 if self.train_env else 4.9
+            terminated = True  # End episode immediately when goal is reached
+            return obs, round(reward, 1), terminated, truncated, info
 
         if truncated:
             terminated = True
             print(f"reached max steps={self.max_steps}")
             if self.train_env:
                 reward -= 5
+                return obs, round(reward, 1), terminated, truncated, info
 
-        dis_from_goal = np.abs(self.agent_pos[0] - (self.grid.width - 2)) + np.abs(self.agent_pos[1] - (self.grid.height - 2))
-        reward -=  self.step_cost # * dis_from_goal #the aproximation of number of steps to the goal
-        self.ep_score += reward
+        # IMPROVED: Better distance-based reward shaping
+        dist_from_goal = np.abs(self.agent_pos[0] - (self.grid.width - 2)) + np.abs(self.agent_pos[1] - (self.grid.height - 2))
+        distance_reward = (dist_to_goal_before - dist_from_goal) * 1.0  # Stronger distance reward
+        # reward += distance_reward
+        reward -= self.step_cost  # Simple step cost
         return obs, round(reward,1), terminated, truncated, info
 
     def find_optimal_path(self):

@@ -396,6 +396,7 @@
                         <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#3498db;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Blue Ball = <b style="margin-left:5px;">4</b></div>
                         <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Green Ball = <b style="margin-left:5px;">2</b></div>
                         <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#e74c3c;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Red Ball = <b style="margin-left:5px;">-1</b></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;margin-right:10px;border:2px solid #222;"></span> Goal = <b style="margin-left:5px;">5</b></div>
                         <div style="display: flex; align-items: center; margin-bottom: 0;"><span style="display:inline-block;width:22px;height:22px;margin-right:10px;border:2px solid #222;"><img src="static/images/lava_cell.png" alt="Lava" style="width:100%;height:100%;object-fit:cover;border-radius:5px;"></span>Lava = -3</div>
                     </div>
                 </div>
@@ -432,6 +433,7 @@
             <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#3498db;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Blue Ball = <b style="margin-left:5px;">4</b></div>
             <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Green Ball = <b style="margin-left:5px;">2</b></div>
             <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#e74c3c;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Red Ball = <b style="margin-left:5px;">-1</b></div>
+            <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;margin-right:10px;border:2px solid #222;"></span> Goal = <b style="margin-left:5px;">5</b></div>
             <div style="display: flex; align-items: center; margin-bottom: 0;"><span style="display:inline-block;width:22px;height:22px;margin-right:10px;border:2px solid #222;"><img src="static/images/lava_cell.png" alt="Lava" style="width:100%;height:100%;object-fit:cover;border-radius:5px;"></span>Lava = -3</div>
         </div>
         <!-- Symbol Legend for Overview Page (below map-legend) -->
@@ -517,7 +519,7 @@
     <!-- Summary Page -->
     <div id="summary-page" class="page">
         <h2>Game Ended - Well Done</h2>
-        <div style="font-size: 1.2em; color: #333; margin-bottom: 10px;">confirmation code - APPL</div>
+        <div style="font-size: 1.2em; color: #333; margin-bottom: 10px;">confirmation code - <span id="confirmation-code">APPL</span></div>
         <div id="score-list-container">
             <ul id="score-list"></ul>
         </div>

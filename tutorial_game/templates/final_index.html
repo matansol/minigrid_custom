@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minigrid Tutorial</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            overflow-y: auto;
+            background: #eaf6fb !important;
+        }
+        .page {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:#eaf6fb;
+        }
+        .active {
+            display: flex;
+        }
+        #welcome-page {
+            padding: 0;
+            text-align: center;
+        }
+        #welcome-page-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #welcome-page ul {
+            display: inline-block;
+            text-align: left;
+            margin: 20px auto;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #button-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        #button-container button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background-color: #f8f8f8;
+        }
+        #game-content {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            position: relative;
+            width: 100%;
+        }
+        #game-image-container {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+            position: relative;
+        }
+        /* Moved finish button container outside the image and removed background color */
+        #finish-button-container {
+            position: absolute;
+            top: 480px;   /* Just below the image (image is 480px tall) */
+            left: 520px;  /* Near the right edge of the image (image is 640px wide, adjust as needed) */
+            z-index: 10;
+            margin-top: 10px;
+            margin-left: 10px;
+            /* No background or border for clean look */
+        }
+        #game-image {
+            width: 100%;
+            height: 100%;
+        }
+        #step-count {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            z-index: 10;
+        }
+        #reward-display {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 16px;
+        }
+        #key-instructions {
+            margin-left: 20px;
+            text-align: left;
+            padding: 10px;
+            border: 1px solid black;
+        }
+        #info-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-icon {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <!-- Cover Page -->
+    <div id="cover-page" class="page active">
+        <h1>Final Episode</h1>
+        <button id="cover-start-button">Start</button>
+    </div>
+
+    <!-- Welcome Page -->
+    <div id="welcome-page" class="page active">
+        <div id="welcome-page-content" style="text-align: left; align-items: flex-start; display: flex; flex-direction: column;">
+            <h2 style="font-size: 2.7em; font-weight: bold; margin-bottom: 0.3em; text-align: left;">Welcome Back to the Minigrid Game</h2>
+             <p style="margin-left: 0; font-size: 1.2em;">This time you will play only one round, and the bonus will be proportional to your performance.</p>
+            <!--<p style="margin-left: 0; font-size: 1.2em;">Your objective is to maximize the score in each round.</p>
+            <p style="margin-left: 0; font-size: 1.2em;">Below the image, you'll see the reward earned for each move and your round's total score so far.</p> -->
+            <div id="key-instructions" style="margin-top: 18px; margin-bottom: 0; border: 1px solid black; border-radius: 8px; padding: 14px 18px; background: #f8f8f8; min-width: 180px; max-width: 320px;">
+                <h3 style="margin-top: 0; margin-bottom: 8px; text-align: center;">Controls:</h3>
+                <ul style="margin: 0 auto; padding-left: 20px; margin-top: 0; display: table; text-align: left;">
+                    <li>&uarr; : Move forward</li>
+                    <li>&larr; : Turn left</li>
+                    <li>&rarr; : Turn right</li>
+                    <li>1 : Pickup</li>
+                </ul>
+            </div>
+
+        </div>
+    <button id="start-tutorial" style="margin: 32px auto 0 auto; display: block; align-self: center;">Start</button>
+    </div>
+
+    <!-- Game Page -->
+    <div id="game-page" class="page">
+        <div id="game-container">
+            <h2 id="round-header" style="width: 100%; text-align: center; margin-bottom: 10px; font-size: 2em;">Round <span id="round-number">1</span></h2>
+            <div id="game-content" style="position: relative;">
+                <div id="game-image-container">
+                    <div id="step-count">Steps: <span id="steps">0</span></div>
+                    <img id="game-image" src="" alt="Game State">
+                </div>
+                <div style="display: flex; flex-direction: column; margin-left: 20px;">
+                    <div id="key-instructions">
+                        <h3>Controls:</h3>
+                        <ul>
+                            <li>&uarr; : Move forward</li>
+                            <li>&larr; : Turn left</li>
+                            <li>&rarr; : Turn right</li>
+                            <li>1 : Pickup</li>
+                        </ul>
+                    </div>
+                    <div id="map-legend" style="margin-top: 20px; border: 1px solid #aaa; border-radius: 8px; padding: 16px; background: #f9f9f9; min-width: 160px; max-width: 200px; display: flex; flex-direction: column; align-items: flex-start;">
+                        <h4 style="margin-top:0;">Scores</h4>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#3498db;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Blue Ball = <b style="margin-left:5px;">4</b></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Green Ball = <b style="margin-left:5px;">2</b></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#e74c3c;border-radius:50%;margin-right:10px;border:2px solid #222;"></span> Red Ball = <b style="margin-left:5px;">-1</b></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="display:inline-block;width:22px;height:22px;background:#27ae60;margin-right:10px;border:2px solid #222;"></span> Goal = <b style="margin-left:5px;">5</b></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 0;"><span style="display:inline-block;width:22px;height:22px;margin-right:10px;border:2px solid #222;"><img src="static/images/lava_cell.png" alt="Lava" style="width:100%;height:100%;object-fit:cover;border-radius:5px;"></span>Lava = -3</div>
+                    </div>
+                </div>
+            </div>
+            <div id="info-container">
+                <p>Score: <span id="score">0</span></p>
+                <!-- <p>Round: <span id="episode">1</span></p> -->
+                <div id="reward-display">Last Action Reward: <span id="reward">0</span></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Finish Page -->
+    <div id="finish-page" class="page">
+        <h1 style="font-size: 3.5em; font-weight: bold; margin-bottom: 0.5em;">Complete Game</h1>
+        <div id="score-list-container" style="margin-top: 2em;">
+            <h2 style="font-size: 2em; margin-bottom: 0.5em;">Score by Round</h2>
+            <ul id="score-list" style="font-size: 1.3em; list-style: none; padding-left: 0;"></ul>
+        </div>
+        <p style="font-size: 2em;">Your confirmation number: <span id="confirmation-number" style="font-size: 1.7em; font-weight: bold;">4242</span></p>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" style="display: none;">
+        <div class="loading-icon"></div>
+        <p>Loading...</p>
+    </div>
+
+    <script src="/static/js/final_game.js"></script>
+</body>
+</html>

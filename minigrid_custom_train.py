@@ -207,6 +207,109 @@ def set_random_seed(seed):
 
     #     return True
 
+class LargeObjEnvExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space: gym.spaces.Dict):
+        super().__init__(observation_space, features_dim=1)
+
+        self.extractors = nn.ModuleDict()
+        total_feature_dim = 0
+
+        for key, subspace in observation_space.spaces.items():
+            if key == "image":
+                c, h, w = subspace.shape[::-1]  # From (H, W, C) to (C, H, W)
+
+                self.extractors["image"] = nn.Sequential(
+                    # First block - more channels
+                    nn.Conv2d(c, 64, kernel_size=3, stride=1, padding=1),
+                    nn.BatchNorm2d(64),
+                    nn.ReLU(),
+                    nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+                    nn.BatchNorm2d(64),
+                    nn.ReLU(),
+                    
+                    # Second block
+                    nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+                    nn.BatchNorm2d(128),
+                    nn.ReLU(),
+                    nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+                    nn.BatchNorm2d(128),
+                    nn.ReLU(),
+                    
+                    # Third block
+                    nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+                    nn.BatchNorm2d(256),
+                    nn.ReLU(),
+                    nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+                    nn.BatchNorm2d(256),
+                    nn.ReLU(),
+                    
+                    # Global average pooling to reduce parameters
+                    nn.AdaptiveAvgPool2d((2, 2)),
+                    nn.Flatten()
+                )
+
+                # Calculate flattened size
+                with th.no_grad():
+                    sample = th.as_tensor(subspace.sample()[None]).float() / 255.0
+                    sample = sample.permute(0, 3, 1, 2)
+                    n_flatten = self.extractors["image"](sample).shape[1]
+
+                # Larger fully connected layers
+                self.image_linear = nn.Sequential(
+                    nn.Linear(n_flatten, 512),
+                    nn.ReLU(),
+                    nn.Dropout(0.3),
+                    nn.Linear(512, 256),
+                    nn.ReLU(),
+                    nn.Dropout(0.2),
+                    nn.Linear(256, 128),
+                    nn.ReLU()
+                )
+                total_feature_dim += 128
+
+            elif key == "step_count":
+                self.extractors["step_count"] = nn.Sequential(
+                    nn.LayerNorm(subspace.shape),
+                    nn.Linear(subspace.shape[0], 32),
+                    nn.ReLU(),
+                    nn.Linear(32, 16),
+                    nn.ReLU()
+                )
+                total_feature_dim += 16
+
+            elif key == "agent_pos":
+                self.extractors["agent_pos"] = nn.Sequential(
+                    nn.Linear(subspace.shape[0], 32),  # 2D position -> 32 features
+                    nn.ReLU(),
+                    nn.Linear(32, 16),
+                    nn.ReLU()
+                )
+                total_feature_dim += 16
+
+            elif key == "direction":
+                self.extractors["direction"] = nn.Sequential(
+                    nn.Linear(subspace.shape[0], 16),   # 1D direction -> 16 features
+                    nn.ReLU(),
+                    nn.Linear(16, 8),
+                    nn.ReLU()
+                )
+                total_feature_dim += 8
+
+        self._features_dim = total_feature_dim
+
+    def forward(self, observations: Dict[str, th.Tensor]) -> th.Tensor:
+        outputs = []
+        for key, module in self.extractors.items():
+            if key == "image":
+                x = observations["image"].float() / 255.0
+                x = x.permute(0, 3, 1, 2)
+                x = self.extractors["image"](x)
+                x = self.image_linear(x)
+                outputs.append(x)
+            else:
+                outputs.append(module(observations[key].float()))
+        return th.cat(outputs, dim=1)
+    
 
 class UpgradedObjEnvExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict):
@@ -227,7 +330,9 @@ class UpgradedObjEnvExtractor(BaseFeaturesExtractor):
                             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
                             # nn.BatchNorm2d(64),
                             nn.ReLU(),
-                            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+                            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+                            nn.ReLU(),
+                            nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),
                             # nn.BatchNorm2d(64),
                             nn.ReLU(),
                             nn.Flatten()
@@ -251,6 +356,20 @@ class UpgradedObjEnvExtractor(BaseFeaturesExtractor):
                     nn.ReLU()
                 )
                 total_feature_dim += 16
+
+            elif key == "agent_pos":
+                self.extractors["agent_pos"] = nn.Sequential(
+                    nn.Linear(subspace.shape[0], 16),  # 2D position -> 16 features
+                    nn.ReLU()
+                )
+                total_feature_dim += 16
+
+            elif key == "direction":
+                self.extractors["direction"] = nn.Sequential(
+                    nn.Linear(subspace.shape[0], 8),   # 1D direction -> 8 features
+                    nn.ReLU()
+                )
+                total_feature_dim += 8
 
             elif key == "mission":
                 self.extractors["mission"] = nn.Sequential(
@@ -352,13 +471,22 @@ def main(**kwargs):
         "--load_model", type=str, default=None, help="load a trained model"
     )
     parser.add_argument("--full_image", action="store_true", help="use full image as observation")
+    parser.add_argument("--enhanced_obs", action="store_true", help="use enhanced observations (agent_pos, direction, step_count)")
     parser.add_argument("--option", type=int, default=-1, help="the option for the env rewards")
+    parser.add_argument("--nn", type=str, default="regular", help="the network type to use: regular, large, upgraded")
 
     args = parser.parse_args()
     # parser.add_argument("--render", action="store_true", help="render trained models")
     # parser.add_argument("--seed", type=int, default=42, help="random seed")
 
-    policy_kwargs = dict(features_extractor_class=ObjEnvExtractor) 
+    if args.nn == "large":
+        print("Using LargeObjEnvExtractor")
+        policy_kwargs = dict(features_extractor_class=LargeObjEnvExtractor)
+    elif args.nn == "upgraded":
+        print("Using UpgradedObjEnvExtractor")
+        policy_kwargs = dict(features_extractor_class=UpgradedObjEnvExtractor)
+    else:
+        policy_kwargs = dict(features_extractor_class=ObjEnvExtractor) 
 
     # Models that need to be:
     # AllColors LL - 2,2,4,0.2,0.1
@@ -372,7 +500,7 @@ def main(**kwargs):
     
     colors_options = [
         # AllColors LL  - 0
-        {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
+        {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': 0.2, 'step': 0.05},
         # AllColors LH  - 1
         {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': -4, 'step': 0.1},
         # OnlyBlue LH  - 2
@@ -402,6 +530,7 @@ def main(**kwargs):
     colors_rewards = colors_options[option]['balls']
 
     step_count_observation = False
+    enhanced_observation = args.enhanced_obs  # NEW: Get enhanced observation flag from args
     # lava_cost = -3 # override to make the agents avoid lava -------------------------------------
 
     # Create time stamp of experiment
@@ -409,11 +538,11 @@ def main(**kwargs):
     # stamp = "20240717" # the date of the last model training
     env_type = 'easy' # 'hard'
     hard_env = True if env_type == 'hard' else False
-    max_steps = 50
-    grid_size = 8
+    max_steps = 50  # Reduced from 50 for faster learning
+    grid_size = 8   # Reduced from 8 for simpler navigation
     agent_view_size = 7
-    num_lava_cell = 3
-    num_balls = 5
+    num_lava_cells = 0
+    num_balls = 5   # Reduced from 3 for simpler task
 
     # if args.train:
     device = "cuda" if th.cuda.is_available() else "cpu"
@@ -426,13 +555,15 @@ def main(**kwargs):
             highlight=True,
             step_cost=step_cost,
             num_objects=num_balls,
-            lava_cells=num_lava_cell,
+            lava_cells=num_lava_cells,
             train_env=True,
             image_full_view=False,
             agent_view_size=agent_view_size,
             color_rewards=colors_rewards,
             step_count_observation=step_count_observation, # Add step count to observation
+            enhanced_observation=enhanced_observation,   # NEW: Add enhanced observations
             lava_panishment=lava_cost,
+            small_actions_space=True,
         )
     train_env = NoDeath(ObjObsWrapper(train_env), no_death_types=('lava',), death_cost=lava_cost)
     if args.full_image:
@@ -447,9 +578,11 @@ def main(**kwargs):
 
     # Access attributes from the underlying environment
     full_image_str = "FullImage" if args.full_image else ""
+    enhanced_obs_str = "EnhancedObs" if args.enhanced_obs else ""
+    nn_str = args.nn.capitalize() if args.nn else "Regular"
     preference_vector = [colors_rewards['red'], colors_rewards['green'], colors_rewards['blue'], lava_cost, step_cost]
     pref_str = ",".join([str(i) for i in preference_vector])
-    save_name = pref_str  + f"Steps{max_steps}{full_image_str}_{stamp}"
+    save_name = pref_str  + f"Steps{max_steps}{full_image_str}{enhanced_obs_str}_{nn_str}_{stamp}"
 
     # if step_count_observation:
     #     save_name = save_name[:-9] + "_Step_Count" + save_name[-9:]
@@ -478,12 +611,13 @@ def main(**kwargs):
             highlight=True,
             step_cost=step_cost,
             num_objects=num_balls,
-            lava_cells=num_lava_cell,
+            lava_cells=num_lava_cells,
             train_env=True,
             image_full_view=False,
             agent_view_size=agent_view_size,
             color_rewards=colors_rewards,
             step_count_observation=step_count_observation, # Add step count to observation
+            enhanced_observation=enhanced_observation,   # NEW: Add enhanced observations
             lava_panishment=lava_cost,
         )
     eval_env = NoDeath(ObjObsWrapper(eval_env), no_death_types=('lava',), death_cost=lava_cost)
@@ -532,8 +666,8 @@ def main(**kwargs):
             train_env,
             policy_kwargs=policy_kwargs,
             verbose=1,
-            learning_rate=1e-4,
-            ent_coef=1e-3,
+            learning_rate=1e-3,
+            ent_coef=0.1,
             n_steps=32,
             batch_size=16,
             gamma=0.98,
@@ -550,19 +684,41 @@ def main(**kwargs):
         else:
             str_policy = "MultiInputPolicy"
         print("No model specified, creating a new PPO agent")
+        
+        # Adjust hyperparameters based on network type
+        if args.nn == "large":
+            learning_rate = 3e-4    # Better learning rate
+            n_steps = 128           # Larger buffer for better gradient estimates
+            batch_size = 64         # Larger batches
+            n_epochs = 4            # Fewer epochs to prevent overfitting
+            ent_coef = 0.3          # Moderate entropy for exploration
+        elif args.nn == "upgraded":
+            learning_rate = 3e-4    # Better learning rate
+            n_steps = 128
+            batch_size = 32
+            n_epochs = 8
+            ent_coef = 0.3          # Moderate entropy
+        else:
+            learning_rate = 3e-4    # Better learning rate
+            n_steps = 128
+            batch_size = 32
+            n_epochs = 10
+            ent_coef = 0.3          # Moderate entropy for better exploration
+        
         model = PPO(
             str_policy,
             train_env,
             policy_kwargs=policy_kwargs,
             verbose=1,
-            learning_rate=1e-3,      # Lower for stability with multiple objectives
-            ent_coef=0.001,           # Increase to encourage exploration
-            n_steps=64,              # Increase to capture fuller episode contexts
-            batch_size=32,           # Increase for better gradient estimates
-            gamma=0.98,              # Higher to value future rewards more
-            gae_lambda=0.95,         # Keep as is, good for advantage estimation
-            n_epochs=10,             # More epochs for better learning
-            clip_range=0.2,          # Add clipping to prevent too large updates
+            learning_rate=learning_rate,
+            ent_coef=ent_coef,
+            n_steps=n_steps,
+            batch_size=batch_size,
+            gamma=0.99,             # Higher discount for long-term planning
+            gae_lambda=0.95,
+            n_epochs=n_epochs,
+            clip_range=0.2,
+            max_grad_norm=0.5,       # Add gradient clipping
             device=device
         )
 
@@ -572,7 +728,7 @@ def main(**kwargs):
     model.policy.to("cuda")  # Force policy to CUDA
     print(next(model.policy.parameters()).device)  # Ensure using GPU, should print cuda:0
     model.learn(
-        6e5,
+        200_000,  # Fixed: use int instead of float
         tb_log_name=f"{stamp}",
         callback=[eval_callback]#, wandb_eval_callback]
     )

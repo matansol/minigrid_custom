@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextEpisodeButtonCompare = document.getElementById('next-episode-compare-button');
     const updateAgentsButton = document.getElementById('update-agent-button');
     const useOldAgentButton = document.getElementById('use-old-agent-button');
+    const anotherExampleButton = document.getElementById('another-example-button');
     const scoreList = document.getElementById('score-list');
     const currentActionElement = document.getElementById('current-action');
     const dropdown = document.getElementById('action-dropdown');
@@ -44,10 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let actions = [];
     let currentActionIndex = 0;
     let feedbackImages = [];
+    let cumulative_rewards = []
     let userFeedback = [];
     let changedIndexes = [];
     let feedbackActionMap = {};
+    let anotherExampleClickCount = 0; // Counter for "Another Example" button clicks
+    let agentGroup = null; // Store the chosen agent group from compare_agents backend
     const actionsNameList = ['forward', 'turn right', 'turn left', 'pickup'];
+    
+    // Store demonstration time globally
+    let demonstrationTime = null;
+    let firstDemonstrationTime = true;
 
     // --- PROLIFIC ID HANDLING ---
     function getProlificIdOrRandom() {
@@ -77,8 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ph2PlaceholderSpinner) ph2PlaceholderSpinner.style.display = 'block';
         if (gameImagePh2) gameImagePh2.style.visibility = 'hidden';
 
-        // Reset startAgentButton style to initial look
+        // Reset startAgentButton style to initial look and enable it for the new page
         if (startAgentButton) {
+            startAgentButton.disabled = false;
             startAgentButton.style.backgroundColor = '';
             startAgentButton.style.color = '';
         }
@@ -87,6 +96,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const roundNumberElem = document.getElementById('round-number');
         if (roundNumberElem) {
             roundNumberElem.textContent = phase2_counter;
+        }
+    }
+
+    // Update confirmation code when showing summary page
+    if (pageId === 'summary-page') {
+        const confirmationCodeElement = document.getElementById('confirmation-code');
+        if (confirmationCodeElement) {
+            // Use agentGroup if available, otherwise fallback to the initial group parameter
+            const finalAgentGroup = agentGroup !== null ? agentGroup : 1;
+            console.log("finalAgentGroup=", finalAgentGroup, "agent_group=", agentGroup, "group=", group)
+            confirmationCodeElement.textContent = `APPL${finalAgentGroup}`;
+            console.log('Updated confirmation code to:', `APPL${finalAgentGroup}`, {
+                agentGroup: agentGroup,
+                fallbackGroup: group,
+                usedValue: finalAgentGroup
+            });
+        } else {
+            console.log('Confirmation code element not found');
         }
     }
 
@@ -162,13 +189,61 @@ document.addEventListener('DOMContentLoaded', () => {
         nextEpisodeButtonCompare.addEventListener('click', () => {
             const compareExplanation = compareExplanationInput ? compareExplanationInput.value : "";
             if (compareExplanationInput) compareExplanationInput.value = '';
-            socket.emit('use_old_agent', { use_old_agent: false, demonstration_time: demonstrationTime, compareExplanationText: compareExplanation }, response => {
-                console.log('update to database we use the updated agent---------------', response);
+            
+            // Function to continue after agent selection
+            const continueAfterAgentSelection = (response) => {
+                console.log('update to database we use the updated agent---------------');
+                console.log('Response type:', typeof response);
+                console.log('Response value:', response);
+                console.log('Response keys:', response ? Object.keys(response) : 'No keys (response is falsy)');
+                
+                // Capture agent group if provided in response
+                if (response && response.agent_group) {
+                    agentGroup = response.agent_group;
+                    console.log('Agent group updated from nextEpisodeButtonCompare:', agentGroup);
+                } else {
+                    console.log('No agent_group found in response');
+                }
+                
+                // Continue with the rest of the logic
+                clearCanvas('updated-agent-canvas');
+                clearCanvas('previous-agent-canvas');
+                firstDemonstrationTime = true;
+                socket.emit('start_game', { playerName: prolificID, updateAgent: false, compareExplanationText: compareExplanation });
+                showPage('ph2-game-page');
+            };
+            
+            let responseReceived = false;
+            
+            // Set up a one-time listener for the fallback event
+            const fallbackHandler = (response) => {
+                if (responseReceived) return; // Prevent double execution
+                responseReceived = true;
+                console.log('Received response via fallback event');
+                socket.off('agent_selection_result', fallbackHandler);
+                clearTimeout(timeoutId);
+                continueAfterAgentSelection(response);
+            };
+            socket.on('agent_selection_result', fallbackHandler);
+            
+            // Set up a timeout as safety measure
+            const timeoutId = setTimeout(() => {
+                if (responseReceived) return;
+                responseReceived = true;
+                console.log('Agent selection timed out, continuing anyway');
+                socket.off('agent_selection_result', fallbackHandler);
+                continueAfterAgentSelection(null);
+            }, 5000); // 5 second timeout
+            
+            // Send the agent selection request
+            socket.emit('agent_selected', { use_old_agent: false, demonstration_time: demonstrationTime, compareExplanationText: compareExplanation }, response => {
+                if (responseReceived) return; // Prevent double execution
+                responseReceived = true;
+                // If callback worked, remove the fallback listener and continue
+                socket.off('agent_selection_result', fallbackHandler);
+                clearTimeout(timeoutId);
+                continueAfterAgentSelection(response);
             });
-            clearCanvas('updated-agent-canvas');
-            clearCanvas('previous-agent-canvas');
-            socket.emit('start_game', { playerName: prolificID, updateAgent: false, compareExplanationText: compareExplanation });
-            showPage('ph2-game-page');
         });
     }
 
@@ -176,13 +251,91 @@ document.addEventListener('DOMContentLoaded', () => {
         useOldAgentButton.addEventListener('click', () => {
             const compareExplanation = compareExplanationInput ? compareExplanationInput.value : "";
             if (compareExplanationInput) compareExplanationInput.value = '';
-            socket.emit('use_old_agent', { use_old_agent: true, demonstration_time: demonstrationTime, compareExplanationText: compareExplanation }, response => {
-                console.log('update to database we use the old agent---------------------------', response);
+            
+            // Function to continue after agent selection
+            const continueAfterAgentSelection = (response) => {
+                console.log('update to database we use the old agent---------------------------');
+                console.log('Response type:', typeof response);
+                console.log('Response value:', response);
+                console.log('Response keys:', response ? Object.keys(response) : 'No keys (response is falsy)');
+                
+                // Capture agent group if provided in response
+                if (response && response.agent_group) {
+                    agentGroup = response.agent_group;
+                    console.log('Agent group updated from useOldAgentButton:', agentGroup);
+                } else {
+                    console.log('No agent_group found in response');
+                }
+                
+                // Continue with the rest of the logic
+                clearCanvas('updated-agent-canvas');
+                clearCanvas('previous-agent-canvas');
+                firstDemonstrationTime = true;
+                socket.emit('start_game', { playerName: prolificID, updateAgent: false });
+                showPage('ph2-game-page');
+            };
+            
+            let responseReceived = false;
+            
+            // Set up a one-time listener for the fallback event
+            const fallbackHandler = (response) => {
+                if (responseReceived) return; // Prevent double execution
+                responseReceived = true;
+                console.log('Received response via fallback event');
+                socket.off('agent_selection_result', fallbackHandler);
+                clearTimeout(timeoutId);
+                continueAfterAgentSelection(response);
+            };
+            socket.on('agent_selection_result', fallbackHandler);
+            
+            // Set up a timeout as safety measure
+            const timeoutId = setTimeout(() => {
+                if (responseReceived) return;
+                responseReceived = true;
+                console.log('Agent selection timed out, continuing anyway');
+                socket.off('agent_selection_result', fallbackHandler);
+                continueAfterAgentSelection(null);
+            }, 5000); // 5 second timeout
+            
+            // Send the agent selection request
+            socket.emit('agent_selected', { use_old_agent: true, demonstration_time: demonstrationTime, compareExplanationText: compareExplanation }, response => {
+                if (responseReceived) return; // Prevent double execution
+                responseReceived = true;
+                // If callback worked, remove the fallback listener and continue
+                socket.off('agent_selection_result', fallbackHandler);
+                clearTimeout(timeoutId);
+                continueAfterAgentSelection(response);
             });
+        });
+    }
+
+    // --- ANOTHER EXAMPLE BUTTON ---
+    if (anotherExampleButton) {
+        anotherExampleButton.addEventListener('click', () => {
+            console.log('Another Example button clicked');
+            
+            // Increment click counter
+            anotherExampleClickCount++;
+            console.log(`Another Example clicked ${anotherExampleClickCount} times`);
+            
+            // Hide button after 3 clicks
+            if (anotherExampleClickCount >= 3) {
+                anotherExampleButton.style.display = 'none';
+                console.log('Another Example button hidden after 3 clicks');
+            }
+            
+            // Clear current canvases
             clearCanvas('updated-agent-canvas');
             clearCanvas('previous-agent-canvas');
-            socket.emit('start_game', { playerName: prolificID, updateAgent: false });
-            showPage('ph2-game-page');
+            // Request new comparison with similarity_level=4
+            socket.emit('compare_agents', {
+                playerName: prolificID,
+                updateAgent: false,
+                userFeedback: [],
+                simillarity_level: 4,
+                feedbackExplanationText: "",
+                another_example:true
+            });
         });
     }
 
@@ -197,6 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- AGENT BUTTONS ---
     if (startAgentButton) {
         startAgentButton.addEventListener('click', () => {
+            // Disable the button immediately after click
+            startAgentButton.disabled = true;
             startAgentButton.style.backgroundColor = '#a9a9a9';
             startAgentButton.style.color = '#fff';
             socket.emit('play_entire_episode');
@@ -216,9 +371,10 @@ document.addEventListener('DOMContentLoaded', () => {
             playerName: prolificID,
             updateAgent: true,
             userFeedback,
-            actions,
+            // actions,
             simillarity_level: group,
-            feedbackExplanationText: feedbackExplanation
+            feedbackExplanationText: feedbackExplanation,
+            another_example: false,
         });
         userFeedback = [];
         resetOverviewHighlights();
@@ -234,10 +390,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activePage) return;
         if (activePage.id === 'ph2-game-page') {
             setPh2GameImage('data:image/png;base64,' + data.image);
-            if (data.action) document.getElementById('action2').innerText = data.action;
-            document.getElementById('reward2').innerText = data.reward;
-            document.getElementById('score2').innerText = data.score;
-            // document.getElementById('last_score2').innerText = data.last_score;
+            const rewardElem = document.getElementById('reward2');
+            if (rewardElem) rewardElem.innerText = data.reward;
+            const scoreElem = document.getElementById('score2');
+            if (scoreElem) scoreElem.innerText = data.score;
             const stepCountElementPh2 = document.getElementById('step-count-ph2');
             if (stepCountElementPh2) stepCountElementPh2.innerText = data.step_count;
         } else if (activePage.id === 'overview-page') {
@@ -261,7 +417,12 @@ document.addEventListener('DOMContentLoaded', () => {
         function onCanvasDrawn() {
             finishedCount += 1;
             if (finishedCount === 2) {
-                demonstrationTime = new Date().toISOString();
+                if (firstDemonstrationTime) {
+                    demonstrationTime = new Date().toISOString();
+                    console.log("update the demonstrationTime ", demonstrationTime)
+                    firstDemonstrationTime = false
+                }
+                
             }
         }
         drawPathOnCanvas('previous-agent-canvas', rawImageSrc, data.prevMoveSequence, {
@@ -304,6 +465,15 @@ document.addEventListener('DOMContentLoaded', () => {
         currentActionIndex = 0;
         feedbackImages = data.feedback_images;
         actionsCells = data.actions_cells;
+        cumulative_rewards = data.cumulative_rewards;
+        
+        // Reset "Another Example" button counter and show button again
+        anotherExampleClickCount = 0;
+        if (anotherExampleButton) {
+            anotherExampleButton.style.display = 'inline-block';
+            console.log('Another Example button reset and shown again');
+        }
+        
         showCurrentAction();
         showPage('overview-page');
     }
@@ -335,6 +505,28 @@ document.addEventListener('DOMContentLoaded', () => {
             currentActionElement.classList.add('selected-action');
         }
         nextActionButton.style.display = currentActionIndex >= actions.length - 1 ? 'none' : 'inline-block';
+
+        // Update reward and score for this action
+        const reward2Elem = document.getElementById('reward2');
+        const score2Elem = document.getElementById('score2');
+        if (Array.isArray(cumulative_rewards) && cumulative_rewards.length > 0) {
+            const idx = currentActionIndex;
+            let reward = 0;
+            let score = cumulative_rewards[idx];
+            if (idx === 0) {
+                reward = cumulative_rewards[0];
+            } else {
+                reward = cumulative_rewards[idx] - cumulative_rewards[idx - 1];
+            }
+            // Round to 1 decimal place
+            reward = Math.round(reward * 10) / 10;
+            score = Math.round(score * 10) / 10;
+            if (reward2Elem) reward2Elem.textContent = reward;
+            if (score2Elem) score2Elem.textContent = score;
+        } else {
+            if (reward2Elem) reward2Elem.textContent = '';
+            if (score2Elem) score2Elem.textContent = '';
+        }
     }
 
     
@@ -678,6 +870,3 @@ function drawArrow(ctx, x, y, dx, dy, headSize, color) {
     ctx.lineTo(x + dx, y + dy);
     ctx.fill();
 }
-
-// Store demonstration time globally
-let demonstrationTime = null;

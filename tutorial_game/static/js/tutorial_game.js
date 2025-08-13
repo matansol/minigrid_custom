@@ -40,9 +40,17 @@ function getProlificIdOrRandom() {
 }
 const prolificID = getProlificIdOrRandom();
 
+// --- FINAL STEP HANDLING ---
+function getFinalStepParameter() {
+    const params = new URLSearchParams(window.location.search);
+    let finalStep = params.get('finalStep');
+    return finalStep === '1' ? 1 : 0;
+}
+const finalStep = getFinalStepParameter();
+
 startTutorialButton.addEventListener('click', () => {
     showLoading();
-    socket.emit('start_game', { playerName: prolificID });
+    socket.emit('start_game', { playerName: prolificID, finalStep: finalStep });
 });
 
 // Keyboard controls
@@ -85,6 +93,37 @@ socket.on('episode_finished', (data) => {
     if (data.score !== undefined) {
         roundScores.push(data.score);
     }
+    
+    // Handle finalStep case - finish after just 1 episode
+    if (finalStep === 1) {
+        gamePage.classList.remove('active');
+        finishPage.classList.add('active');
+        
+        // Calculate score level and update confirmation number
+        const score = data.score || 0;
+        let scoreLevel = 0;
+        if (score > 12) scoreLevel = 4;
+        else if (score > 8) scoreLevel = 3;
+        else if (score > 5) scoreLevel = 2;
+        else if (score > 1) scoreLevel = 1;
+        
+        const confirmationNumber = `232${scoreLevel}`;
+        const confirmationElement = document.getElementById('confirmation-number');
+        if (confirmationElement) {
+            confirmationElement.textContent = confirmationNumber;
+        }
+        
+        // Populate the scores list on the finish page
+        if (scoreList) {
+            scoreList.innerHTML = '';
+            const li = document.createElement('li');
+            li.textContent = `Final Score: ${score}`;
+            li.style.listStyleType = 'none';
+            scoreList.appendChild(li);
+        }
+        return;
+    }
+    
     // Show finish button after 3 episodes (or adjust as needed)
     if (episodesCompleted >= 3) {
         if (!document.getElementById('finish-tutorial-btn')) {

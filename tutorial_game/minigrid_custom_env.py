@@ -72,7 +72,7 @@ class CustomEnv(MiniGridEnv):
         grid_size=8,
         agent_start_pos=(1, 1),
         agent_start_dir: int = 0, # 0: right, 1: down, 2: left, 3: up
-        max_steps: int = 100, 
+        max_steps: int = 70, 
         change_reward: bool = False,
         num_objects: int = 6,
         difficult_grid: bool = False,
@@ -109,6 +109,7 @@ class CustomEnv(MiniGridEnv):
         self.image_full_view = image_full_view
         self.partial_obs = partial_obs
         self.unique_env = unique_env
+        self.from_unique_env = False
         self.step_count_observation = step_count_observation
         self.step_cost = step_cost
         self.lava_panishment = lava_panishment  
@@ -227,6 +228,10 @@ class CustomEnv(MiniGridEnv):
             simillarity_level = 5
         if 'set_env' in kwargs:
             self.set_env = kwargs['set_env']
+        if 'unique_env' in kwargs:
+            self.unique_env = kwargs['unique_env']
+        if 'from_unique_env' in kwargs:
+            self.from_unique_env = kwargs['from_unique_env']
         self.on_board_objects = 0
         self.step_count = 0
         self.took_key = False
@@ -506,6 +511,29 @@ class CustomEnv(MiniGridEnv):
                 self.put_obj(Ball('red'), pos[0], pos[1])
                 self.initial_balls.append((pos[0], pos[1], 'red', self.color_rewards['red']))
 
+        if self.unique_env == 100:
+            # Special final step environment - create a more challenging layout
+            blue_ball_positions = [(2, 3), (5, 2)]
+            green_ball_positions = [(3, 5), (4, 2)]
+            red_ball_positions = [(2, 5)]
+            lava_positions = [(3, 3), (4, 4), (5, 5), (3, 4)]
+            
+            for pos in blue_ball_positions:
+                self.put_obj(Ball('blue'), pos[0], pos[1])
+                self.initial_balls.append((pos[0], pos[1], 'blue', self.color_rewards['blue']))
+            
+            for pos in green_ball_positions:
+                self.put_obj(Ball('green'), pos[0], pos[1])
+                self.initial_balls.append((pos[0], pos[1], 'green', self.color_rewards['green']))
+                
+            for pos in red_ball_positions:
+                self.put_obj(Ball('red'), pos[0], pos[1])
+                self.initial_balls.append((pos[0], pos[1], 'red', self.color_rewards['red']))
+                
+            for pos in lava_positions:
+                self.put_obj(Lava(), pos[0], pos[1])
+                self.lava_cells.append(pos)
+
             
         # Place a goal square in the bottom-right corner
         self.put_obj(Goal(), width - 2, height - 2)
@@ -562,6 +590,10 @@ class CustomEnv(MiniGridEnv):
         # if self.agent_pos in self.lava_cells: 
         #     terminated = False    
         #     reward += self.lava_panishment
+        if self.agent_pos == (self.width - 2, self.height - 2):
+            reward = 10 if self.train_env else 4.9
+            terminated = True
+            return obs, round(reward, 1), terminated, truncated, info
 
         if truncated:
             terminated = True
@@ -569,11 +601,10 @@ class CustomEnv(MiniGridEnv):
             reward -= 5
 
         # each step cost the agent some reward, in order to minimize the number of steps
-        dis_from_goal = np.abs(self.agent_pos[0] - (self.grid.width - 2)) + np.abs(self.agent_pos[1] - (self.grid.height - 2))
-        reward -=  self.step_cost # * dis_from_goal #the aproximation of number of steps to the goal
+        reward -=  self.step_cost 
         # if terminated:
         #     print(f"terminated, reward={reward}")
-        return obs, reward, terminated, truncated, info
+        return obs, round(reward, 1), terminated, truncated, info
 
     def find_optimal_path(self):
         points = [(1,1,0)] + self.initial_balls

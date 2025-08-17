@@ -353,11 +353,13 @@ class CustomEnv(MiniGridEnv):
             self.from_unique_env = kwargs['from_unique_env']
         elif random.random() < 0.05 and self.train_env:
             self.from_unique_env = True
+        check_optional_unique_env = kwargs.get('check_optional_unique_env', True)
         if 'unique_env' in kwargs:
-            if self.train_env:
+            if self.train_env or not check_optional_unique_env:
                 self.unique_env = kwargs['unique_env']
             else:
                 self.unique_env =  kwargs['unique_env'] if kwargs['unique_env'] in self.optional_unique_env else random.choice(self.optional_unique_env)
+        
 
         self.on_board_objects = 0
         self.step_count = 0
@@ -431,13 +433,14 @@ class CustomEnv(MiniGridEnv):
         
         unique_env = kwargs.get('unique_env', 0)
         board_seen = kwargs.get('board_seen', [])
+        check_optional_unique_env = kwargs.get('check_optional_unique_env', True)
         demonstraion_unique_envs = kwargs.get('demonstraion_unique_envs', [])
 
         added_lava = False
 
         # if (not self.train_env) or (random.random() < 0.5):
         if self.from_unique_env: # create a random unique env
-            if unique_env == 0 or (unique_env not in self.optional_unique_env):
+            if check_optional_unique_env and (unique_env == 0 or (unique_env not in self.optional_unique_env)):
                 available_envs = [env for env in self.optional_unique_env if env not in board_seen]
                 if available_envs:
                     unique_env = random.choice(available_envs)
@@ -665,6 +668,16 @@ class CustomEnv(MiniGridEnv):
         if unique_env == 18:
             balls_list = [(1, 4, 'red'), (1, 6, 'blue'), (2, 3, 'green'), (4, 6, 'blue')]
             lava_list = [(2, 6), (2, 5)]
+
+        if self.unique_env == 100:
+            # Special final step environment - create a more challenging layout
+            blue_ball_positions = [(2, 3), (5, 2)]
+            green_ball_positions = [(3, 5), (4, 2)]
+            red_ball_positions = [(2, 5)]
+            lava_list = [(3, 3), (4, 4), (5, 5), (3, 4)]
+            balls_list = [(x, y, 'blue') for x, y in blue_ball_positions] + \
+                          [(x, y, 'green') for x, y in green_ball_positions] + \
+                          [(x, y, 'red') for x, y in red_ball_positions]
         
         if unique_env == 101:
             balls_list = [(width - 2, 1, 'blue'), (width - 4, 3, 'green'), (width - 2, 4, 'green')]
@@ -799,9 +812,9 @@ class CustomEnv(MiniGridEnv):
             self.put_agent_in_obs(obs)
         self.current_state = obs
 
-        if last_obs:
-            if self.is_illegal_move(action, last_obs, obs, agent_pos_before, self.agent_pos):
-                reward -= 1
+        # if last_obs:
+        #     if self.is_illegal_move(action, last_obs, obs, agent_pos_before, self.agent_pos):
+        #         reward -= 1
 
         # Check if the agent picked up a ball
         if self.carrying:

@@ -1,9 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Script Loaded');
 
-    // --- SOCKET.IO ---
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const socket = io.connect(`${protocol}://${document.domain}:${location.port}`);
+    // --- SOCKET.IO WITH WEBSOCKET-ONLY CONFIGURATION ---
+    const socket = io({
+        transports: ["websocket"],  // ONLY WebSocket transport - no polling allowed
+        upgrade: false,  // Never upgrade from polling (since we don't use polling)
+        rememberUpgrade: false,  // Don't remember any transport upgrades
+        tryAllTransports: false,  // Don't try multiple transports - only WebSocket
+        timeout: 20000,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        maxReconnectionAttempts: 5,
+        forceNew: false,  // Don't force new connection unless needed
+        autoConnect: true,  // Auto-connect for this version (different from tutorial)
+        closeOnBeforeunload: false,  // Prevent unnecessary disconnections
+        withCredentials: false  // Don't send credentials (not needed for our app)
+    });
 
     // --- ELEMENTS ---
     const coverStartButton = document.getElementById('cover-start-button');
@@ -404,6 +417,13 @@ document.addEventListener('DOMContentLoaded', () => {
             previousAgentImage.src = 'data:image/png;base64,' + data.prev_image;
             updatedAgentImage.style.visibility = 'visible';
             updatedAgentImage.src = 'data:image/png;base64,' + data.upd_image;
+        }
+    });
+
+    socket.on("update_agent_group", data => {
+        if (data && data.agent_group){
+            agentGroup = data.agent_group;
+            console.log("update agentGroup to", agentGroup);
         }
     });
 

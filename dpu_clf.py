@@ -202,7 +202,7 @@ def capture_agent_path(copy_env: CustomEnv, agent: PPO) -> (list, int, int, list
             move_sequence.append((agent_dir, 'forward'))
         elif action == 3: # pickup
             move_sequence.append((agent_dir, 'pickup'))
-    return move_sequence, illigal_moves, total_reward, ligal_actions
+    return move_sequence, illigal_moves, round(total_reward,1), ligal_actions
 
 def actions_cells_locations(move_sequence: list) -> list:
     x, y = 1,1

@@ -37,8 +37,37 @@ load_dotenv()  # Load environment variables from .env
 # FastAPI application
 app = FastAPI()
 
-# Socket.IO server (async_mode can be "asgi", "threading", etc. Here we use "asgi".)
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+# Socket.IO server with strict WebSocket-only configuration for Azure Container Apps
+sio_config = {
+    "async_mode": "asgi",
+    "cors_allowed_origins": "*",  # Wildcard for development/testing
+    "logger": True,
+    "engineio_logger": False,  # Reduce logging overhead
+    "ping_timeout": 60,  # Increased timeout for load testing
+    "ping_interval": 25,  # Increased interval for stability
+    "transports": ['websocket'],  # ONLY WebSocket transport - completely disable polling
+    "allow_upgrades": False,  # Never allow transport upgrades from polling
+    "http_compression": False,  # Disable compression to avoid issues
+    "compression": False,  # Disable compression
+    "max_http_buffer_size": 2000000,  # Increased buffer size
+    "max_connections": 100,  # Allow more concurrent connections
+    "always_connect": True  # Always allow connections
+}
+
+sio = socketio.AsyncServer(**sio_config)
+
+# Add middleware to explicitly reject Socket.IO polling requests
+@app.middleware("http")
+async def reject_polling_middleware(request: Request, call_next):
+    """Reject any Socket.IO polling requests to force WebSocket-only connections"""
+    if (request.url.path.startswith("/socket.io/") and 
+        request.query_params.get("transport") == "polling"):
+        print(f"REJECTED POLLING REQUEST: {request.url}")
+        from fastapi.responses import Response
+        return Response("WebSocket-only mode: Polling transport disabled", status_code=400)
+    
+    response = await call_next(request)
+    return response
 
 # Wrap the FastAPI app with Socket.IO's ASGI application
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -74,6 +103,7 @@ class Users(Base):
     user_id = Column(String(100))
     timestamp = Column(String(30))
     simillarity_level = Column(Integer)
+    final_score = Column(Float, default=0.0)  # Default to 0.0 if not set
 
 
 class FeedbackAction(Base):
@@ -97,6 +127,8 @@ class UserChoice(Base):
     user_id = Column(String(100))
     old_agent_path = Column(String(100)) 
     new_agent_path = Column(String(100))
+    old_agent_score_list = Column(String(30))
+    new_agent_score_list = Column(String(30))
     timestamp = Column(String(50))
     demonstration_time = Column(String(50))
     episode_index = Column(Integer)
@@ -162,6 +194,8 @@ class GameControl:
         self.board_seen: list = []
         self.examples_shown_count: int = 0 # number of examples shown after feedback and update agent
         self.demonstraion_unique_envs: list = []  # List to store unique environments for demonstrations
+        self.prev_agent_score_list: list = []
+        self.current_agent_score_list: list = []
         
     @timeit
     def reset(self):
@@ -498,27 +532,23 @@ class GameControl:
             env = self.find_simillar_env(simillarity_level, unique_env=unique_env) # TODO: for each 2 agents the special env between them
             if stuck_count < 7 and (will_it_stuck(self.ppo_agent, env) or will_it_stuck(self.prev_agent, env)) :
                 print(f"(User_id={self.user_id})  One of the agents will stuck, return")
-                self.agents_different_routs(simillarity_level=simillarity_level, stuck_count=stuck_count+1)
+                return self.agents_different_routs(simillarity_level=simillarity_level, stuck_count=stuck_count+1)
                 
         copy_env = copy.deepcopy(env)
         img = copy_env.get_full_image()
-        updated_move_sequence, _, _, agent_actions = capture_agent_path(copy_env, self.ppo_agent)
+        updated_move_sequence, _, current_score, agent_actions = capture_agent_path(copy_env, self.ppo_agent)
+        self.current_agent_score_list.append(current_score)
 
         # prev_agent_path
         copy_env = copy.deepcopy(env)
-        prev_move_sequence, _, _, prev_agent_actions = capture_agent_path(copy_env, self.prev_agent)
+        prev_move_sequence, _, prev_score, prev_agent_actions = capture_agent_path(copy_env, self.prev_agent)
+        self.prev_agent_score_list.append(prev_score)
         # got_to_max = len(prev_move_sequence) == self.env.max_steps or len(updated_move_sequence) == self.env.max_steps
         # if (prev_move_sequence == updated_move_sequence) and same_path_count < 3:
         #     print(f"User_id={self.user_id}, ^^^^^^ agents_different_routs {same_path_count} times, agents same paths, trying again")
         #     return self.agents_different_routs(simillarity_level=simillarity_level, same_path_count=same_path_count+1)
         
         converge_action_index = -1
-        # for i in range(len(updated_move_sequence)):
-        #     if i >= len(prev_move_sequence):
-        #         break
-        #     if updated_move_sequence[i] != prev_move_sequence[i]:
-        #         converge_action_index = i
-        #         break
         image_base64 = image_to_base64(img)
         return {'rawImage': image_base64, 
                 'prevMoveSequence': convert_move_sequence_to_jason(prev_move_sequence), 
@@ -671,7 +701,7 @@ new_models_dict = {
     4: {'path': 'models/-1,-1,4,0.2,0.1Steps70Grid8_20250625/best_model.zip', 'name': 'OnlyBlueLL_0625', 'vector': (-1, -1, 4, 0.2, 0.1), 'optional_unique_env':  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18]},
     5: {'path': 'models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip', 'name': 'NoRedLH1_0612', 'vector': (-0.5, 2, 4, -3, 0.1), 'optional_unique_env': [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 14, 17, 18]},
     6: {'path': 'models/-0.5,3,4,0.2,0.1Steps50Grid8_20250616/best_model.zip', 'name': 'NoRedLL_0616', 'vector': (-0.5, 3, 4, 0.2, 0.1), 'optional_unique_env':  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]},
-    7: {'path': 'models/-1,4,-1,0.2,0.1Steps60Grid8_20250618/best_model', 'name': 'OnlyGreenLL_0429', 'vector': (-0.1, 3, -0.1, 0, 0.01), 'optional_unique_env':  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]},
+    7: {'path': 'models/-1,4,-1,0.2,0.1Steps60Grid8_20250618/best_model.zip', 'name': 'OnlyGreenLL_0429', 'vector': (-0.1, 3, -0.1, 0, 0.01), 'optional_unique_env':  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]},
     8: {'path': 'models/-1,3,4,-3,0.1Steps60Grid8_20250618/best_model.zip', 'name': 'NoRedLH2_0618', 'vector': (-1, 3, 4, -3, 0.1), 'optional_unique_env': [1, 2, 3, 4, 5, 6, 8, 9, 11, 12, 17, 18]},
     9: {'path': 'models/-0.5,3,4,-3,0.1Steps50Grid8_20250616/best_model.zip', 'name': 'NoRedLH3_0612', 'vector': (-0.5, 3, 4, -3, 0.1), 'optional_unique_env': [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 16, 17, 18]},
     10: {'path': 'models/-1,3,4,0.2,0.2Steps50Grid8_20250617/best_model.zip', 'name': 'NoRedLL_G_0617', 'vector': (-1, 3, 4, 0.2, 0.2), 'optional_unique_env': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18]},
@@ -803,20 +833,6 @@ async def start_game(sid, data, callback=None):
         env_instance = create_new_env(lava_penalty=-3)
         new_game = GameControl(env_instance, new_models_dict, new_models_distance, user_id, simillar_level_env=simillarity_level, feedback_partial_view=True)
         game_controls[user_id] = new_game
-        if save_to_db:
-            try:
-                session = SessionLocal()
-                new_user = Users(user_id=user_id,
-                                 simillarity_level=simillarity_level,
-                                 timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),)
-                session.add(new_user)
-                session.commit()
-            except Exception as e:
-                session.rollback()
-                print(f"Database operation failed: {e}")
-                await sio.emit("error", {"error": "Database operation failed to save new user"}, to=sid)
-            finally:
-                session.close()
         print(f"Created new game control for user {user_id} with simillarity level {simillarity_level}")
     else:
         new_game = game_controls[user_id]
@@ -908,6 +924,9 @@ async def play_entire_episode(sid):
         if response["done"]:
             await asyncio.sleep(0.1)
             break
+    user_game.prev_agent_score_list = []
+    user_game.current_agent_score_list = []
+
 
 agent_name_to_path = {v['name']: v['path'] for v in new_models_dict.values()}
 agent_path_to_name = {v['path']: v['name'] for v in new_models_dict.values()}
@@ -931,6 +950,20 @@ async def compare_agents(sid, data): # data={ playerName: playerNameInput.value,
         return
     if user_game.simillar_level_env == 0:
         # just showing a simple text : "the agent has been updated"
+        current_path = user_game.current_agent_path
+        print(f"Current agent path: {current_path}")
+        print(f"Available paths in agent_path_to_name: {list(agent_path_to_name.keys())}")
+        
+        if current_path in agent_path_to_name:
+            agent_name = agent_path_to_name[current_path]
+            if agent_name in agent_groups:
+                agent_group = agent_groups[agent_name]
+                print(f"User has updated the agent, simillarity level is 0, agent group = {agent_group}")
+                await sio.emit("update_agent_group", {'agent_group': agent_group}, to=sid)
+            else:
+                print(f"Error: Agent name '{agent_name}' not found in agent_groups")
+        else:
+            print(f"Error: Current agent path '{current_path}' not found in agent_path_to_name")
         return
     # Increment examples counter for regular agent comparison after feedback
     user_game.examples_shown_count += 1
@@ -1001,6 +1034,8 @@ async def agent_selected(sid, data):
                     user_id=user_game.user_id,
                     old_agent_path=str(user_game.prev_agent_path),
                     new_agent_path=str(user_game.current_agent_path),
+                    old_agent_score_list=','.join(str(x) for x in user_game.prev_agent_score_list),
+                    new_agent_score_list=','.join(str(x) for x in user_game.current_agent_score_list),
                     timestamp=datetime.utcnow().replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
                     demonstration_time=demonstration_time_fmt,
                     episode_index=user_game.episode_num,

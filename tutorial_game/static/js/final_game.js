@@ -1,5 +1,20 @@
-// Connect to the Socket.IO server
-const socket = io();
+// Connect to the Final App Socket.IO server with strict WebSocket-only configuration for Azure Container Apps
+const socket = io("http://localhost:8002", {  // Connect to the separate final app server
+    transports: ["websocket"],  // ONLY WebSocket transport - no polling allowed
+    upgrade: false,  // Never upgrade from polling (since we don't use polling)
+    rememberUpgrade: false,  // Don't remember any transport upgrades
+    tryAllTransports: false,  // Don't try multiple transports - only WebSocket
+    timeout: 20000,
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    maxReconnectionAttempts: 5,
+    forceNew: false,  // Don't force new connection unless needed
+    path: "/socket.io",  // Explicit path
+    autoConnect: false,  // Don't auto-connect, we'll connect manually
+    closeOnBeforeunload: false,  // Prevent unnecessary disconnections
+    withCredentials: false  // Don't send credentials (not needed for our app)
+});
 
 // DOM Elements
 const welcomePage = document.getElementById('welcome-page');
@@ -24,6 +39,21 @@ let currentScore = 0;
 let currentSteps = 0;
 let episodesCompleted = 0;
 let roundScores = [];
+let connectionAttempts = 0;
+let isConnecting = false;
+
+// Connection management for WebSocket-only mode
+function connectSocket() {
+    if (isConnecting || socket.connected) {
+        return;
+    }
+    
+    isConnecting = true;
+    connectionAttempts++;
+    console.log(`Attempting WebSocket connection (attempt ${connectionAttempts})...`);
+    
+    socket.connect();
+}
 
 // Event Listeners
 
@@ -50,7 +80,19 @@ const finalStep = getFinalStepParameter();
 
 startTutorialButton.addEventListener('click', () => {
     showLoading();
-    socket.emit('start_game', { playerName: prolificID, finalStep: 1 });
+    
+    // Connect socket if not already connected
+    if (!socket.connected) {
+        connectSocket();
+        
+        // Wait for connection before starting game
+        socket.once('connect', () => {
+            console.log('Connected, starting final step game...');
+            socket.emit('start_game', { playerName: prolificID, finalStep: 1});
+        });
+    } else {
+        socket.emit('start_game', { playerName: prolificID, finalStep: 1});
+    }
 });
 
 // Keyboard controls
@@ -80,7 +122,29 @@ document.addEventListener('keydown', (event) => {
 
 // Socket.IO event handlers
 socket.on('connect', () => {
-    console.log('Connected to server');
+    console.log('WebSocket connected to server');
+    isConnecting = false;
+    connectionAttempts = 0;
+});
+
+socket.on('disconnect', (reason) => {
+    console.log('Disconnected from server:', reason);
+    isConnecting = false;
+});
+
+socket.on('connect_error', (error) => {
+    console.error('Connection error:', error);
+    isConnecting = false;
+});
+
+socket.on('connection_confirmed', (data) => {
+    console.log('Connection confirmed:', data);
+});
+
+socket.on('error', (error) => {
+    console.error('Socket error:', error);
+    alert(`Game error: ${error.error || error}`);
+    hideLoading();
 });
 
 socket.on('game_update', (data) => {

@@ -16,6 +16,8 @@ COPY . .
 
 # Expose the port the app runs on
 EXPOSE 8001
+# EXPOSE 8002
 
 # Command to run the application
 CMD ["python", "tutorial_app.py"] 
+# CMD ["python", "final_app.py"]

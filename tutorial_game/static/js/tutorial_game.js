@@ -1,19 +1,25 @@
-// Connect to the Socket.IO server with strict WebSocket-only configuration for Azure Container Apps
-const socket = io("https://dpu-tutorial-app.yellowmushroom-27e70244.westeurope.azurecontainerapps.io", {
-    transports: ["websocket"],  // ONLY WebSocket transport - no polling allowed
-    upgrade: false,  // Never upgrade from polling (since we don't use polling)
-    rememberUpgrade: false,  // Don't remember any transport upgrades
-    tryAllTransports: false,  // Don't try multiple transports - only WebSocket
+// Connect to the Socket.IO server with strict WebSocket-only configuration
+// Auto-detect local vs production URL
+const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const serverUrl = isLocalDevelopment 
+    ? `http://${window.location.host}` 
+    : "https://dpu-tutorial-app.yellowmushroom-27e70244.westeurope.azurecontainerapps.io";
+
+console.log('Connecting to server:', serverUrl);
+
+const socket = io(serverUrl, {
+    // Use default Socket.IO transport strategy: start with polling, upgrade to websocket
+    // This is more reliable than forcing websocket-only
     timeout: 20000,
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     maxReconnectionAttempts: 5,
-    forceNew: false,  // Don't force new connection unless needed
-    path: "/socket.io",  // Explicit path
-    autoConnect: false,  // Don't auto-connect, we'll connect manually
-    closeOnBeforeunload: false,  // Prevent unnecessary disconnections
-    withCredentials: false  // Don't send credentials (not needed for our app)
+    forceNew: false,
+    path: "/socket.io",
+    autoConnect: false,
+    closeOnBeforeunload: false,
+    withCredentials: false
 });
 
 // DOM Elements
@@ -42,7 +48,7 @@ let roundScores = [];
 let connectionAttempts = 0;
 let isConnecting = false;
 
-// Connection management for WebSocket-only mode
+// Connection management using Socket.IO default strategy (polling -> websocket upgrade)
 function connectSocket() {
     if (isConnecting || socket.connected) {
         return;
@@ -50,22 +56,22 @@ function connectSocket() {
     
     isConnecting = true;
     connectionAttempts++;
-    console.log(`Attempting WebSocket connection (attempt ${connectionAttempts})...`);
+    console.log(`Attempting Socket.IO connection (attempt ${connectionAttempts})...`);
     
     socket.connect();
     
-    // Set a timeout for connection attempt (shorter for WebSocket)
+    // Set a timeout for connection attempt
     setTimeout(() => {
         if (!socket.connected && isConnecting) {
-            console.log('WebSocket connection attempt timed out');
+            console.log('Socket.IO connection attempt timed out');
             isConnecting = false;
-            if (connectionAttempts < 3) {  // Fewer attempts since WebSocket fails faster
+            if (connectionAttempts < 5) {
                 setTimeout(() => connectSocket(), 1000 * connectionAttempts);
             } else {
-                alert('Unable to establish WebSocket connection to server. Please check your internet connection and refresh the page.');
+                alert('Unable to establish connection to server. Please check your internet connection and refresh the page.');
             }
         }
-    }, 10000);  // Shorter timeout for WebSocket
+    }, 15000);  // Standard timeout for Socket.IO
 }
 
 // Initialize connection when page loads
@@ -138,7 +144,7 @@ startTutorialButton.addEventListener('click', () => {
     }
 });
 
-// Keyboard controls with validation
+// Keyboard controls with validation and episode tracking
 document.addEventListener('keydown', (event) => {
     if (!gamePage.classList.contains('active') || !socket.connected) return;
 
@@ -164,34 +170,35 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// Socket.IO event handlers for WebSocket-only mode
+// Socket.IO event handlers
 socket.on('connect', () => {
-    console.log('WebSocket connected to server with socket ID:', socket.id);
+    console.log('Connected to server with socket ID:', socket.id);
+    console.log('Transport used:', socket.io.engine.transport.name);
     isConnecting = false;
     connectionAttempts = 0;  // Reset connection attempts on successful connection
 });
 
 socket.on('connection_confirmed', (data) => {
-    console.log('WebSocket connection confirmed:', data);
+    console.log('Connection confirmed:', data);
 });
 
 socket.on('disconnect', (reason) => {
-    console.log('WebSocket disconnected from server. Reason:', reason);
+    console.log('Disconnected from server. Reason:', reason);
     isConnecting = false;
     
-    // Auto-reconnect for WebSocket disconnects
+    // Auto-reconnect for certain disconnect reasons
     if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
-        console.log('Attempting WebSocket reconnection...');
+        console.log('Attempting reconnection...');
         setTimeout(() => {
             if (!socket.connected) {
                 connectSocket();
             }
-        }, 1000);  // Shorter delay for WebSocket reconnections
+        }, 2000);
     }
 });
 
 socket.on('connect_error', (error) => {
-    console.error('WebSocket connection error:', error);
+    console.error('Connection error:', error);
     isConnecting = false;
     
     // Try to reconnect after a delay
@@ -248,34 +255,34 @@ socket.on('episode_finished', (data) => {
     }
     
     // Handle finalStep case - finish after just 1 episode
-    if (finalStep === 1) {
-        gamePage.classList.remove('active');
-        finishPage.classList.add('active');
+    // if (finalStep === 1) {
+    //     gamePage.classList.remove('active');
+    //     finishPage.classList.add('active');
         
-        // Calculate score level and update confirmation number
-        const score = data.score || 0;
-        let scoreLevel = 0;
-        if (score > 12) scoreLevel = 4;
-        else if (score > 8) scoreLevel = 3;
-        else if (score > 5) scoreLevel = 2;
-        else if (score > 1) scoreLevel = 1;
+    //     // Calculate score level and update confirmation number
+    //     const score = data.score || 0;
+    //     let scoreLevel = 0;
+    //     if (score > 12) scoreLevel = 4;
+    //     else if (score > 8) scoreLevel = 3;
+    //     else if (score > 5) scoreLevel = 2;
+    //     else if (score > 1) scoreLevel = 1;
         
-        const confirmationNumber = `232${scoreLevel}`;
-        const confirmationElement = document.getElementById('confirmation-number');
-        if (confirmationElement) {
-            confirmationElement.textContent = confirmationNumber;
-        }
+    //     const confirmationNumber = `232${scoreLevel}`;
+    //     const confirmationElement = document.getElementById('confirmation-number');
+    //     if (confirmationElement) {
+    //         confirmationElement.textContent = confirmationNumber;
+    //     }
         
-        // Populate the scores list on the finish page
-        if (scoreList) {
-            scoreList.innerHTML = '';
-            const li = document.createElement('li');
-            li.textContent = `Final Score: ${score}`;
-            li.style.listStyleType = 'none';
-            scoreList.appendChild(li);
-        }
-        return;
-    }
+    //     // Populate the scores list on the finish page
+    //     if (scoreList) {
+    //         scoreList.innerHTML = '';
+    //         const li = document.createElement('li');
+    //         li.textContent = `Final Score: ${score}`;
+    //         li.style.listStyleType = 'none';
+    //         scoreList.appendChild(li);
+    //     }
+    //     return;
+    // }
     
     // Show finish button after 3 episodes (or adjust as needed)
     if (episodesCompleted >= 3) {
@@ -341,6 +348,7 @@ function hideLoading() {
 }
 
 function updateGameState(data) {
+    console.log("updateGameState - data=", data)
     if (data.image) {
         gameImage.src = `data:image/png;base64,${data.image}`;
     }
@@ -349,6 +357,10 @@ function updateGameState(data) {
         scoreElement.textContent = currentScore;
     }
     if (data.episode !== undefined) {
+        // Update current episode tracking
+        if (currentEpisode !== data.episode) {
+            console.log('Episode changed from', currentEpisode, 'to', data.episode);
+        }
         currentEpisode = data.episode;
         // episodeElement.textContent = currentEpisode;
         if (roundNumberElement) {

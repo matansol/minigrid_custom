@@ -1,5 +1,20 @@
-// Connect to the Socket.IO server
-const socket = io();
+// Connect to the Socket.IO server with strict WebSocket-only configuration for Azure Container Apps
+const socket = io("https://dpu-tutorial-app.yellowmushroom-27e70244.westeurope.azurecontainerapps.io", {
+    transports: ["websocket"],  // ONLY WebSocket transport - no polling allowed
+    upgrade: false,  // Never upgrade from polling (since we don't use polling)
+    rememberUpgrade: false,  // Don't remember any transport upgrades
+    tryAllTransports: false,  // Don't try multiple transports - only WebSocket
+    timeout: 20000,
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    maxReconnectionAttempts: 5,
+    forceNew: false,  // Don't force new connection unless needed
+    path: "/socket.io",  // Explicit path
+    autoConnect: false,  // Don't auto-connect, we'll connect manually
+    closeOnBeforeunload: false,  // Prevent unnecessary disconnections
+    withCredentials: false  // Don't send credentials (not needed for our app)
+});
 
 // DOM Elements
 const welcomePage = document.getElementById('welcome-page');
@@ -24,6 +39,39 @@ let currentScore = 0;
 let currentSteps = 0;
 let episodesCompleted = 0;
 let roundScores = [];
+let connectionAttempts = 0;
+let isConnecting = false;
+
+// Connection management for WebSocket-only mode
+function connectSocket() {
+    if (isConnecting || socket.connected) {
+        return;
+    }
+    
+    isConnecting = true;
+    connectionAttempts++;
+    console.log(`Attempting WebSocket connection (attempt ${connectionAttempts})...`);
+    
+    socket.connect();
+    
+    // Set a timeout for connection attempt (shorter for WebSocket)
+    setTimeout(() => {
+        if (!socket.connected && isConnecting) {
+            console.log('WebSocket connection attempt timed out');
+            isConnecting = false;
+            if (connectionAttempts < 3) {  // Fewer attempts since WebSocket fails faster
+                setTimeout(() => connectSocket(), 1000 * connectionAttempts);
+            } else {
+                alert('Unable to establish WebSocket connection to server. Please check your internet connection and refresh the page.');
+            }
+        }
+    }, 10000);  // Shorter timeout for WebSocket
+}
+
+// Initialize connection when page loads
+window.addEventListener('load', () => {
+    connectSocket();
+});
 
 // Event Listeners
 
@@ -34,11 +82,14 @@ function getProlificIdOrRandom() {
     if (prolificId && prolificId.trim() !== '') {
         return prolificId;
     } else {
-        // Generate a random number between 1 and 100
-        return Math.floor(Math.random() * 100) + 1;
+        // Generate a more unique random identifier
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 10000);
+        return `user_${timestamp}_${random}`;
     }
 }
 const prolificID = getProlificIdOrRandom();
+console.log("User ID:", prolificID);
 
 // --- FINAL STEP HANDLING ---
 function getFinalStepParameter() {
@@ -50,12 +101,46 @@ const finalStep = getFinalStepParameter();
 
 startTutorialButton.addEventListener('click', () => {
     showLoading();
-    socket.emit('start_game', { playerName: prolificID, finalStep: finalStep });
+    
+    const startGame = () => {
+        console.log('Starting WebSocket game with user ID:', prolificID, 'finalStep:', finalStep);
+        socket.emit('start_game', { playerName: prolificID, finalStep: finalStep });
+    };
+    
+    // Ensure we're connected before starting
+    if (socket.connected) {
+        startGame();
+    } else {
+        console.log('WebSocket not connected, attempting to connect...');
+        
+        // Try to connect if not already connecting
+        if (!isConnecting) {
+            connectSocket();
+        }
+        
+        // Wait for connection
+        const connectionHandler = () => {
+            console.log('WebSocket connected, now starting game...');
+            socket.off('connect', connectionHandler);  // Remove this specific handler
+            startGame();
+        };
+        
+        socket.on('connect', connectionHandler);
+        
+        // If still not connected after 15 seconds, show error
+        setTimeout(() => {
+            if (!socket.connected) {
+                hideLoading();
+                socket.off('connect', connectionHandler);  // Clean up handler
+                alert('WebSocket connection failed. Please check your internet connection and refresh the page.');
+            }
+        }, 15000);
+    }
 });
 
-// Keyboard controls
+// Keyboard controls with validation
 document.addEventListener('keydown', (event) => {
-    if (!gamePage.classList.contains('active')) return;
+    if (!gamePage.classList.contains('active') || !socket.connected) return;
 
     let action = null;
     switch (event.key) {
@@ -74,20 +159,88 @@ document.addEventListener('keydown', (event) => {
     }
 
     if (action) {
+        console.log('Sending action:', action);
         socket.emit('send_action', action);
     }
 });
 
-// Socket.IO event handlers
+// Socket.IO event handlers for WebSocket-only mode
 socket.on('connect', () => {
-    console.log('Connected to server');
+    console.log('WebSocket connected to server with socket ID:', socket.id);
+    isConnecting = false;
+    connectionAttempts = 0;  // Reset connection attempts on successful connection
+});
+
+socket.on('connection_confirmed', (data) => {
+    console.log('WebSocket connection confirmed:', data);
+});
+
+socket.on('disconnect', (reason) => {
+    console.log('WebSocket disconnected from server. Reason:', reason);
+    isConnecting = false;
+    
+    // Auto-reconnect for WebSocket disconnects
+    if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
+        console.log('Attempting WebSocket reconnection...');
+        setTimeout(() => {
+            if (!socket.connected) {
+                connectSocket();
+            }
+        }, 1000);  // Shorter delay for WebSocket reconnections
+    }
+});
+
+socket.on('connect_error', (error) => {
+    console.error('WebSocket connection error:', error);
+    isConnecting = false;
+    
+    // Try to reconnect after a delay
+    setTimeout(() => {
+        if (!socket.connected && connectionAttempts < 5) {
+            connectSocket();
+        }
+    }, 2000);
+});
+
+socket.on('reconnect', (attemptNumber) => {
+    console.log('Reconnected to server after', attemptNumber, 'attempts');
+    isConnecting = false;
+    connectionAttempts = 0;
+});
+
+socket.on('reconnect_error', (error) => {
+    console.error('Reconnection failed:', error);
+});
+
+socket.on('reconnect_failed', () => {
+    console.error('Reconnection failed after maximum attempts');
+    alert('Connection lost and could not be restored. Please refresh the page.');
+});
+
+// Enhanced error handling
+socket.on('error', (data) => {
+    console.error('Server error:', data);
+    hideLoading();
+    
+    // Handle specific error types
+    if (data.error && data.error.includes('Session not found')) {
+        alert('Session expired. Please refresh the page and start again.');
+    } else if (data.error && data.error.includes('Game not initialized')) {
+        alert('Game session lost. Please refresh the page and start again.');
+    } else {
+        alert('Error: ' + (data.error || 'Unknown error occurred'));
+    }
 });
 
 socket.on('game_update', (data) => {
+    console.log('Game update received:', data);
+    hideLoading();
     updateGameState(data);
 });
 
 socket.on('episode_finished', (data) => {
+    console.log('Episode finished:', data);
+    hideLoading();
     updateGameState(data);
     episodesCompleted++;
     if (data.score !== undefined) {
@@ -173,7 +326,9 @@ socket.on('episode_finished', (data) => {
 });
 
 socket.on('error', (data) => {
+    console.error('Server error:', data);
     alert(`Error: ${data.error}`);
+    hideLoading();
 });
 
 // Helper functions
@@ -215,3 +370,23 @@ function updateGameState(data) {
         hideLoading();
     }
 }
+
+// Clean up connections when page is closed
+window.addEventListener('beforeunload', () => {
+    if (socket.connected) {
+        socket.disconnect();
+    }
+});
+
+// Clean up on page visibility change (mobile/tablet handling)
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('Page hidden, maintaining connection...');
+    } else {
+        console.log('Page visible again');
+        if (!socket.connected) {
+            console.log('Reconnecting...');
+            socket.connect();
+        }
+    }
+});

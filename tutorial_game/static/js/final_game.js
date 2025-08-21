@@ -1,9 +1,6 @@
-// Connect to the Final App Socket.IO server with strict WebSocket-only configuration for Azure Container Apps
-const socket = io("http://localhost:8002", {  // Connect to the separate final app server
-    transports: ["websocket"],  // ONLY WebSocket transport - no polling allowed
-    upgrade: false,  // Never upgrade from polling (since we don't use polling)
-    rememberUpgrade: false,  // Don't remember any transport upgrades
-    tryAllTransports: false,  // Don't try multiple transports - only WebSocket
+// Connect to the Socket.IO server with polling+WebSocket fallback for local testing
+const socket = io({
+    transports: ["polling", "websocket"],  // Allow polling fallback for local/dev
     timeout: 20000,
     reconnection: true,
     reconnectionDelay: 1000,
@@ -11,10 +8,39 @@ const socket = io("http://localhost:8002", {  // Connect to the separate final a
     maxReconnectionAttempts: 5,
     forceNew: false,  // Don't force new connection unless needed
     path: "/socket.io",  // Explicit path
-    autoConnect: false,  // Don't auto-connect, we'll connect manually
-    closeOnBeforeunload: false,  // Prevent unnecessary disconnections
-    withCredentials: false  // Don't send credentials (not needed for our app)
+    autoConnect: false  // Don't auto-connect, we'll connect manually
 });
+
+// Connection management
+let connectionAttempts = 0;
+let isConnecting = false;
+
+// Connection management for WebSocket-only mode
+function connectSocket() {
+    if (isConnecting || socket.connected) {
+        return;
+    }
+    
+    isConnecting = true;
+    connectionAttempts++;
+    console.log(`Attempting WebSocket connection (attempt ${connectionAttempts})...`);
+    
+    socket.connect();
+    
+    // Set a timeout for connection attempt (shorter for WebSocket)
+    setTimeout(() => {
+        if (!socket.connected && isConnecting) {
+            console.log('WebSocket connection attempt timed out');
+            isConnecting = false;
+            if (connectionAttempts < 5) {  // Fewer attempts since WebSocket fails faster
+                setTimeout(() => connectSocket(), 1000 * connectionAttempts);
+            } else {
+                console.log('Max connection attempts reached');
+                // Could show user an error message here
+            }
+        }
+    }, 5000);  // 5 second timeout for WebSocket
+}
 
 // DOM Elements
 const welcomePage = document.getElementById('welcome-page');
@@ -39,21 +65,7 @@ let currentScore = 0;
 let currentSteps = 0;
 let episodesCompleted = 0;
 let roundScores = [];
-let connectionAttempts = 0;
-let isConnecting = false;
-
-// Connection management for WebSocket-only mode
-function connectSocket() {
-    if (isConnecting || socket.connected) {
-        return;
-    }
-    
-    isConnecting = true;
-    connectionAttempts++;
-    console.log(`Attempting WebSocket connection (attempt ${connectionAttempts})...`);
-    
-    socket.connect();
-}
+let episodeNum = 1;
 
 // Event Listeners
 
@@ -70,29 +82,18 @@ function getProlificIdOrRandom() {
 }
 const prolificID = getProlificIdOrRandom();
 
-// --- FINAL STEP HANDLING ---
-function getFinalStepParameter() {
-    const params = new URLSearchParams(window.location.search);
-    let finalStep = 1 //params.get('finalStep');
-    return finalStep; // === '0' ? 0 : 1;
-}
-const finalStep = getFinalStepParameter();  
+// // --- FINAL STEP HANDLING ---
+// function getFinalStepParameter() {
+//     const params = new URLSearchParams(window.location.search);
+//     let finalStep = 1 //params.get('finalStep');
+//     return finalStep; // === '0' ? 0 : 1;
+// }
+const finalStep = 1;//getFinalStepParameter();  
 
 startTutorialButton.addEventListener('click', () => {
     showLoading();
-    
-    // Connect socket if not already connected
-    if (!socket.connected) {
-        connectSocket();
-        
-        // Wait for connection before starting game
-        socket.once('connect', () => {
-            console.log('Connected, starting final step game...');
-            socket.emit('start_game', { playerName: prolificID, finalStep: 1});
-        });
-    } else {
-        socket.emit('start_game', { playerName: prolificID, finalStep: 1});
-    }
+    connectSocket();  // Connect to socket before starting game
+    socket.emit('start_game', { playerName: prolificID, finalStep: 1 });
 });
 
 // Keyboard controls
@@ -120,31 +121,24 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// Socket.IO event handlers
+// Socket.IO event handlers for polling+WebSocket fallback
 socket.on('connect', () => {
-    console.log('WebSocket connected to server');
+    console.log('WebSocket connected to server with socket ID:', socket.id);
     isConnecting = false;
-    connectionAttempts = 0;
-});
-
-socket.on('disconnect', (reason) => {
-    console.log('Disconnected from server:', reason);
-    isConnecting = false;
+    connectionAttempts = 0;  // Reset connection attempts on successful connection
 });
 
 socket.on('connect_error', (error) => {
-    console.error('Connection error:', error);
+    console.log('WebSocket connection error:', error);
     isConnecting = false;
 });
 
-socket.on('connection_confirmed', (data) => {
-    console.log('Connection confirmed:', data);
-});
-
-socket.on('error', (error) => {
-    console.error('Socket error:', error);
-    alert(`Game error: ${error.error || error}`);
-    hideLoading();
+socket.on('disconnect', (reason) => {
+    console.log('WebSocket disconnected from server. Reason:', reason);
+    if (reason === 'transport error') {
+        console.log('Attempting WebSocket reconnection...');
+        setTimeout(() => connectSocket(), 1000);
+    }
 });
 
 socket.on('game_update', (data) => {
@@ -153,7 +147,7 @@ socket.on('game_update', (data) => {
 
 socket.on('episode_finished', (data) => {
     updateGameState(data);
-    episodesCompleted++;
+    episodeNum++;
     if (data.score !== undefined) {
         roundScores.push(data.score);
     }
@@ -188,52 +182,6 @@ socket.on('episode_finished', (data) => {
         return;
     }
     
-    // Show finish button after 3 episodes (or adjust as needed)
-    if (episodesCompleted >= 3) {
-        if (!document.getElementById('finish-tutorial-btn')) {
-            const finishButton = document.createElement('button');
-            finishButton.id = 'finish-tutorial-btn';
-            finishButton.textContent = 'Finish Tutorial';
-            finishButton.style.padding = '14px 28px';
-            finishButton.style.fontSize = '18px';
-            finishButton.style.backgroundColor = '#4CAF50';
-            finishButton.style.color = 'white';
-            finishButton.style.border = 'none';
-            finishButton.style.borderRadius = '8px';
-            finishButton.style.cursor = 'pointer';
-            finishButton.style.marginTop = '24px';
-            finishButton.style.alignSelf = 'flex-start';
-            finishButton.addEventListener('click', () => {
-                gamePage.classList.remove('active');
-                finishPage.classList.add('active');
-                // Populate the scores list on the finish page
-                if (scoreList) {
-                    scoreList.innerHTML = '';
-                    roundScores.forEach((score, idx) => {
-                        const li = document.createElement('li');
-                        li.textContent = `Round ${idx + 1}: ${score}`;
-                        li.style.listStyleType = 'none';
-                        scoreList.appendChild(li);
-                    });
-                }
-                finishButton.remove();
-            });
-            // Place the button after the map-legend (below ledge, right to key-instructions)
-            const mapLegend = document.getElementById('map-legend');
-            if (mapLegend && mapLegend.parentNode) {
-                mapLegend.parentNode.appendChild(finishButton);
-            } else {
-                document.body.appendChild(finishButton);
-            }
-        }
-    } else {
-        // Remove the button if not enough episodes completed
-        const existingBtn = document.getElementById('finish-tutorial-btn');
-        if (existingBtn) {
-            existingBtn.remove();
-        }
-    }
-    socket.emit('next_episode');
 });
 
 socket.on('error', (data) => {
@@ -261,7 +209,7 @@ function updateGameState(data) {
         currentEpisode = data.episode;
         // episodeElement.textContent = currentEpisode;
         if (roundNumberElement) {
-            roundNumberElement.textContent = currentEpisode;
+            roundNumberElement.textContent = 1;//currentEpisode;
         }
     }
     if (data.step_count !== undefined) {

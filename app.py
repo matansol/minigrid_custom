@@ -41,7 +41,7 @@ app = FastAPI()
 sio_config = {
     "async_mode": "asgi",
     "cors_allowed_origins": "*",  # Wildcard for development/testing
-    "logger": True,
+    "logger": False,
     "engineio_logger": False,  # Reduce logging overhead
     "ping_timeout": 60,  # Increased timeout for load testing
     "ping_interval": 25,  # Increased interval for stability
@@ -1076,5 +1076,7 @@ if __name__ == "__main__":
     uvicorn.run(
         socket_app,
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8000))
+        port=int(os.environ.get("PORT", 8000)),
+        log_level="warning",
+        access_log=False
     )

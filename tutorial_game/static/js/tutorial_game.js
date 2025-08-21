@@ -1,26 +1,17 @@
-// Connect to the Socket.IO server with strict WebSocket-only configuration
-// Auto-detect local vs production URL
-const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const serverUrl = isLocalDevelopment 
-    ? `http://${window.location.host}` 
-    : "https://dpu-tutorial-app.yellowmushroom-27e70244.westeurope.azurecontainerapps.io";
-
-console.log('Connecting to server:', serverUrl);
-
-const socket = io(serverUrl, {
-    // Use default Socket.IO transport strategy: start with polling, upgrade to websocket
-    // This is more reliable than forcing websocket-only
+// Connect to the Socket.IO server with polling+WebSocket fallback for local testing
+const socket = io({
+    transports: ["polling", "websocket"],  // Allow polling fallback for local/dev
+    // Note: in production you can prefer websocket-only by using ["websocket"] and upgrade=false
     timeout: 20000,
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     maxReconnectionAttempts: 5,
-    forceNew: false,
-    path: "/socket.io",
-    autoConnect: false,
-    closeOnBeforeunload: false,
-    withCredentials: false
+    forceNew: false,  // Don't force new connection unless needed
+    path: "/socket.io",  // Explicit path
+    autoConnect: false  // Don't auto-connect, we'll connect manually
 });
+
 
 // DOM Elements
 const welcomePage = document.getElementById('welcome-page');
@@ -43,12 +34,12 @@ const roundNumberElement = document.getElementById('round-number');
 let currentEpisode = 1;
 let currentScore = 0;
 let currentSteps = 0;
-let episodesCompleted = 0;
+let episodeNum = 1;
 let roundScores = [];
 let connectionAttempts = 0;
 let isConnecting = false;
 
-// Connection management using Socket.IO default strategy (polling -> websocket upgrade)
+// Connection management for WebSocket-only mode
 function connectSocket() {
     if (isConnecting || socket.connected) {
         return;
@@ -56,22 +47,22 @@ function connectSocket() {
     
     isConnecting = true;
     connectionAttempts++;
-    console.log(`Attempting Socket.IO connection (attempt ${connectionAttempts})...`);
+    console.log(`Attempting WebSocket connection (attempt ${connectionAttempts})...`);
     
     socket.connect();
     
-    // Set a timeout for connection attempt
+    // Set a timeout for connection attempt (shorter for WebSocket)
     setTimeout(() => {
         if (!socket.connected && isConnecting) {
-            console.log('Socket.IO connection attempt timed out');
+            console.log('WebSocket connection attempt timed out');
             isConnecting = false;
-            if (connectionAttempts < 5) {
+            if (connectionAttempts < 3) {  // Fewer attempts since WebSocket fails faster
                 setTimeout(() => connectSocket(), 1000 * connectionAttempts);
             } else {
-                alert('Unable to establish connection to server. Please check your internet connection and refresh the page.');
+                alert('Unable to establish WebSocket connection to server. Please check your internet connection and refresh the page.');
             }
         }
-    }, 15000);  // Standard timeout for Socket.IO
+    }, 10000);  // Shorter timeout for WebSocket
 }
 
 // Initialize connection when page loads
@@ -95,56 +86,13 @@ function getProlificIdOrRandom() {
     }
 }
 const prolificID = getProlificIdOrRandom();
-console.log("User ID:", prolificID);
-
-// --- FINAL STEP HANDLING ---
-function getFinalStepParameter() {
-    const params = new URLSearchParams(window.location.search);
-    let finalStep = params.get('finalStep');
-    return finalStep === '1' ? 1 : 0;
-}
-const finalStep = getFinalStepParameter();
 
 startTutorialButton.addEventListener('click', () => {
     showLoading();
-    
-    const startGame = () => {
-        console.log('Starting WebSocket game with user ID:', prolificID, 'finalStep:', finalStep);
-        socket.emit('start_game', { playerName: prolificID, finalStep: finalStep });
-    };
-    
-    // Ensure we're connected before starting
-    if (socket.connected) {
-        startGame();
-    } else {
-        console.log('WebSocket not connected, attempting to connect...');
-        
-        // Try to connect if not already connecting
-        if (!isConnecting) {
-            connectSocket();
-        }
-        
-        // Wait for connection
-        const connectionHandler = () => {
-            console.log('WebSocket connected, now starting game...');
-            socket.off('connect', connectionHandler);  // Remove this specific handler
-            startGame();
-        };
-        
-        socket.on('connect', connectionHandler);
-        
-        // If still not connected after 15 seconds, show error
-        setTimeout(() => {
-            if (!socket.connected) {
-                hideLoading();
-                socket.off('connect', connectionHandler);  // Clean up handler
-                alert('WebSocket connection failed. Please check your internet connection and refresh the page.');
-            }
-        }, 15000);
-    }
+    socket.emit('start_game', { playerName: prolificID });
 });
 
-// Keyboard controls with validation and episode tracking
+// Keyboard controls
 document.addEventListener('keydown', (event) => {
     if (!gamePage.classList.contains('active') || !socket.connected) return;
 
@@ -170,35 +118,34 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// Socket.IO event handlers
+// Socket.IO event handlers for WebSocket-only mode
 socket.on('connect', () => {
-    console.log('Connected to server with socket ID:', socket.id);
-    console.log('Transport used:', socket.io.engine.transport.name);
+    console.log('WebSocket connected to server with socket ID:', socket.id);
     isConnecting = false;
     connectionAttempts = 0;  // Reset connection attempts on successful connection
 });
 
 socket.on('connection_confirmed', (data) => {
-    console.log('Connection confirmed:', data);
+    console.log('WebSocket connection confirmed:', data);
 });
 
 socket.on('disconnect', (reason) => {
-    console.log('Disconnected from server. Reason:', reason);
+    console.log('WebSocket disconnected from server. Reason:', reason);
     isConnecting = false;
     
-    // Auto-reconnect for certain disconnect reasons
+    // Auto-reconnect for WebSocket disconnects
     if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
-        console.log('Attempting reconnection...');
+        console.log('Attempting WebSocket reconnection...');
         setTimeout(() => {
             if (!socket.connected) {
                 connectSocket();
             }
-        }, 2000);
+        }, 1000);  // Shorter delay for WebSocket reconnections
     }
 });
 
 socket.on('connect_error', (error) => {
-    console.error('Connection error:', error);
+    console.error('WebSocket connection error:', error);
     isConnecting = false;
     
     // Try to reconnect after a delay
@@ -240,7 +187,7 @@ socket.on('error', (data) => {
 });
 
 socket.on('game_update', (data) => {
-    console.log('Game update received:', data);
+    // console.log('Game update received:', data);
     hideLoading();
     updateGameState(data);
 });
@@ -249,7 +196,11 @@ socket.on('episode_finished', (data) => {
     console.log('Episode finished:', data);
     hideLoading();
     updateGameState(data);
-    episodesCompleted++;
+    if (data && data.episode){
+        console.log("found data.episode");
+        episodeNum = data.episode;
+        console.log("episodeCompleted=", episodeNum);
+    }
     if (data.score !== undefined) {
         roundScores.push(data.score);
     }
@@ -285,7 +236,7 @@ socket.on('episode_finished', (data) => {
     // }
     
     // Show finish button after 3 episodes (or adjust as needed)
-    if (episodesCompleted >= 3) {
+    if (episodeNum >= 4) {
         if (!document.getElementById('finish-tutorial-btn')) {
             const finishButton = document.createElement('button');
             finishButton.id = 'finish-tutorial-btn';
@@ -348,7 +299,6 @@ function hideLoading() {
 }
 
 function updateGameState(data) {
-    console.log("updateGameState - data=", data)
     if (data.image) {
         gameImage.src = `data:image/png;base64,${data.image}`;
     }
@@ -357,10 +307,6 @@ function updateGameState(data) {
         scoreElement.textContent = currentScore;
     }
     if (data.episode !== undefined) {
-        // Update current episode tracking
-        if (currentEpisode !== data.episode) {
-            console.log('Episode changed from', currentEpisode, 'to', data.episode);
-        }
         currentEpisode = data.episode;
         // episodeElement.textContent = currentEpisode;
         if (roundNumberElement) {

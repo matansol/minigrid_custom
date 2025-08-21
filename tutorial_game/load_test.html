@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial App Load Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .control-panel { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .status { background: white; padding: 15px; border-radius: 8px; max-height: 400px; overflow-y: auto; }
+        .user { margin: 5px 0; padding: 5px; border-radius: 4px; }
+        .connected { background-color: #d4edda; }
+        .disconnected { background-color: #f8d7da; }
+        .playing { background-color: #d1ecf1; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; }
+        .stats { display: flex; gap: 20px; margin: 10px 0; }
+        .stat-box { background: #e9ecef; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Tutorial App Load Tester</h1>
+    
+    <div class="control-panel">
+        <h3>Test Configuration</h3>
+        <div>
+            <label>Server URL:</label>
+            <input type="text" id="serverUrl" value="https://dpu-tutorial-app.yellowmushroom-27e70244.westeurope.azurecontainerapps.io" style="width: 500px;">
+        </div>
+        <div>
+            <label>Number of Users:</label>
+            <input type="number" id="userCount" value="5" min="1" max="50">
+        </div>
+        <div>
+            <label>Connection Delay (ms):</label>
+            <input type="number" id="connectionDelay" value="1000" min="100" max="10000">
+        </div>
+        <div>
+            <label>Action Interval (ms):</label>
+            <input type="number" id="actionInterval" value="2000" min="500" max="10000">
+        </div>
+        <div>
+            <button id="startTest">Start Load Test</button>
+            <button id="stopTest">Stop Test</button>
+            <button id="clearLogs">Clear Logs</button>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">Connected: <span id="connectedCount">0</span></div>
+            <div class="stat-box">Playing: <span id="playingCount">0</span></div>
+            <div class="stat-box">Errors: <span id="errorCount">0</span></div>
+            <div class="stat-box">Total Actions: <span id="actionCount">0</span></div>
+        </div>
+    </div>
+
+    <div class="status">
+        <h3>User Status & Logs</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        class LoadTestUser {
+            constructor(userId, serverUrl, onStatusChange) {
+                this.userId = userId;
+                this.serverUrl = serverUrl;
+                this.onStatusChange = onStatusChange;
+                this.socket = null;
+                this.status = 'disconnected';
+                this.actionInterval = null;
+                this.connected = false;
+                this.playing = false;
+                this.actionCount = 0;
+                this.errorCount = 0;
+            }
+
+            connect() {
+                try {
+                    this.log(`Connecting to ${this.serverUrl}...`);
+                    this.socket = io(this.serverUrl, {
+                        transports: ["polling", "websocket"],
+                        timeout: 20000,
+                        reconnection: true,
+                        reconnectionDelay: 1000,
+                        reconnectionDelayMax: 5000,
+                        maxReconnectionAttempts: 3,
+                        forceNew: true
+                    });
+
+                    this.socket.on('connect', () => {
+                        this.connected = true;
+                        this.status = 'connected';
+                        this.log('Connected successfully');
+                        this.onStatusChange();
+                        this.startGame();
+                    });
+
+                    this.socket.on('connect_error', (error) => {
+                        this.errorCount++;
+                        this.log(`Connection error: ${error.message}`);
+                        this.onStatusChange();
+                    });
+
+                    this.socket.on('disconnect', (reason) => {
+                        this.connected = false;
+                        this.playing = false;
+                        this.status = 'disconnected';
+                        this.log(`Disconnected: ${reason}`);
+                        this.stopActions();
+                        this.onStatusChange();
+                    });
+
+                    this.socket.on('game_update', (data) => {
+                        if (!this.playing) {
+                            this.playing = true;
+                            this.status = 'playing';
+                            this.onStatusChange();
+                            this.startActions();
+                        }
+                        this.log(`Game update - Score: ${data.score}, Steps: ${data.steps}`);
+                    });
+
+                    this.socket.on('episode_finished', (data) => {
+                        this.log(`Episode finished - Final score: ${data.score}`);
+                        setTimeout(() => {
+                            if (this.socket && this.socket.connected) {
+                                this.socket.emit('next_episode');
+                            }
+                        }, 1000);
+                    });
+
+                    this.socket.on('error', (error) => {
+                        this.errorCount++;
+                        this.log(`Server error: ${error.error || error}`);
+                        this.onStatusChange();
+                    });
+
+                } catch (error) {
+                    this.errorCount++;
+                    this.log(`Failed to create connection: ${error.message}`);
+                    this.onStatusChange();
+                }
+            }
+
+            startGame() {
+                if (this.socket && this.socket.connected) {
+                    this.log('Starting game...');
+                    this.socket.emit('start_game', { 
+                        playerName: `LoadTest_User_${this.userId}`,
+                        finalStep: 0 
+                    });
+                }
+            }
+
+            startActions() {
+                if (this.actionInterval) return;
+                
+                const actions = ['ArrowUp', 'ArrowLeft', 'ArrowRight', 'PageUp'];
+                const intervalMs = parseInt(document.getElementById('actionInterval').value);
+                
+                this.actionInterval = setInterval(() => {
+                    if (this.socket && this.socket.connected && this.playing) {
+                        const action = actions[Math.floor(Math.random() * actions.length)];
+                        this.socket.emit('send_action', {
+                            action: action,
+                            episode_num: 1
+                        });
+                        this.actionCount++;
+                        this.log(`Sent action: ${action}`);
+                        updateStats();
+                    }
+                }, intervalMs);
+            }
+
+            stopActions() {
+                if (this.actionInterval) {
+                    clearInterval(this.actionInterval);
+                    this.actionInterval = null;
+                }
+            }
+
+            disconnect() {
+                this.stopActions();
+                if (this.socket) {
+                    this.socket.disconnect();
+                    this.socket = null;
+                }
+                this.connected = false;
+                this.playing = false;
+                this.status = 'disconnected';
+                this.log('Manually disconnected');
+                this.onStatusChange();
+            }
+
+            log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logs = document.getElementById('logs');
+                const logEntry = document.createElement('div');
+                logEntry.className = `user ${this.status}`;
+                logEntry.innerHTML = `<strong>User ${this.userId}</strong> [${timestamp}]: ${message}`;
+                logs.appendChild(logEntry);
+                logs.scrollTop = logs.scrollHeight;
+            }
+        }
+
+        let users = [];
+        let testRunning = false;
+
+        function updateStats() {
+            const connected = users.filter(u => u.connected).length;
+            const playing = users.filter(u => u.playing).length;
+            const errors = users.reduce((sum, u) => sum + u.errorCount, 0);
+            const actions = users.reduce((sum, u) => sum + u.actionCount, 0);
+
+            document.getElementById('connectedCount').textContent = connected;
+            document.getElementById('playingCount').textContent = playing;
+            document.getElementById('errorCount').textContent = errors;
+            document.getElementById('actionCount').textContent = actions;
+        }
+
+        function startLoadTest() {
+            if (testRunning) return;
+            
+            testRunning = true;
+            const userCount = parseInt(document.getElementById('userCount').value);
+            const serverUrl = document.getElementById('serverUrl').value;
+            const connectionDelay = parseInt(document.getElementById('connectionDelay').value);
+            
+            document.getElementById('startTest').disabled = true;
+            document.getElementById('logs').innerHTML = '';
+            
+            console.log(`Starting load test with ${userCount} users...`);
+            
+            for (let i = 1; i <= userCount; i++) {
+                setTimeout(() => {
+                    const user = new LoadTestUser(i, serverUrl, updateStats);
+                    users.push(user);
+                    user.connect();
+                }, i * connectionDelay);
+            }
+        }
+
+        function stopLoadTest() {
+            testRunning = false;
+            document.getElementById('startTest').disabled = false;
+            
+            console.log('Stopping load test...');
+            users.forEach(user => user.disconnect());
+            users = [];
+            updateStats();
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        // Event listeners
+        document.getElementById('startTest').addEventListener('click', startLoadTest);
+        document.getElementById('stopTest').addEventListener('click', stopLoadTest);
+        document.getElementById('clearLogs').addEventListener('click', clearLogs);
+
+        // Initialize stats
+        updateStats();
+    </script>
+</body>
+</html>

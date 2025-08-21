@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multi-Tab Load Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .control-panel { background: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 3px; }
+        .status.connected { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
+        .stat-box { background: #e9ecef; padding: 10px; text-align: center; border-radius: 3px; }
+        .stat-number { font-size: 24px; font-weight: bold; color: #007bff; }
+        .stat-label { font-size: 12px; color: #6c757d; }
+        button { padding: 8px 16px; margin: 5px; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .tab-controls { margin: 10px 0; }
+        .log { background: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Multi-Tab Socket.IO Load Test</h1>
+    
+    <div class="control-panel">
+        <div>
+            <label>Server URL:</label>
+            <input type="url" id="serverUrl" value="https://dpu-tutorial-app.yellowmushroom-27e70244.westeurope.azurecontainerapps.io" style="width: 400px;">
+        </div>
+        
+        <div class="tab-controls">
+            <label>Number of tabs to open:</label>
+            <input type="number" id="numTabs" value="5" min="1" max="20">
+            <button class="btn-primary" onclick="openTestTabs()">Open Test Tabs</button>
+            <button class="btn-danger" onclick="closeAllTabs()">Close All Tabs</button>
+        </div>
+        
+        <div>
+            <button class="btn-success" onclick="startAllTests()">Start All Tests</button>
+            <button class="btn-secondary" onclick="stopAllTests()">Stop All Tests</button>
+            <button class="btn-secondary" onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-box">
+            <div class="stat-number" id="tabsOpen">0</div>
+            <div class="stat-label">Tabs Open</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number" id="connected">0</div>
+            <div class="stat-label">Connected</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number" id="errors">0</div>
+            <div class="stat-label">Errors</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number" id="totalActions">0</div>
+            <div class="stat-label">Total Actions</div>
+        </div>
+    </div>
+    
+    <div id="status" class="status">Ready to start load test</div>
+    
+    <div class="log" id="log"></div>
+
+    <script>
+        let testTabs = [];
+        let testStats = {
+            tabsOpen: 0,
+            connected: 0,
+            errors: 0,
+            totalActions: 0
+        };
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('tabsOpen').textContent = testStats.tabsOpen;
+            document.getElementById('connected').textContent = testStats.connected;
+            document.getElementById('errors').textContent = testStats.errors;
+            document.getElementById('totalActions').textContent = testStats.totalActions;
+        }
+
+        function updateStatus(message, type = 'normal') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        function openTestTabs() {
+            const numTabs = parseInt(document.getElementById('numTabs').value);
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            // Close existing tabs first
+            closeAllTabs();
+            
+            log(`Opening ${numTabs} test tabs...`);
+            updateStatus(`Opening ${numTabs} test tabs...`);
+            
+            for (let i = 0; i < numTabs; i++) {
+                setTimeout(() => {
+                    const tabUrl = createTestTabUrl(serverUrl, i + 1);
+                    const newTab = window.open(tabUrl, `LoadTest_${i + 1}`, 'width=400,height=600');
+                    
+                    if (newTab) {
+                        testTabs.push(newTab);
+                        testStats.tabsOpen++;
+                        updateStats();
+                        log(`Opened tab ${i + 1}`);
+                        
+                        // Set up message listener for this tab
+                        window.addEventListener('message', handleTabMessage);
+                    } else {
+                        log(`Failed to open tab ${i + 1} - popup blocked?`);
+                        testStats.errors++;
+                        updateStats();
+                    }
+                }, i * 1000); // Stagger tab opening by 1 second
+            }
+            
+            setTimeout(() => {
+                updateStatus(`${testTabs.length} tabs opened. Click "Start All Tests" to begin.`, 'connected');
+            }, numTabs * 1000 + 1000);
+        }
+
+        function createTestTabUrl(serverUrl, tabId) {
+            // Create a data URL with the test page
+            const testPageHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Load Test Tab ${tabId}</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .connected { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .playing { background: #d1ecf1; color: #0c5460; }
+        .stats { margin: 20px 0; }
+        .stat { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h2>Load Test Tab ${tabId}</h2>
+    <div id="status" class="status">Initializing...</div>
+    
+    <div class="stats">
+        <div class="stat">Connected: <span id="connected">No</span></div>
+        <div class="stat">Game State: <span id="gameState">Not Started</span></div>
+        <div class="stat">Actions Sent: <span id="actionCount">0</span></div>
+        <div class="stat">Errors: <span id="errorCount">0</span></div>
+        <div class="stat">Score: <span id="score">0</span></div>
+    </div>
+    
+    <div>
+        <button onclick="startTest()">Start Test</button>
+        <button onclick="stopTest()">Stop Test</button>
+    </div>
+
+    <script>
+        const SERVER_URL = '${serverUrl}';
+        const TAB_ID = ${tabId};
+        let socket = null;
+        let isPlaying = false;
+        let actionCount = 0;
+        let errorCount = 0;
+        let actionInterval = null;
+        
+        const actions = ['ArrowUp', 'ArrowLeft', 'ArrowRight', 'PageUp'];
+        
+        function updateStatus(message, className = '') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + className;
+        }
+        
+        function updateStat(id, value) {
+            document.getElementById(id).textContent = value;
+        }
+        
+        function notifyParent(event, data) {
+            if (window.opener) {
+                window.opener.postMessage({
+                    type: 'loadtest',
+                    tabId: TAB_ID,
+                    event: event,
+                    data: data
+                }, '*');
+            }
+        }
+        
+        function startTest() {
+            if (socket) {
+                stopTest();
+            }
+            
+            updateStatus('Connecting...', 'connecting');
+            
+            socket = io(SERVER_URL, {
+                transports: ['polling', 'websocket'],
+                forceNew: true
+            });
+            
+            socket.on('connect', () => {
+                updateStatus('Connected - Starting game...', 'connected');
+                updateStat('connected', 'Yes');
+                notifyParent('connected', { tabId: TAB_ID });
+                
+                // Start the game
+                socket.emit('start_game', {
+                    playerName: 'LoadTest_Tab_' + TAB_ID,
+                    finalStep: 0
+                });
+            });
+            
+            socket.on('connect_error', (error) => {
+                errorCount++;
+                updateStat('errorCount', errorCount);
+                updateStatus('Connection failed: ' + error, 'error');
+                notifyParent('error', { tabId: TAB_ID, error: error });
+            });
+            
+            socket.on('disconnect', () => {
+                updateStatus('Disconnected', 'error');
+                updateStat('connected', 'No');
+                updateStat('gameState', 'Disconnected');
+                isPlaying = false;
+                if (actionInterval) {
+                    clearInterval(actionInterval);
+                    actionInterval = null;
+                }
+                notifyParent('disconnected', { tabId: TAB_ID });
+            });
+            
+            socket.on('game_update', (data) => {
+                if (!isPlaying) {
+                    isPlaying = true;
+                    updateStatus('Playing game...', 'playing');
+                    updateStat('gameState', 'Playing');
+                    notifyParent('playing', { tabId: TAB_ID });
+                    
+                    // Start sending random actions
+                    actionInterval = setInterval(() => {
+                        if (socket && socket.connected) {
+                            const action = actions[Math.floor(Math.random() * actions.length)];
+                            socket.emit('send_action', {
+                                action: action,
+                                episode_num: 1
+                            });
+                            actionCount++;
+                            updateStat('actionCount', actionCount);
+                            notifyParent('action', { tabId: TAB_ID, action: action, count: actionCount });
+                        }
+                    }, 2000 + Math.random() * 1000); // Random interval 2-3 seconds
+                }
+                
+                if (data.score !== undefined) {
+                    updateStat('score', data.score);
+                }
+            });
+            
+            socket.on('episode_finished', (data) => {
+                updateStat('score', data.score || 0);
+                // Start next episode
+                setTimeout(() => {
+                    if (socket && socket.connected) {
+                        socket.emit('next_episode');
+                    }
+                }, 1000);
+            });
+            
+            socket.on('error', (data) => {
+                errorCount++;
+                updateStat('errorCount', errorCount);
+                updateStatus('Game error: ' + (data.error || 'Unknown'), 'error');
+                notifyParent('error', { tabId: TAB_ID, error: data.error });
+            });
+        }
+        
+        function stopTest() {
+            isPlaying = false;
+            if (actionInterval) {
+                clearInterval(actionInterval);
+                actionInterval = null;
+            }
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            updateStatus('Test stopped', '');
+            updateStat('connected', 'No');
+            updateStat('gameState', 'Stopped');
+            notifyParent('stopped', { tabId: TAB_ID });
+        }
+        
+        // Listen for commands from parent window
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'loadtest-command') {
+                if (event.data.command === 'start') {
+                    startTest();
+                } else if (event.data.command === 'stop') {
+                    stopTest();
+                }
+            }
+        });
+        
+        // Auto-start if requested
+        if (window.location.hash === '#autostart') {
+            setTimeout(startTest, 1000);
+        }
+    </script>
+</body>
+</html>`;
+            
+            return 'data:text/html;charset=utf-8,' + encodeURIComponent(testPageHtml);
+        }
+
+        function handleTabMessage(event) {
+            if (event.data && event.data.type === 'loadtest') {
+                const { tabId, event: eventType, data } = event.data;
+                
+                switch (eventType) {
+                    case 'connected':
+                        testStats.connected++;
+                        log(`Tab ${tabId} connected`);
+                        break;
+                    case 'disconnected':
+                        testStats.connected--;
+                        log(`Tab ${tabId} disconnected`);
+                        break;
+                    case 'playing':
+                        log(`Tab ${tabId} started playing`);
+                        break;
+                    case 'action':
+                        testStats.totalActions++;
+                        if (testStats.totalActions % 10 === 0) {
+                            log(`Total actions sent: ${testStats.totalActions}`);
+                        }
+                        break;
+                    case 'error':
+                        testStats.errors++;
+                        log(`Tab ${tabId} error: ${data.error}`);
+                        break;
+                    case 'stopped':
+                        log(`Tab ${tabId} test stopped`);
+                        break;
+                }
+                
+                updateStats();
+            }
+        }
+
+        function startAllTests() {
+            log('Starting all tests...');
+            updateStatus('Starting all tests...', 'connected');
+            
+            testTabs.forEach((tab, index) => {
+                setTimeout(() => {
+                    if (tab && !tab.closed) {
+                        tab.postMessage({ type: 'loadtest-command', command: 'start' }, '*');
+                    }
+                }, index * 500); // Stagger starts by 500ms
+            });
+        }
+
+        function stopAllTests() {
+            log('Stopping all tests...');
+            updateStatus('Stopping all tests...', 'error');
+            
+            testTabs.forEach(tab => {
+                if (tab && !tab.closed) {
+                    tab.postMessage({ type: 'loadtest-command', command: 'stop' }, '*');
+                }
+            });
+        }
+
+        function closeAllTabs() {
+            log('Closing all tabs...');
+            
+            testTabs.forEach(tab => {
+                if (tab && !tab.closed) {
+                    tab.close();
+                }
+            });
+            
+            testTabs = [];
+            testStats = { tabsOpen: 0, connected: 0, errors: 0, totalActions: 0 };
+            updateStats();
+            updateStatus('All tabs closed', '');
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Check for closed tabs periodically
+        setInterval(() => {
+            const closedTabs = testTabs.filter(tab => tab.closed);
+            if (closedTabs.length > 0) {
+                testTabs = testTabs.filter(tab => !tab.closed);
+                testStats.tabsOpen = testTabs.length;
+                updateStats();
+            }
+        }, 5000);
+
+        // Initialize
+        updateStats();
+    </script>
+</body>
+</html>

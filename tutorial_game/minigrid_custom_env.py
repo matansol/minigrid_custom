@@ -78,7 +78,7 @@ class CustomEnv(MiniGridEnv):
         difficult_grid: bool = False,
         train_env: bool = False,
         unique_env: int = 0,
-        num_lava_cells: int = 2,
+        num_lava_cells: int = 4,
         step_cost: float = 0.1,
         image_full_view: bool = False,
         width: int | None = None,

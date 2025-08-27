@@ -348,6 +348,9 @@ class GameControl:
     def revert_to_old_agent(self):
         self.ppo_agent = self.prev_agent
         self.agent_index = self.prev_agent_index
+        self.current_agent_path = self.models_paths[self.agent_index]['path']
+        print(f'(revert) prev agent index={self.prev_agent_index}, prev agent path={self.prev_agent_path}')
+        print(f"(revert) current agent index={self.agent_index}")
 
     def count_similar_actions(self, env, other_agent, feedback_indexes):
         similar_actions = 0
@@ -380,6 +383,8 @@ class GameControl:
             self.prev_agent_path = self.current_agent_path  # Initially, same as current
             self.prev_agent_index = self.agent_index
             print('Loaded the first model, returning')
+            print(f'(update agent None) prev agent index={self.prev_agent_index}')
+            print(f"(update agent None) current agent index={self.agent_index}")
             return None
         if data is None:
             print("Data is None, return")
@@ -508,6 +513,8 @@ class GameControl:
         self.prev_agent_index = self.agent_index
         self.ppo_agent = new_agent_dict["agent"]
         self.agent_index = new_agent_dict["model_index"]
+        print(f'(update agent) prev agent index={self.prev_agent_index}, prev agent path ={self.prev_agent_path}')
+        print(f"(update_agent) current agent index={self.agent_index}")
         self.current_agent_path = self.models_paths[self.agent_index]['path']  # New current agent path
         if self.prev_agent is None:
             self.prev_agent = self.ppo_agent
@@ -519,11 +526,18 @@ class GameControl:
     def agents_different_routs(self, simillarity_level=5, stuck_count=0, same_path_count=0):
         if self.ppo_agent == None or self.prev_agent == None:
             print(f"No two agents to compare ppo_agent: {self.ppo_agent}, prev_agent: {self.prev_agent}")
+            if self.ppo_agent == None and self.prev_agent == None:
+                self.ppo_agent = self.prev_agent = self.models_paths[self.agent_index]['agent']
+                print("errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
+                print(f"User_id={self.user_id}, both agents are None, set to current agent: {self.ppo_agent}")
             if self.ppo_agent == None:
                 self.ppo_agent = self.prev_agent
                 self.agent_index = self.prev_agent_index
+                self.current_agent_path = self.models_paths[self.agent_index]['path']
             else:
-                self.prev_agent = self.ppo_agent
+                self.prev_agent_index = 1
+                self.prev_agent_path = self.models_paths[self.prev_agent_index]['path']
+                self.prev_agent = self.models_paths[self.prev_agent_index]['agent']
         if int(self.simillar_level_env) == 0:
             env = self.saved_env
         else: # simillarity level > 0
@@ -1030,9 +1044,10 @@ async def agent_selected(sid, data):
         if save_to_db:
             session = SessionLocal()
             try:
+                print(f'(save to DB user choice): old_agent_path={user_game.prev_agent_path},  new_agent_path={user_game.current_agent_path}')
                 user_choice = UserChoice(
                     user_id=user_game.user_id,
-                    old_agent_path=str(user_game.prev_agent_path),
+                    old_agent_path=str(user_game.models_paths[user_game.prev_agent_index]['path']),
                     new_agent_path=str(user_game.current_agent_path),
                     old_agent_score_list=','.join(str(x) for x in user_game.prev_agent_score_list),
                     new_agent_score_list=','.join(str(x) for x in user_game.current_agent_score_list),

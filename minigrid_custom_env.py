@@ -827,7 +827,7 @@ class CustomEnv(MiniGridEnv):
         
         # got to the right bottom corner - the goal
         if self.agent_pos == (self.grid.width - 2, self.grid.height - 2):
-            reward = 10 if self.train_env else 4.9
+            reward = 10 if self.train_env else 1.9  # 4.9
             terminated = True  # End episode immediately when goal is reached
             return obs, round(reward, 1), terminated, truncated, info
 

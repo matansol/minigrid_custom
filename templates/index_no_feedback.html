@@ -302,63 +302,6 @@
         <button id="welcome-continue-button">Continue</button>
     </div>
 
-    <!-- Phase1 - Know The Game Page
-    <div id="ph1-game-page" class="page">
-        <p>
-            Get to know the game by collecting balls and avoiding the lava cells, every step counts so think before you act <br>
-        </p>
-        <div id="game-container">
-            <div id="game-content">
-                <div id="game-image-container" style="position: relative;">
-                    <div id="step-count-overlay-ph1" style="
-                        position: absolute;
-                        top: 10px;
-                        right: 10px;
-                        color: white;
-                        background-color: rgba(0, 0, 0, 0.5);
-                        padding: 5px 10px;
-                        border-radius: 5px;
-                        font-size: 16px;
-                        z-index: 10;">
-                        Step Count: <span id="step-count-ph1">0</span>
-                    </div>
-                    <i class="fas fa-spinner fa-spin placeholder-icon"></i> 
-                    <img id="game-image-ph1" src="" alt="Game Image">
-                </div>
-                <div id="key-instructions">
-                    <h3>Key Instructions:</h3>
-                    <p>&uarr; Move Forwards</p>
-                    <p>&larr; Turn Left</p>
-                    <p>&rarr; Turn Right</p>
-                    <p>'1' - Pickup</p>
-                </div>
-                <div id="button-container">
-                    <button id="goto-phase2-button">End Tutorial</button>
-                </div>
-            </div>
-            <div id="info-container">
-                <p>Action: <span id="action"></span></p>
-                <p>Reward: <span id="reward"></span></p>
-                <p>Score: <span id="score"></span></p>
-                <p>Last round score: <span id="last_score"></span></p>
-            </div>
-        </div>
-    </div> -->
-
-        <!-- Part 2 Explanations Page -->
-    <!-- <div id="part2-explanations-page" class="page" style="display: none; flex-direction: column; align-items: center; padding: 20px;">
-      <h2>Part 2: Agent Assistance</h2>
-      <p>
-        In the second part, a pre-trained AI agent will play the game for you.<br>
-        This agent is not perfect — it sometimes makes mistakes or chooses suboptimal actions.<br>
-        At the end of each round, you'll see a summary of the agent's decisions.<br>
-        You'll have the chance to give feedback by suggesting better actions for specific steps. If you want, you can tell the agent where his mistakes are and make him improve by clicking the 'Update Agent' button, or continue to the next round.<br>
-        Your feedback will be used to change the agent's behavior, hopefully for the better. After that, you'll get to compare how the updated agent performs versus the previous version.
-      </p>
-      <button id="continue-button">Continue</button>
-    </div> -->
-
-
     <!-- Phase2 - Agent Play Page -->
     <div id="ph2-game-page" class="page">
         <div id="round-header" style="width: 100%; text-align: center; margin-bottom: 10px;">
@@ -404,7 +347,47 @@
         </div>
     </div>
 
-<!-- Overview Page -->
+<!-- Agent Choice Page -->
+<div id="agent-choice-page" class="page" style="display: none; background: #eaf6fb;">
+    <div style="text-align: center; padding: 40px;">
+        <h2>Round Complete!</h2>        
+        <!-- Game Image Container -->
+        <div style="display: flex; justify-content: center; margin: 30px 0;">
+            <div style="width: 60vw; height: 40vw; max-width: 640px; max-height: 480px; border: 1px solid #aaa; background: #eaf6fb;">
+                <img id="agent-choice-game-image" src="" alt="Game Image" style="width: 100%; height: 100%; background: #eaf6fb;">
+            </div>
+        </div>
+        <p style="font-size: 1.2em; margin: 20px 0;">Would you like to update the agent’s strategy or continue with the current one?</p>
+
+        <div style="display: flex; justify-content: center; gap: 30px; margin-top: 40px;">
+            <button id="no-change-choice-button" style="
+                font-size: 18px; 
+                padding: 15px 30px; 
+                background-color: #0e9747; 
+                color: white; 
+                border: none; 
+                border-radius: 8px; 
+                cursor: pointer;
+                transition: background-color 0.3s;">
+                Do Not Change
+            </button>
+
+            <button id="update-agent-choice-button" style="
+                font-size: 18px; 
+                padding: 15px 30px; 
+                background-color: #0a6bac; 
+                color: white; 
+                border: none; 
+                border-radius: 8px; 
+                cursor: pointer;
+                transition: background-color 0.3s;">
+                Update Strategy
+            </button>
+        </div>
+    </div>
+</div>
+
+Overview Page
 <div id="overview-page" class="page" style="display: none; background: #eaf6fb;">
     <h2>Round <span id="overview-round-number">1</span> Overview</h2>
     <p style="font-size: 1.2em;">Use the Previous / Next buttons to navigate between actions. <br>
@@ -469,7 +452,7 @@
             <input type="text" id="feedback-explanation-input" style="width: 60%; margin-top: 5px;" placeholder="..." />
         </div>
         <div id="bottom-buttons" style="margin-bottom: 18px;">
-            <button id="next-episode-button">Do Not Update</button> <!-- Do Not Update -->
+            <button id="next-episode-button">Next Round</button>
             <button id="update-agent-button" style="margin-left: 10px;">Update Agent</button>
         </div>
         
@@ -498,8 +481,6 @@
                     <h3>Updated Strategy</h3>
                     <canvas id="updated-agent-canvas" style="background: #f0f0f0; width: 400px; height: 400px;"></canvas>
                 </div>
-                <!-- Another Example button positioned at bottom right of compare container -->
-                <!-- <button id="another-example-button" style="position: absolute; bottom: -10px; right: 10px; padding: 8px 16px; font-size: 14px; background-color: #f39c12; color: white; border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">Another Example</button> -->
             </div>
         </div>
         <!-- Add explanation input below the compare buttons -->
@@ -536,7 +517,7 @@
   <div style="margin-top: 30px; font-size: 2rem; color: #222;">Updating AI agent...</div>
 </div>
 
-    <script src="static/js/game.js"></script>
+    <script src="static/js/game_no_feedback.js"></script>
 
 </body>
 </html>

@@ -1,0 +1,162 @@
+StartDate,EndDate,Status,IPAddress,Progress,Duration (in seconds),Finished,RecordedDate,ResponseId,RecipientLastName,RecipientFirstName,RecipientEmail,ExternalReference,LocationLatitude,LocationLongitude,DistributionChannel,UserLanguage,Q389_Browser,Q389_Version,Q389_Operating System,Q389_Resolution,Consent timing_First Click,Consent timing_Last Click,Consent timing_Page Submit,Consent timing_Click Count,Consent,prolific_id,Q1_First Click,Q1_Last Click,Q1_Page Submit,Q1_Click Count,Q118_First Click,Q118_Last Click,Q118_Page Submit,Q118_Click Count,Q110,Q160,Q163,Q165,Q178,Q164,Q179,Q199_1,Q199_2,Q199_3,Q199_4,Q199_5,Q199_6,Q608_First Click,Q608_Last Click,Q608_Page Submit,Q608_Click Count,Q609,Tutorial,Q613,Q653_First Click,Q653_Last Click,Q653_Page Submit,Q653_Click Count,Q192_First Click,Q192_Last Click,Q192_Page Submit,Q192_Click Count,Q657,Q614_First Click,Q614_Last Click,Q614_Page Submit,Q614_Click Count,Q615,Q193_First Click,Q193_Last Click,Q193_Page Submit,Q193_Click Count,Q171,Q593_First Click,Q593_Last Click,Q593_Page Submit,Q593_Click Count,Q594,Q175,Q197_First Click,Q197_Last Click,Q197_Page Submit,Q197_Click Count,Q196,Demographics timing_First Click,Demographics timing_Last Click,Demographics timing_Page Submit,Demographics timing_Click Count,age,gender,country,country_3_TEXT,education,education_6_TEXT,ai,AI_1,AI_2,AI_3,AI_4,AI_5,comments,Q261,Random_ID,AWSURL,group,ProlificID,agent_level,bonus_group
+Start Date,End Date,Response Type,IP Address,Progress,Duration (in seconds),Finished,Recorded Date,Response ID,Recipient Last Name,Recipient First Name,Recipient Email,External Data Reference,Location Latitude,Location Longitude,Distribution Channel,User Language,Click to write the question text - Browser,Click to write the question text - Version,Click to write the question text - Operating System,Click to write the question text - Resolution,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Thank you for participating in this study. It will include decision-making tasks followed by some questions about yourself.
+
+
+ 
+
+Estimated study time: 30 minutes. 
+Your responses are confidential. Whatever information you convey in this study will be anonymized and will not be traced back to you.
+
+
+
+Please read all the instructions and information very carefully.
+
+If you have any questions, you may contact Matan Solomon: ma.solomon@campus.technion.ac.il
+
+
+ 
+
+HEADS UP
+
+Achieving high performance can qualify you for bonus payments of up to 1 pound.
+
+
+
+Notice: After choosing one of the options below, click on the blue arrow at the bottom right side of the screen.",Please record your participant ID in prolific academic:,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Avatar View:
+
+ 
+
+The avatar's view is limited, and it can only see what is in front of it and 3 blocks to each side; out-of-view cells appear darker.
+
+Example images:
+
+
+
+
+
+
+ 
+By turning, the view will also change and let the avatar see different parts of the grid 
+
+
+ 
+When the avatar is facing a ball, like we see in the upper example, it can collect the ball using the Key ‘1’. There is no limit to the number of balls the avatar can collect.",Q160,Reward?,Q165,Reward?,Q164,Reward?,Answer the following questions based on your opinion of the system. - I found the explanations of the agent’s updates clear and easy to understand,Answer the following questions based on your opinion of the system. - I felt that the explanations were detailed enough,Answer the following questions based on your opinion of the system. - The explanations felt too detailed and overwhelming,Answer the following questions based on your opinion of the system. - The explanations helped me see how my feedback changed the agent’s behavior,Answer the following questions based on your opinion of the system. - The visual demonstrations of policy changes helped understand the differences between agents,Answer the following questions based on your opinion of the system. - The explanations made it easier for me to decide whether to trust the agent,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"-------- Practice time - Getting familiar with the Environment  --------
+
+In the first part of the game, you will control the avatar using your keyboard:
+
+Up arrow (↑) – Move forward
+
+Left arrow (←)  Turn the avatar to ITS left
+
+Right arrow (→)  Turn the avatar to ITS right
+
+Key ‘1’ – Pick up a ball directly in front of the avatar
+
+
+To get a better understanding of the environment and the game, you will play the game yourself.
+In the link below, you need to play at least 3 rounds of the game.
+
+
+
+
+HEADS UP
+
+After 3 rounds, a green button will appear below. Press it to finish the tutorial and receive the completion number to continue the survey. 
+
+Good luck!","Notice: When planning your movement, feel free to take your time.The score is dependent only on the","You are now ready to proceed to the main task!
+
+Good luck!",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Main Task
+
+
+
+The following link will open the task in a new browser tab - link
+
+
+
+To continue, enter below the confirmation number you got at the end of the task:",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Instructions:
+
+ 
+In this section, an AI agent will control the avatar in the game for five rounds.
+
+The agent is imperfect—it may make mistakes or choose suboptimal actions.
+
+Your task is to train the agent to improve its performance: the better it performs by the end of the five rounds, the greater your reward.
+
+In each round, you will first observe the agent controlling the avatar. Afterwards, you will proceed to the Round Overview Page, where you can provide feedback by correcting the agent’s poor decisions.
+ 
+
+
+
+ 
+
+Use the Previous and Next Action buttons to step through the agent’s most recent path, one action at a time. 
+
+When you identify a poor action, click its label (e.g., “forward”) and select a better alternative.
+
+ 
+
+
+
+  
+
+ 
+
+ 
+
+If you revise the same action more than once, only your final selection will take effect.
+
+ 
+
+After selecting a correction, it will be highlighted with a blue background, and a white symbol will appear on the avatar to indicate the newly selected action. 
+
+In this example, we want to tell the agent not to step into the lava, so we selected the ‘turn right’ action instead, toward the blue ball.
+
+
+
+
+ 
+
+ 
+
+	When you finish submitting your feedback, click Update Agent to help the agent learn from your corrections and adjust its strategy.
+
+
+ 
+
+If you believe the agent’s actions in the round were already optimal, click Do Not Update to continue without updating the agent.",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Main Task
+
+
+
+The following link will open the game in a new browser tab  - link
+
+
+
+to continue, enter below the confirmation number you got at the end of the task:",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"Final Part
+The bonus for this survey will be proportional to the success of the avatar in the next game round.
+
+Would you like to let the trained agent (after completing the five training rounds) control the avatar and finish the survey, 
+or would you prefer to control the avatar yourself?",Please briefly explain your choice:,Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,"The following link will open the game in a new browser tab  - link
+
+Paste your confirmation code here:",Timing - First Click,Timing - Last Click,Timing - Page Submit,Timing - Click Count,Age:,Gender identity:,In which country do you reside? - Selected Choice,In which country do you reside? - Other - Text,Years of education: - Selected Choice,Years of education: - Other: - Text,How familiar are you with Artificial Intelligence?,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I believe AI will improve my life.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I believe that AI will improve my work.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think I will use AI technology in the future.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think AI technology is a threat to humans.,Please state your agreement with the following sentences regarding Artificial Intelligence (AI): - I think AI technology is positive for humanity.,"Thank you for your participation.
+Please share any thoughts or comments about this study in the space below.",Click the next button to complete the survey.,Random_ID,AWSURL,group,ProlificID,agent_level,bonus_group
+"{""ImportId"":""startDate"",""timeZone"":""America/Denver""}","{""ImportId"":""endDate"",""timeZone"":""America/Denver""}","{""ImportId"":""status""}","{""ImportId"":""ipAddress""}","{""ImportId"":""progress""}","{""ImportId"":""duration""}","{""ImportId"":""finished""}","{""ImportId"":""recordedDate"",""timeZone"":""America/Denver""}","{""ImportId"":""_recordId""}","{""ImportId"":""recipientLastName""}","{""ImportId"":""recipientFirstName""}","{""ImportId"":""recipientEmail""}","{""ImportId"":""externalDataReference""}","{""ImportId"":""locationLatitude""}","{""ImportId"":""locationLongitude""}","{""ImportId"":""distributionChannel""}","{""ImportId"":""userLanguage""}","{""ImportId"":""QID520_BROWSER""}","{""ImportId"":""QID520_VERSION""}","{""ImportId"":""QID520_OS""}","{""ImportId"":""QID520_RESOLUTION""}","{""ImportId"":""QID11_FIRST_CLICK""}","{""ImportId"":""QID11_LAST_CLICK""}","{""ImportId"":""QID11_PAGE_SUBMIT""}","{""ImportId"":""QID11_CLICK_COUNT""}","{""ImportId"":""QID3""}","{""ImportId"":""QID574_TEXT""}","{""ImportId"":""QID431_FIRST_CLICK""}","{""ImportId"":""QID431_LAST_CLICK""}","{""ImportId"":""QID431_PAGE_SUBMIT""}","{""ImportId"":""QID431_CLICK_COUNT""}","{""ImportId"":""QID591_FIRST_CLICK""}","{""ImportId"":""QID591_LAST_CLICK""}","{""ImportId"":""QID591_PAGE_SUBMIT""}","{""ImportId"":""QID591_CLICK_COUNT""}","{""ImportId"":""QID583""}","{""ImportId"":""QID633""}","{""ImportId"":""QID636""}","{""ImportId"":""QID638""}","{""ImportId"":""QID651""}","{""ImportId"":""QID637""}","{""ImportId"":""QID652""}","{""ImportId"":""QID672_1""}","{""ImportId"":""QID672_2""}","{""ImportId"":""QID672_6""}","{""ImportId"":""QID672_3""}","{""ImportId"":""QID672_4""}","{""ImportId"":""QID672_5""}","{""ImportId"":""QID608_FIRST_CLICK""}","{""ImportId"":""QID608_LAST_CLICK""}","{""ImportId"":""QID608_PAGE_SUBMIT""}","{""ImportId"":""QID608_CLICK_COUNT""}","{""ImportId"":""QID609""}","{""ImportId"":""QID610_TEXT""}","{""ImportId"":""QID613""}","{""ImportId"":""QID653_FIRST_CLICK""}","{""ImportId"":""QID653_LAST_CLICK""}","{""ImportId"":""QID653_PAGE_SUBMIT""}","{""ImportId"":""QID653_CLICK_COUNT""}","{""ImportId"":""QID665_FIRST_CLICK""}","{""ImportId"":""QID665_LAST_CLICK""}","{""ImportId"":""QID665_PAGE_SUBMIT""}","{""ImportId"":""QID665_CLICK_COUNT""}","{""ImportId"":""QID657_TEXT""}","{""ImportId"":""QID614_FIRST_CLICK""}","{""ImportId"":""QID614_LAST_CLICK""}","{""ImportId"":""QID614_PAGE_SUBMIT""}","{""ImportId"":""QID614_CLICK_COUNT""}","{""ImportId"":""QID615""}","{""ImportId"":""QID666_FIRST_CLICK""}","{""ImportId"":""QID666_LAST_CLICK""}","{""ImportId"":""QID666_PAGE_SUBMIT""}","{""ImportId"":""QID666_CLICK_COUNT""}","{""ImportId"":""QID644_TEXT""}","{""ImportId"":""QID593_FIRST_CLICK""}","{""ImportId"":""QID593_LAST_CLICK""}","{""ImportId"":""QID593_PAGE_SUBMIT""}","{""ImportId"":""QID593_CLICK_COUNT""}","{""ImportId"":""QID594""}","{""ImportId"":""QID648_TEXT""}","{""ImportId"":""QID670_FIRST_CLICK""}","{""ImportId"":""QID670_LAST_CLICK""}","{""ImportId"":""QID670_PAGE_SUBMIT""}","{""ImportId"":""QID670_CLICK_COUNT""}","{""ImportId"":""QID669_TEXT""}","{""ImportId"":""QID12_FIRST_CLICK""}","{""ImportId"":""QID12_LAST_CLICK""}","{""ImportId"":""QID12_PAGE_SUBMIT""}","{""ImportId"":""QID12_CLICK_COUNT""}","{""ImportId"":""QID5_TEXT""}","{""ImportId"":""QID6""}","{""ImportId"":""QID281""}","{""ImportId"":""QID281_3_TEXT""}","{""ImportId"":""QID7""}","{""ImportId"":""QID7_6_TEXT""}","{""ImportId"":""QID16""}","{""ImportId"":""QID626_1""}","{""ImportId"":""QID626_2""}","{""ImportId"":""QID626_3""}","{""ImportId"":""QID626_4""}","{""ImportId"":""QID626_5""}","{""ImportId"":""QID10_TEXT""}","{""ImportId"":""QID392""}","{""ImportId"":""Random_ID""}","{""ImportId"":""AWSURL""}","{""ImportId"":""group""}","{""ImportId"":""ProlificID""}","{""ImportId"":""agent_level""}","{""ImportId"":""bonus_group""}"
+2025-09-09 08:05:02,2025-09-09 08:32:49,IP Address,77.137.74.141,100,1667,True,2025-09-09 08:32:50,R_47TX4uL3SM35Rnz,,,,,32.8259,34.9968,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1920x1080,7.012,7.012,8.26,1,I confirm my participation in the study,Test24628376482736482345,0,0,81.397,0,0,0,24.694,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Somewhat disagree,Disagree,,Neither agree nor disagree,Agree,Neither agree nor disagree,25.58,168.955,171.473,5,,4242,,,,,,,,,,,0,0,114.658,0,,7.209,161.86,165.477,2,APPL7,6.892,6.892,8.473,1,I will play myself,,1.153,910.689,913.006,2,2322,1.182,11.787,12.857,10,33,M,United states,,Bachelor level academic education,,"Moderately familiar (practical experience, e.g., using AI-powered tools or assistants)",2,3,4. Neither agree nor disagree,3,2,,,2608559850,,3,Test24628376482736482345,APPL7,2322
+2025-09-09 14:24:48,2025-09-09 14:28:32,IP Address,77.137.74.141,100,223,True,2025-09-09 14:28:33,R_9zcC6eOuinCP0fK,,,,,32.8259,34.9968,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1920x1080,1.456,1.456,2.13,1,I confirm my participation in the study,Test230703245803948234214234,0,0,1.926,0,3.358,3.358,8.371,1,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Strongly disagree,Strongly disagree,Strongly disagree,Strongly disagree,,,3.732,13.426,26.405,2,,4242,,,,,,,,,,,0,0,22.434,0,,2.9,2.9,7.905,1,APPL2,2.342,2.342,3.629,1,I will play myself,,8.671,51.489,56.189,2,2321,8.134,24.042,24.722,10,34,M,Australia,,Master level academic education,,"Very familiar (frequent user or hobbyist, e.g., building AI models or applications)",3,3,4. Neither agree nor disagree,3,4. Neither agree nor disagree,,,5168832243,,4,Test230703245803948234214234,APPL2,2321
+2025-09-10 03:01:12,2025-09-10 03:58:06,IP Address,5.29.12.184,100,3413,True,2025-09-10 03:58:07,R_4PpN1ciGSvUWwbV,,,,,32.0804,34.7807,anonymous,EN,Chrome,135.0.0.0,Macintosh,1470x956,48.654,48.654,49.978,1,I confirm my participation in the study," TEST_ELAD127682364876582374534",38.532,189.568,202.618,5,0,0,58.894,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Agree,Agree,Disagree,Somewhat disagree,Agree,Agree,64.96,210.258,213.304,2,,4242,,,,,,,,,,,0,0,152.647,0,,4.798,2117.539,2119.263,3,APPL7,15.757,17.031,27.147,2,I will let the AI agent play,i think he is good,,,,,,2.876,102.339,104.277,21,24,M,Other,,8-12 years,,Not at all familiar,6,6,7. Strongly agree,4. Neither agree nor disagree,5,,,4526271875,,4," TEST_ELAD127682364876582374534",APPL7,APPL7
+2025-09-10 03:38:50,2025-09-10 03:50:57,IP Address,77.137.70.137,35,727,False,2025-09-10 04:38:51,R_4Cfhwg4u8pflVqW,,,,,32.0804,34.7807,anonymous,EN,Edge,140.0.0.0,Windows NT 10.0,1536x864,4.242,6.29,16.007,2,I confirm my participation in the study,TEST_DAVID321769812376492364732,0,0,99.528,0,0,0,49.694,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7825969914,,3,TEST_DAVID321769812376492364732,,
+2025-09-10 04:53:22,2025-09-10 05:39:44,IP Address,77.137.70.137,100,2781,True,2025-09-10 05:39:45,R_4rijy1OCJGhjLfv,,,,,32.0804,34.7807,anonymous,EN,Edge,140.0.0.0,Windows NT 10.0,1536x864,2.498,2.498,8.392,1,I confirm my participation in the study,TEST_DAVID321769812376492364712,0,0,19.5,0,131.74699999999999,132.064,134.874,2,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Strongly disagree,Somewhat agree,Somewhat agree,Somewhat agree,Somewhat agree,Somewhat agree,5.36,760.7090000000001,766.6030000000001,20,,4242,,,,,,,,,,,0,0,189.282,0,,12.334,612.464,626.389,4,APPL2,21.932,24.221,38.354,2,I will let the AI agent play,QURIOUS TO SEE HOW IT WORKS,,,,,,5.339,31.962,33.73,10,62,M,Other,,Master level academic education,,"Somewhat familiar (some knowledge, e.g., from a course or self-study)",3,3,3,3,3,NEED MORE TIME TO TRAIN,,8690130744,,1,TEST_DAVID321769812376492364712,APPL2,APPL2
+2025-09-10 06:24:07,2025-09-10 06:37:18,IP Address,77.137.66.31,100,790,True,2025-09-10 06:37:19,R_9E0KXCDMdS86hRb,,,,,32.8259,34.9968,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1920x1080,15.419,15.419,16.211,1,I confirm my participation in the study,Pilot_test12419238749832147523084523,0,0,2.262,0,0,0,2.1,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Strongly disagree,Somewhat disagree,Somewhat disagree,Disagree,Somewhat disagree,Disagree,3.536,37.531,39.435,2,,4242,,,,,,,,,,,0,0,15.168,0,,2.804,501.141,511.038,4,APPL7,16.073,16.073,17.69,1,I will play myself,,1.443,97.478,99.855,2,2322,2.816,16.561,18.406,12,33,M,Australia,,Bachelor level academic education,,"Moderately familiar (practical experience, e.g., using AI-powered tools or assistants)",2,3,3,3,3,,,7484309431,,2,Pilot_test12419238749832147523084523,APPL7,2322
+2025-09-10 06:44:13,2025-09-10 07:01:08,IP Address,85.255.237.107,100,1015,True,2025-09-10 07:01:09,R_8tG8XlTfd7fhrB9,,,,,51.4964,-0.1224,anonymous,EN,Edge,140.0.0.0,Windows NT 10.0,1920x1080,2.484,2.484,4.695,1,I confirm my participation in the study,637e3bedd8c3601a81a65889,16.241,81.365,82.483,5,19.715,19.715,21.201,1,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Somewhat agree,Somewhat agree,Somewhat disagree,Disagree,Disagree,Disagree,45.947,246.512,248.629,3,,4242,,19.847,19.847,25.718,1,5.818,236.743,238.85,2,APPL3,,,,,,,,,,,2.579,3.701,20.656,2,I will play myself,The agent is poor player.  Hits reds and lava,2.674,78.984,81.122,2,2322,1.633,46.876,48.046,14,54,M,United Kingdom,,Bachelor level academic education,,"Moderately familiar (practical experience, e.g., using AI-powered tools or assistants)",5,2,5,6,2,,,4022621023,,0,637e3bedd8c3601a81a65889,APPL3,2322
+2025-09-10 06:44:00,2025-09-10 07:03:02,IP Address,109.234.178.242,100,1141,True,2025-09-10 07:03:02,R_8rGjy5H5fg1tFu0,,,,,50.73,-1.1621,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1920x1080,1.5,1.5,2.007,1,I confirm my participation in the study,55e876f25e4d360012cc283d,59.607,60.322,103.661,2,0,0,33.8,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Agree,Agree,Strongly agree,Agree,Neither agree nor disagree,Neither agree nor disagree,36.597,139.825,142.916,2,,4242,,,,,,,,,,,0,0,85.118,0,,5.095,496.119,502.618,2,APPL6,10.443,11.645,23.948,2,I will play myself,I have more confidence in myself.,1.529,44.428,46.13,2,2322,0.917,22.18,23.215,10,30,M,United Kingdom,,8-12 years,,"Slightly familiar (basic awareness, e.g., from news or media)",4. Neither agree nor disagree,5,6,2,5,,,9671398039,,3,55e876f25e4d360012cc283d,APPL6,2322
+2025-09-10 06:41:59,2025-09-10 07:05:34,IP Address,37.60.83.106,100,1414,True,2025-09-10 07:05:34,R_8KZcwoXh9TS81Rj,,,,,52.0443,-0.7601,anonymous,EN,Chrome,139.0.0.0,Macintosh,1440x900,5.745,5.745,7.482,1,I confirm my participation in the study,5bce39ceb8bc680001c67555,12.694,12.694,63.518,1,0,0,21.186,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Agree,Agree,Disagree,Neither agree nor disagree,Neither agree nor disagree,Agree,24.406,359.79,362.634,2,,4242,,,,,,,,,,,0,0,44.708,0,,3.228,585.397,587.565,2,APPL7,8.804,10.306,21.162,2,I will play myself,I trust my judgement better,3.4,46.066,48.455,2,2323,2.21,25.244,26.414,10,29,F,United Kingdom,,Master level academic education,,"Very familiar (frequent user or hobbyist, e.g., building AI models or applications)",5,5,7. Strongly agree,5,6,,,5415773741,,3,5bce39ceb8bc680001c67555,APPL7,2323
+2025-09-10 06:45:01,2025-09-10 07:06:42,IP Address,51.190.58.160,100,1301,True,2025-09-10 07:06:42,R_2obbZDNO1iWNsCx,,,,,53.373,-3.1013,anonymous,EN,Chrome,139.0.0.0,CrOS x86_64 14541.0.0,1366x768,22.413,23.824,27.478,2,I confirm my participation in the study,5ebc0abd2cc5f1054c82a0d7,0,0,74.598,0,1.377,1.377,11.662,1,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Strongly agree,Strongly agree,Disagree,Strongly agree,Strongly agree,Agree,19.871,317.848,321.218,4,,4242,,,,,,,,,,,0,0,48.659,0,,4.18,418.267,422.949,3,APPL2,15.832,20.7,84.267,3,I will let the AI agent play,"it made some good moves i think its learnt well,it started to go the best routes",,,,,,2.27,54.605,57.318,17,43,M,United Kingdom,,8-12 years,,"Moderately familiar (practical experience, e.g., using AI-powered tools or assistants)",7. Strongly agree,7. Strongly agree,7. Strongly agree,1. Strongly disagree,7. Strongly agree,,,5772969523,,2,5ebc0abd2cc5f1054c82a0d7,APPL2,APPL2
+2025-09-10 06:51:17,2025-09-10 07:07:23,IP Address,99.233.6.225,100,965,True,2025-09-10 07:07:23,R_6Vfp01SJoRLf4BQ,,,,,43.5903,-79.7598,anonymous,EN,Firefox,142.0,Windows NT 10.0,1920x1080,1.306,1.306,2.361,1,I confirm my participation in the study,56ebadebcdfa81000d9e2b67,0,0,2.893,0,0,0,1.283,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Strongly agree,Strongly agree,Strongly disagree,Strongly agree,Strongly agree,Strongly agree,28.26,222.121,225.616,2,,4242,,0,0,41.992,0,2.739,458.848,462.786,2,APPL2,,,,,,,,,,,16.48,46.976,56.214,3,I will play myself,I don't trust the AI agent's ability and judgement,2.474,50.152,52.862,2,2323,1.15,42.781,44.701,11,35,F,Canada,,Bachelor level academic education,,"Moderately familiar (practical experience, e.g., using AI-powered tools or assistants)",5,5,7. Strongly agree,3,5,,,6387492802,,0,56ebadebcdfa81000d9e2b67,APPL2,2323
+2025-09-10 06:45:59,2025-09-10 07:18:03,IP Address,86.7.225.91,100,1923,True,2025-09-10 07:18:04,R_84u70Dg2VFjA4Ou,,,,,51.5507,-0.0537,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1920x1080,33.112,33.112,34.053,1,I confirm my participation in the study,5c2ebf3e626018000134986f,49.544,97.108,142.724,6,0,0,42.891,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Strongly agree,Strongly agree,Disagree,Somewhat agree,Somewhat agree,Somewhat agree,56.931,699.693,706.569,6,,4242,,,,,,,,,,,3.065,54.644,72.391,7,,7.526,485.083,488.951,2,APPL2,2.635,20.203,104.065,5,I will let the AI agent play,I think the AI is about as good as me performance. I'd also rather it does the work,,,,,,1.681,31.355,33.928,13,43,M,United Kingdom,,Bachelor level academic education,,"Moderately familiar (practical experience, e.g., using AI-powered tools or assistants)",7. Strongly agree,7. Strongly agree,7. Strongly agree,5,5,"I understood the game but I found the AI training interface was confusing to use ",,1594258201,,1,5c2ebf3e626018000134986f,APPL2,APPL2
+2025-09-10 06:43:41,2025-09-10 07:18:38,IP Address,148.252.156.253,100,2097,True,2025-09-10 07:18:39,R_8lJH120h3QZaQkC,,,,,51.4964,-0.1224,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1536x864,15.455,22.569,25.803,4,I confirm my participation in the study,5c81582c4c1a61000155584f,1.185,105.308,106.597,15,2.152,30.325,32.287,7,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Agree,Strongly agree,Strongly disagree,Strongly agree,Strongly agree,Agree,12.033,355.495,358.812,9,,4242,,,,,,,,,,,1.935,77.468,79.16,13,,7.826,1010.887,1014.565,3,APPL2,16.903,19.749,28.822,3,I will play myself,i think that i am more competent,2.704,94.594,101.427,2,2323,1.889,43.632,45.26,18,49,M,United Kingdom,,8-12 years,,"Moderately familiar (practical experience, e.g., using AI-powered tools or assistants)",4. Neither agree nor disagree,4. Neither agree nor disagree,5,1. Strongly disagree,6,,,6480574797,,2,5c81582c4c1a61000155584f,APPL2,2323
+2025-09-10 06:42:58,2025-09-10 07:24:56,IP Address,90.203.249.167,100,2517,True,2025-09-10 07:24:57,R_8rw1givfdoXTFEY,,,,,51.5708,-0.1033,anonymous,EN,Chrome,140.0.0.0,Windows NT 10.0,1536x864,317.949,317.949,318.614,1,I confirm my participation in the study,5aff33bae55f90000139f664,0,0,52.498000000000005,0,109.836,115.53399999999999,116.51699999999998,5,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Agree,Agree,Agree,Agree,Agree,Agree,996.911,1068.261,1070.446,2,,4242,,,,,,,,,,,235.201,235.201,235.581,1,,8.164,420.761,421.001,3,APPL7,14.579,15.583,28.901,2,I will play myself,I believe I can perform better than the agent,3.684,44.382,53.293,2,2323,1.184,20.936,22.026,11,38,M,United Kingdom,,"PhD, MD, or other doctoral degree",,"Slightly familiar (basic awareness, e.g., from news or media)",4. Neither agree nor disagree,4. Neither agree nor disagree,4. Neither agree nor disagree,4. Neither agree nor disagree,4. Neither agree nor disagree,Everything worked well in the study. Thank you!,,9748141932,,1,5aff33bae55f90000139f664,APPL7,2323
+2025-09-10 06:46:25,2025-09-10 07:35:36,IP Address,109.146.234.21,100,2950,True,2025-09-10 07:35:36,R_8z0skjm8PyCoGQN,,,,,51.477,-0.1959,anonymous,EN,Chrome,139.0.0.0,Macintosh,1920x1080,11.726,11.726,13.408,1,I confirm my participation in the study,5ea9a6a68db51d0dfd2edfe2,0,0,84.52,0,0,0,31.169,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Somewhat agree,Agree,Somewhat agree,Somewhat agree,Neither agree nor disagree,Somewhat agree,25.643,1457.808,1461.671,2,,4242,,,,,,,,,,,0,0,48.236,0,,2.717,853.116,854.984,2,APPL7,7.385,8.655,38.037,2,I will play myself,"The trained agent makes rookie mistakes, and I am confident I can achieve a far better score and make fewer mistakes.",1.677,61.633,63.719,2,2323,1.088,77.174,80.581,23,35,M,United Kingdom,,Bachelor level academic education,,"Slightly familiar (basic awareness, e.g., from news or media)",6,4. Neither agree nor disagree,6,5,6,"Planning an updated route was difficult, because the path was not updated in the main screen, meaning you had to visualise the path in your head. Otherwise, all went well.",,8717490973,,3,5ea9a6a68db51d0dfd2edfe2,APPL7,2323
+2025-09-10 06:40:49,2025-09-10 06:41:04,IP Address,77.137.66.31,6,15,False,2025-09-10 07:40:53,R_4lgawiXCV9Jor0M,,,,,32.8259,34.9968,anonymous,EN,Chrome,139.0.0.0,Windows NT 10.0,1920x1080,9.535,9.535,10.254,1,I confirm my participation in the study,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9911445596,,0,,,
+2025-09-10 06:42:05,2025-09-10 06:46:48,IP Address,99.233.6.225,37,283,False,2025-09-10 07:42:06,R_3LAPuTiLiZMQSeP,,,,,43.5903,-79.7598,anonymous,EN,Chrome,140,Macintosh,414x896,0.815,1.868,2.774,2,I confirm my participation in the study,56ebadebcdfa81000d9e2b67,5.423,106.316,107.421,11,26.573,26.573,28.229,1,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Strongly agree,Strongly agree,Strongly disagree,Strongly agree,Strongly agree,Strongly agree,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3610764189,,0,56ebadebcdfa81000d9e2b67,,
+2025-09-10 07:35:41,2025-09-10 07:52:48,IP Address,217.161.88.76,100,1026,True,2025-09-10 07:52:49,R_2X4mj7OwQn3CxFp,,,,,51.4964,-0.1224,anonymous,EN,Chrome,140.0.0.0,Windows NT 10.0,1920x1080,1.929,1.929,2.871,1,I confirm my participation in the study,67606cca6591f7023be55e8e,0,0,75.4,0,0,0,23.201,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Somewhat agree,Somewhat agree,Disagree,Somewhat agree,Somewhat agree,Agree,20.661,161.26,163.681,2,,4242,,,,,,,,,,,0,0,35.258,0,,3.278,376.322,378.766,3,APPL5,10.22,11.723,27.83,2,I will play myself,the agent is not always making the best moves.,1.873,78.935,81.706,2,2323,1.462,38.221,39.257,13,45,M,United Kingdom,,8-12 years,,"Very familiar (frequent user or hobbyist, e.g., building AI models or applications)",5,6,6,7. Strongly agree,4. Neither agree nor disagree,,,8671029992,,3,67606cca6591f7023be55e8e,APPL5,2323
+2025-09-10 07:18:01,2025-09-10 07:29:38,IP Address,174.95.27.83,65,696,False,2025-09-10 08:18:06,R_1lxIYWxdUA0yHul,,,,,43.7806,-79.3503,anonymous,EN,Chrome,140.0.0.0,Windows NT 10.0,1920x1080,2.296,2.296,3.075,1,I confirm my participation in the study,67b5c6ec6311c086aa61cd96,0,0,236.69,0,0,0,3.818,0,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Somewhat agree,Somewhat agree,Somewhat disagree,Somewhat agree,Somewhat agree,Somewhat agree,10.713,176.599,180.87,5,,4242,,,,,,,,,,,5.389,19.826,35.435,3,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5893441096,,1,67b5c6ec6311c086aa61cd96,,
+2025-09-10 07:42:16,2025-09-10 08:24:07,IP Address,51.190.217.214,100,2510,True,2025-09-10 08:24:08,R_2Lv8vugMBgDoq9b,,,,,51.5327,-0.0996,anonymous,EN,Chrome,140.0.0.0,Windows NT 10.0,1824x1216,16.517,16.517,17.957,1,I confirm my participation in the study,631610af8e747093cd90e00d,245.378,262.661,264.109,5,7.121,28.575000000000003,31.476,6,,Turn Right,-0.1,Pickup,3.9,Turn Left,-0.1,Agree,Agree,Strongly disagree,Somewhat agree,Agree,Neither agree nor disagree,21.139,342.554,343.951,4,,4242,,,,,,,,,,,19.303,49.919,52.691,7,,3.573,1426.784,1429.451,2,APPL2,16.146,56.782,84.237,9,I will let the AI agent play,I figure it's somewhat better now,,,,,,1.517,41.927,43.975,31,40,F,United Kingdom,,8-12 years,,"Moderately familiar (practical experience, e.g., using AI-powered tools or assistants)",3,3,4. Neither agree nor disagree,4. Neither agree nor disagree,3,,,5752126418,,1,631610af8e747093cd90e00d,APPL2,APPL2

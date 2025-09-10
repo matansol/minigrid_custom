@@ -515,7 +515,7 @@ class CustomEnv(MiniGridEnv):
             # Special final step environment - create a more challenging layout
             blue_ball_positions = [(2, 3), (5, 2)]
             green_ball_positions = [(3, 5), (4, 2)]
-            red_ball_positions = [(2, 5)]
+            red_ball_positions = [(2, 6)]
             lava_positions = [(3, 3), (4, 4), (5, 5), (3, 4)]
             
             for pos in blue_ball_positions:

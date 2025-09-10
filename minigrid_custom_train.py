@@ -502,19 +502,19 @@ def main(**kwargs):
         # AllColors LL  - 0
         {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': 0.2, 'step': 0.05},
         # AllColors LH  - 1
-        {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': -4, 'step': 0.1},
+        {'balls': {'red': 2, 'green': 2, 'blue': 4}, 'lava': -3, 'step': 0.1},
         # OnlyBlue LH  - 2
-        {'balls': {'red': -1, 'green': -1, 'blue': 4}, 'lava': -3, 'step': 0.1},
+        {'balls': {'red': -2, 'green': -2, 'blue': 4}, 'lava': -3, 'step': 0.1},
         # OnlyBlue LL  - 3
         {'balls': {'red': -2, 'green': -2, 'blue': 4}, 'lava': 0.2, 'step': 0.1},
         # NoRed LL  - 4
         {'balls': {'red': -1, 'green': 3, 'blue': 4}, 'lava': 0.2, 'step': 0.2},
         # NoRed LH  - 5
-        {'balls': {'red': -1, 'green': 3, 'blue': 4}, 'lava': -3, 'step': 0.1},
+        {'balls': {'red': -1, 'green': 2, 'blue': 4}, 'lava': -3, 'step': 0.1},
         # NoGreen LL  - 6   
         {'balls': {'red': 2, 'green': -1, 'blue': 4}, 'lava': 0.2, 'step': 0.2},
         # NoGreen LH - 7
-        {'balls': {'red': 3, 'green': -0.5, 'blue': 4}, 'lava': -3, 'step': 0.1},
+        {'balls': {'red': 3, 'green': -1, 'blue': 4}, 'lava': -3, 'step': 0.1},
         # OnlyGreen LH - 8
         {'balls': {'red': -0.5, 'green': 4, 'blue': -0.5}, 'lava': -3, 'step': 0.1},
         # OnlyGreen LL - 9
@@ -541,7 +541,7 @@ def main(**kwargs):
     max_steps = 50  # Reduced from 50 for faster learning
     grid_size = 8   # Reduced from 8 for simpler navigation
     agent_view_size = 7
-    num_lava_cells = 0
+    num_lava_cells = 5
     num_balls = 5   # Reduced from 3 for simpler task
 
     # if args.train:
@@ -562,8 +562,8 @@ def main(**kwargs):
             color_rewards=colors_rewards,
             step_count_observation=step_count_observation, # Add step count to observation
             enhanced_observation=enhanced_observation,   # NEW: Add enhanced observations
-            lava_panishment=lava_cost,
-            small_actions_space=True,
+            lava_penalty=lava_cost,
+            small_actions_space=False,
         )
     train_env = NoDeath(ObjObsWrapper(train_env), no_death_types=('lava',), death_cost=lava_cost)
     if args.full_image:
@@ -618,7 +618,7 @@ def main(**kwargs):
             color_rewards=colors_rewards,
             step_count_observation=step_count_observation, # Add step count to observation
             enhanced_observation=enhanced_observation,   # NEW: Add enhanced observations
-            lava_panishment=lava_cost,
+            lava_penalty=lava_cost,
         )
     eval_env = NoDeath(ObjObsWrapper(eval_env), no_death_types=('lava',), death_cost=lava_cost)
 
@@ -667,12 +667,12 @@ def main(**kwargs):
             policy_kwargs=policy_kwargs,
             verbose=1,
             learning_rate=1e-3,
-            ent_coef=0.1,
+            ent_coef=0.02,
             n_steps=32,
             batch_size=16,
             gamma=0.98,
             gae_lambda=0.95,
-            n_epochs=10,
+            n_epochs=5,
             clip_range=0.3,
             device=device
         )

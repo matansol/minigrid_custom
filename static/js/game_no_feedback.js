@@ -32,6 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextEpisodeButtonCompare = document.getElementById('next-episode-compare-button');
     const updateAgentsButton = document.getElementById('update-agent-button');
     const useOldAgentButton = document.getElementById('use-old-agent-button');
+    const updateAgentChoiceButton = document.getElementById('update-agent-choice-button');
+    const noChangeChoiceButton = document.getElementById('no-change-choice-button');
     // const anotherExampleButton = document.getElementById('another-example-button');
     const scoreList = document.getElementById('score-list');
     const currentActionElement = document.getElementById('current-action');
@@ -397,6 +399,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 4000);
     });
 
+    // --- AGENT CHOICE BUTTONS ---
+    if (updateAgentChoiceButton) {
+        updateAgentChoiceButton.addEventListener('click', () => {
+            console.log('Update agent choice clicked');
+            socket.emit('update_agent_choice', { choice: 'update' });
+        });
+    }
+
+    if (noChangeChoiceButton) {
+        noChangeChoiceButton.addEventListener('click', () => {
+            console.log('No change choice clicked');
+            socket.emit('update_agent_choice', { choice: 'no_change' });
+        });
+    }
+
     // --- SOCKET EVENTS ---
     socket.on('game_update', data => {
         const activePage = document.querySelector('.page.active');
@@ -447,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         drawPathOnCanvas('previous-agent-canvas', rawImageSrc, data.prevMoveSequence, {
             moveColor: 'yellow',
-            turnColor: 'blue',
+            turnColor: 'lightblue',
             pickupColor: '#e6007a',
             convergeActionLocation,
             scale: 2.2,
@@ -455,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, onCanvasDrawn);
         drawPathOnCanvas('updated-agent-canvas', rawImageSrc, data.updatedMoveSequence, {
             moveColor: 'yellow',
-            turnColor: 'blue',
+            turnColor: 'lightblue',
             pickupColor: '#e6007a',
             convergeActionLocation,
             scale: 2.2,
@@ -463,20 +480,113 @@ document.addEventListener('DOMContentLoaded', () => {
         }, onCanvasDrawn);
     });
 
-    socket.on('episode_finished', data => {
-        const activePage = document.querySelector('.page.active');
+    socket.on('episode_finished_show_choice', data => {
+        console.log('=== NEW DEBUG VERSION ===');
+        console.log('Episode finished, showing agent choice page');
+        console.log('Received data:', data);
+        
+        // Increment phase counter and update round number
         phase2_counter += 1;
-        // Update round number in header
         const roundNumberElem = document.getElementById('round-number');
         if (roundNumberElem) {
             roundNumberElem.textContent = phase2_counter;
         }
-        updateOverviewPage(data);
         
+        // Set the final game image in the agent choice page
+        const agentChoiceGameImage = document.getElementById('agent-choice-game-image');
+        console.log('Found image element:', agentChoiceGameImage ? 'YES' : 'NO');
+        
+        if (agentChoiceGameImage && data.final_image) {
+            console.log('Image data exists, length:', data.final_image.length);
+            const imageSrc = 'data:image/png;base64,' + data.final_image;
+            agentChoiceGameImage.src = imageSrc;
+            console.log('Set image src');
+        } else {
+            console.log('No image element or no image data');
+        }
+        
+        showPage('agent-choice-page');
     });
+
+    socket.on('show_agent_comparison', data => {
+        console.log('Showing agent comparison page');
+        let rawImageSrc = data.rawImage;
+        if (rawImageSrc && !rawImageSrc.startsWith("data:image")) {
+            rawImageSrc = "data:image/png;base64," + rawImageSrc;
+        }
+        let convergeActionLocation = data.convergeActionLocation || -1;
+        let finishedCount = 0;
+        function onCanvasDrawn() {
+            finishedCount += 1;
+            if (finishedCount === 2) {
+                if (firstDemonstrationTime) {
+                    demonstrationTime = new Date().toISOString();
+                    console.log("update the demonstrationTime ", demonstrationTime)
+                    firstDemonstrationTime = false
+                }
+            }
+        }
+        drawPathOnCanvas('previous-agent-canvas', rawImageSrc, data.prevMoveSequence, {
+            moveColor: 'yellow',
+            turnColor: 'lightblue',
+            pickupColor: '#e6007a',
+            convergeActionLocation,
+            scale: 2.2,
+            margin: 20
+        }, onCanvasDrawn);
+        drawPathOnCanvas('updated-agent-canvas', rawImageSrc, data.updatedMoveSequence, {
+            moveColor: 'yellow',
+            turnColor: 'lightblue',
+            pickupColor: '#e6007a',
+            convergeActionLocation,
+            scale: 2.2,
+            margin: 0
+        }, onCanvasDrawn);
+        
+        showPage('compare-agent-update-page');
+    });
+
+    // Removed old episode_finished handler - now using episode_finished_show_choice
 
     socket.on('finish_game', data => {
         displayScores(data.scores);
+    });
+
+    // Handle next episode ready (when user chooses "no change")
+    socket.on('next_episode_ready', data => {
+        console.log('Next episode ready, resetting UI');
+        
+        // Reset start agent button
+        if (startAgentButton) {
+            startAgentButton.disabled = false;
+            startAgentButton.style.backgroundColor = '';
+            startAgentButton.style.color = '';
+        }
+        
+        // Go to next episode page
+        showPage('ph2-game-page');
+    });
+
+    // Global handler for agent selection result - proceed to next episode
+    socket.on('agent_selection_result', data => {
+        console.log('Agent selection result received, proceeding to next episode');
+        if (data && data.agent_group) {
+            agentGroup = data.agent_group;
+            console.log("Updated agentGroup to", agentGroup);
+        }
+        
+        // Reset and start next episode
+        if (startAgentButton) {
+            startAgentButton.disabled = false;
+            startAgentButton.style.backgroundColor = '';
+            startAgentButton.style.color = '';
+        }
+        
+        // Emit next_episode event to properly initialize the next round
+        socket.emit('next_episode');
+        
+        // Go to next episode page
+        showPage('ph2-game-page');
     });
 
     // --- OVERVIEW PAGE LOGIC ---
@@ -830,6 +940,9 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}, onFinis
                 ctx.fillRect(currentPoint.x - 10, currentPoint.y - 10, 15, 15);
             }
             if (actionName == 'forward') {
+                drawArrow(ctx, currentPoint.x, currentPoint.y,
+                    moveArrowSizes[actionDir].dx * scale, moveArrowSizes[actionDir].dy * scale,
+                    10 * scale, 'cyan');
                 const moveColor = config.moveColor || 'yellow';
                 drawArrow(ctx, currentPoint.x, currentPoint.y,
                     moveArrowSizes[actionDir].dx * scale, moveArrowSizes[actionDir].dy * scale,
@@ -837,7 +950,10 @@ function drawPathOnCanvas(canvasId, imageSrc, moveSequence, config = {}, onFinis
                 currentPoint.x += moveArrowSizes[actionDir].offsetX * scale;
                 currentPoint.y += moveArrowSizes[actionDir].offsetY * scale;
             } else if (actionName.startsWith("turn")) {
-                const turnColor = '#49c0f7ff'; // lighter blue
+                drawArrow(ctx, currentPoint.x, currentPoint.y,
+                    turnArrowSizes[actionDir].dx * scale, turnArrowSizes[actionDir].dy * scale,
+                    7 * scale, 'cyan');
+                const turnColor = config.turnColor || 'white';
                 drawArrow(ctx, currentPoint.x, currentPoint.y,
                     turnArrowSizes[actionDir].dx * scale, turnArrowSizes[actionDir].dy * scale,
                     10 * scale, turnColor);

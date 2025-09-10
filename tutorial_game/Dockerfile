@@ -15,9 +15,9 @@ RUN pip install --no-cache-dir -r tutorial_requirements.txt
 COPY . .
 
 # Expose the port the app runs on
-EXPOSE 8001
-# EXPOSE 8002
+# EXPOSE 8001
+EXPOSE 8002
 
 # Command to run the application
-CMD ["python", "tutorial_app.py"] 
-# CMD ["python", "final_app.py"]
+# CMD ["python", "tutorial_app.py"] 
+CMD ["python", "final_app.py"]

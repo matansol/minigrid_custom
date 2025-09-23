@@ -1,6 +1,10 @@
+import ast
+from functools import reduce
 import numpy as np
 import matplotlib
 import time
+
+from tutorial_game.final_app import SessionLocal
 matplotlib.use('Agg')  # Use the non-interactive Agg backend
 import matplotlib.pyplot as plt
 import io
@@ -19,8 +23,194 @@ import copy
 import heapq
 from collections import defaultdict, deque
 from itertools import combinations, permutations
+import pandas
+from minigrid.wrappers import FullyObsWrapper, ImgObsWrapper, NoDeath
+
+actions_dict = {
+    -1: "-1", # No action (for no feedback cases)
+    0: Actions.left,
+    1: Actions.right,
+    2: Actions.forward,
+    3: Actions.pickup,
+    4: Actions.drop,
+    5: Actions.toggle,
+    6: Actions.done,
+    '-1': "-1",
+    '0': Actions.left,
+    '1': Actions.right,
+    '2': Actions.forward,
+    '3': Actions.pickup,
+    "turn left": Actions.left,
+    "turn right": Actions.right,
+    "forward": Actions.forward,
+    "move forward": Actions.forward,
+    "pickup": Actions.pickup,
+    "Actions.left": Actions.left,
+    "Actions.right": Actions.right,
+    "Actions.forward": Actions.forward,
+    "Actions.pickup": Actions.pickup,
+}
 
 
+sub_models_dict = {
+      1: {'path': 'models/3,3,3,0.1,0.1Steps100Grid8_20250602/best_model.zip', 'name': 'AllColorsLL1_0526', 'vector': (3, 3, 3, 0.1, 0.1), 'optional_unique_env': list(range(1, 20))},
+      2: {'path': 'models/2,2,4,-4,0.1Steps50Grid8_20250617/best_model.zip', 'name': 'AllColorsLH_0617', 'vector': (2, 2, 4, -3, 0.1), 'optional_unique_env':  list(range(1, 20))},
+      3: {'path': 'models/-1,-1,4,0.2,0.1Steps70Grid8_20250625/best_model.zip', 'name': 'OnlyBlueLL_0625', 'vector': (-1, -1, 4, 0.2, 0.1), 'optional_unique_env':  list(range(1, 20))},
+      5: {'path': 'models/-1,4,-1,0.2,0.1Steps60Grid8_20250618/best_model.zip', 'name': 'OnlyGreenLL_0429', 'vector': (-0.1, 3, -0.1, 0, 0.01), 'optional_unique_env':  [1,2,3] + list(range(5, 20))},
+      6: {'path': 'models/-1,-1,4,-3,0.1Steps100Grid8_20250706/best_model.zip', 'name': 'OnlyBlueLH_0706', 'vector': (-1, -1, 4, -3, 0.1), 'optional_unique_env': list(range(1, 20))},
+      7: {'path': 'models/-0.5,2,4,-3,0.1Steps50Grid8_20250612_good/best_model.zip', 'name': 'NoRedLH1_0612', 'vector': (-0.5, 2, 4, -3, 0.1), 'optional_unique_env': list(range(1, 20))},
+}
+
+sub_models_distance = {
+    1: [(2, 'AllColorsLH_0617', [3, 17, 6]), (3, 'OnlyBlueLL_0625', [3, 18, 17]), (5, 'OnlyGreenLL_0429', [17, 10, 6]), (6, 'OnlyBlueLH_0706', [17, 3, 9])], # AllColorsLL1_0526
+	2: [(1, 'AllColorsLL1_0526', [3, 17, 6]), (3, 'OnlyBlueLL_0625', [8, 5, 14]), (6, 'OnlyBlueLH_0706', [11, 9, 14]), (7, 'NoRedLH1_0612', [10, 8, 9])], # AllColorsLH_0617
+	3: [(1, 'AllColorsLL1_0526', [3, 18, 17]), (6, 'OnlyBlueLH_0706', [8, 16, 5]), (2, 'AllColorsLH_0617', [8, 5, 14]), (5, 'OnlyGreenLL_0429', [17, 10, 6])], # OnlyBlueLL_0625
+	5: [(1, 'AllColorsLL1_0526', [17, 10, 6]), (3, 'OnlyBlueLL_0625', [17, 6, 10]), (6, 'OnlyBlueLH_0706', [17, 6, 10]), (2, 'AllColorsLH_0617', [17, 10, 6])], # OnlyGreenLL_0429
+	6: [(2, 'AllColorsLH_0617', [11, 9, 14]), (3, 'OnlyBlueLL_0625', [8, 16, 5]), (7, 'NoRedLH1_0612', [1, 18, 11]), (1, 'AllColorsLL1_0526', [17, 3, 9])], # OnlyBlueLH_0706
+	7: [(2, 'AllColorsLH_0617', [10, 8, 9]), (6, 'OnlyBlueLH_0706', [1, 18, 11]), (1, 'AllColorsLL1_0526', [3, 18, 17]), (3, 'OnlyBlueLL_0625', [8, 1, 16])], # NoRedLH1_0612
+    }
+
+def create_basic_env(train_env=False, image_full_view=False):
+    lava_cost = -3
+    step_cost = 0.1
+    colors_rewards = {'red':-1, 'green': 2, 'blue': 4}
+    step_count = False
+    base_env =  CustomEnv(
+            grid_size=8,
+            render_mode='rgb_array',
+            max_steps=50,
+            highlight=True,
+            step_cost=step_cost,
+            num_objects=5,
+            lava_cells=4,
+            train_env=train_env,
+            image_full_view=image_full_view,
+            agent_view_size=7,
+            color_rewards=colors_rewards,
+            step_count_observation=step_count,
+            finish_reward = 2,
+            # small_actions_space=True, 
+        )
+    base_env = NoDeath(ObjObsWrapper(base_env), no_death_types=('lava',), death_cost=lava_cost)
+    return base_env
+
+def calculate_updated_agent_path(feedbacks:pd.DataFrame, target_agent_indexes:list)-> str:
+    """
+    Calculate the updated agent path based on the feedbacks and the current agent path.
+    """
+    basic_env = create_basic_env()
+
+    optimal_agents = []
+    for model_i, model_name, _ in target_agent_indexes:
+        # if (self.models_paths[self.agent_index]['name'], model_name) in self.past_choices:
+        #     print(f"Skipping model {model_name} to avoid repeating the same choice")
+        #     continue
+        agent_data = sub_models_dict[model_i]
+        path = agent_data['path']
+        agent = load_agent(basic_env, path)
+        # print(f'checking model: {agent_data}')
+
+        agent_correctness = 0
+        for feedback_dict  in feedbacks.to_dict('records'):
+
+            env_obs = ast.literal_eval(feedback_dict['env_state'])
+            env_obs = np.array(env_obs)
+            saved_obs = {'image': env_obs}
+            agent_predict_action = agent.predict(saved_obs, deterministic=True)
+            agent_predict_action = actions_dict[agent_predict_action[0].item()]
+            
+            # base_agent_action = action_feedback['agent_action']
+            if agent_predict_action == actions_dict[feedback_dict['feedback_action']]:
+                agent_correctness += 1
+            
+
+        if agent_correctness > 0:  # minimum correctness
+            # optional_agents.append({"agent":agent, "path": path[2], "correctness": agent_correctness})
+            # similar_actions = self.count_similar_actions(copy.deepcopy(self.saved_env), agent, feedback_indexes)
+            optimal_agents.append({"agent":agent, "name": model_name, "path": path, "correctness_feedback": agent_correctness, "model_index": model_i})
+
+
+    for agent_dict in optimal_agents:
+        print(f"{agent_dict['name']} correctness_feedback= {agent_dict['correctness_feedback']}")
+
+    if len(optimal_agents) == 0:
+        print("No optimal agent found, returning the current agent path")
+        optimal_agents.append({"agent":agent, "path": path, "name": model_name, "correctness_feedback": agent_correctness, "model_index": model_i})
+    # for agent_dict in optimal_agents:
+        # print(f"{agent_dict['name']} correctness_feedback= {agent_dict['correctness_feedback']}")
+    # In case of tie on correctness_feedback, take the one with larger "similar_actions"
+    def agent_cmp(a, b):
+        if a["correctness_feedback"] > b["correctness_feedback"]:
+            return a
+        else: # a["correctness_feedback"] < b["correctness_feedback"]:
+            return b
+        # else:
+        # # Tie: pick the one with more similar_actions
+        #     return a if a["similar_actions"] >= b["similar_actions"] else b
+
+    new_agent_dict = reduce(agent_cmp, optimal_agents)
+    return new_agent_dict['path']
+    
+from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean
+import os
+
+Base = declarative_base()
+# SQLAlchemy setup
+DATABASE_URI = os.getenv("AZURE_DATABASE_URI", "sqlite:///test.db")
+engine = create_engine(DATABASE_URI, echo=False)
+SessionLocal = sessionmaker(bind=engine)
+
+class UserChoice(Base): 
+    __tablename__ = "user_choices"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100))
+    old_agent_path = Column(String(100)) 
+    new_agent_path = Column(String(100))
+    old_agent_score_list = Column(String(30))
+    new_agent_score_list = Column(String(30))
+    timestamp = Column(String(50))
+    demonstration_time = Column(String(50))
+    episode_index = Column(Integer)
+    choice_to_update = Column(Boolean)
+    choice_explanation = Column(String(500), nullable=True)
+    similarity_level = Column(Integer)
+    feedback_score = Column(Float, nullable=True)
+    feedback_count = Column(Integer, nullable=True)
+    unique_envs = Column(String(20), nullable=True)
+    examples_shown = Column(Integer, nullable=True)
+
+def save_choice_of_sim_0(user_id, episode_index, curr_agent_path, updated_agent_path, unique_env, timestamp, number_of_feedbacks, similarity_level):
+    print("saving user choice with the next parameters:")
+    print(f'user_id: {user_id}, episode_index: {episode_index}, curr_agent_path: {curr_agent_path}, updated_agent_path: {updated_agent_path}, unique_env: {unique_env}, timestamp: {timestamp}, number_of_feedbacks: {number_of_feedbacks}, similarity_level: {similarity_level}')
+    session = SessionLocal()
+    try:
+        print(f'(save to DB user choice): old_agent_path={curr_agent_path},  new_agent_path={updated_agent_path}')
+        user_choice = UserChoice(
+            user_id=user_id,
+            old_agent_path=curr_agent_path,
+            new_agent_path=updated_agent_path,
+            old_agent_score_list="",
+            new_agent_score_list="",
+            timestamp=timestamp,
+            demonstration_time=timestamp,
+            episode_index=episode_index,
+            choice_to_update=1,
+            choice_explanation="",
+            similarity_level=similarity_level,
+            feedback_score=-1,
+            feedback_count=number_of_feedbacks,
+            unique_envs=unique_env,
+            examples_shown=0,
+        )
+        session.add(user_choice)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"UserChoice saving failed: {e}")
+    finally:
+        session.close()
 
 
 def timeit(func):

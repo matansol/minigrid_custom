@@ -801,7 +801,6 @@ sub_models_distance = {
     }
 
 
-
 agent_groups = {
     "AllColorsLL1_0526": 1,
     "AllColorsLL2_0604": 1,

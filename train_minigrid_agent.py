@@ -433,7 +433,7 @@ class ImageObjEnvExtractor(BaseFeaturesExtractor):
     def forward(self, observations: th.Tensor) -> th.Tensor:
         outputs = []
 
-        x = observations.float() / 255.0
+        x = observations.float()
         x = x.permute(0, 3, 1, 2)  # BCHW, very important
         x = self.extractor(x)
         x = self.image_linear(x)
@@ -456,7 +456,7 @@ def create_env(grid_size, agent_view_size, max_steps, highlight, step_cost, num_
         color_rewards=color_rewards,
         step_count_observation=step_count_observation
     )
-    env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-1.0)
+    env = NoDeath(ObjObsWrapper(env), no_death_types=('lava',), death_cost=-3.0)
     # env = TimeLimit(env, max_episode_steps=max_steps)
     env = Monitor(env)  # Add Monitor for logging
     return env

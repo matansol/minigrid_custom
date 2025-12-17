@@ -1,0 +1,12 @@
+pandas>=1.5,<3
+numpy>=1.23,<3
+matplotlib>=3.6,<4
+scipy>=1.9,<2
+
+seaborn>=0.12,<0.14
+
+notebook>=7.0,<8
+ipykernel>=6.0,<7
+
+# Note: this notebook suppresses warnings for cleaner output; suppression is handled in the
+# first code cell of `dpu_ploting.ipynb` and does not require extra packages.

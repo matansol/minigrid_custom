@@ -396,7 +396,7 @@ class CustomEnv(MiniGridEnv):
 
     @staticmethod
     def _gen_mission():
-        return ""
+        return "collect green and blue balls"
         # return "go to the red box" # just for the it to run
     
         # color_rank = ' red > green > blue' if not self.change_reward else ' blue > green > red'
@@ -453,29 +453,6 @@ class CustomEnv(MiniGridEnv):
         elif similarity_level >= 0 and similarity_level < 4: 
             self._gen_unique_grid(self.width, self.height, unique_env)
             added_lava = True    
-
-        # elif similarity_level == 1: # the board of the feedback
-        #     self._gen_unique_grid(self.width, self.height, self.unique_env)
-        #     added_lava = True    
-        #     # demonstraion_unique_envs.append(unique_env)        
-
-        # elif similarity_level == 2: # a unique env showing a big change in the agents demonstration
-        #     added_lava = True
-        #     self._gen_unique_grid(self.width, self.height, unique_env)
-        #     # demonstraion_unique_envs.append(unique_env)   
-
-        # elif similarity_level == 3: # random unique env that was not seen yet
-        #     added_lava = True
-        #     self._gen_unique_grid(self.width, self.height, unique_env)
-
-
-            # old_optinal_envs = kwargs.get('old_optional_envs', list(range(1,19)))
-            # new_optinal_envs = self.optional_unique_env
-            # optinal_envs = [x for x in old_optinal_envs if (x in new_optinal_envs and x not in board_seen)]
-            # unique_env = random.choice(optinal_envs)
-            # added_lava = True
-            # self._gen_unique_grid(self.width, self.height, unique_env)
-            # demonstraion_unique_envs.append(unique_env)  
 
         else: # random balls with random colors
             print("generate complete random env with random balls and lava")

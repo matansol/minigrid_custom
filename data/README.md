@@ -1,6 +1,6 @@
-# DPU: Demonstrating Policy Updates — OSF Project
+# Assessing Policy Updates — OSF Project
 
-A lightweight, reproducible package for analyzing the **Demonstrating Policy Updates (DPU)** user study and generating all paper-ready figures directly from a Jupyter notebook.
+A lightweight, reproducible package for analyzing the **Assessing Policy Updates** user study and generating all paper-ready figures directly from a Jupyter notebook.
 
 ---
 
@@ -10,6 +10,7 @@ A lightweight, reproducible package for analyzing the **Demonstrating Policy Upd
 .
 ├── dpu_ploting.ipynb              # Main notebook: loads the data and generates all plots
 ├── requirements.txt               # Pinned dependencies for reproducible runs
+├── minigrid_recording.mp4  # A short demonstration of the experimental feedback - demonstraion loop, which was the main part of the experiment.
 └── data/
     ├── dpu_results_users.csv      # Per-user aggregated results
     ├── dpu_results_choices.csv    # Per-choice (episode-level) results
